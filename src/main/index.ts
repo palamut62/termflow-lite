@@ -1,36 +1,22 @@
-import { app, BrowserWindow, ipcMain, Menu, Notification, shell, Tray } from 'electron'
+import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { join } from 'path'
-import { existsSync, readFileSync, writeFileSync } from 'fs'
-import { IPC } from '../shared/types'
-import { autoUpdater } from 'electron-updater'
+import { IPC } from '../shared/ipc'
+import { DEFAULT_SETTINGS } from '../shared/types'
+import { TerminalManager } from './terminal/TerminalManager'
+import { discoverShells, warmPathCache } from './terminal/ShellDiscovery'
+import { SettingsStore } from './storage/SettingsStore'
+import { registerTerminalIpc } from './ipc/terminal'
+import { registerSettingsIpc } from './ipc/settings'
+import { registerShellIpc } from './ipc/shell'
 
 // Dev: project resources/. Packaged: extraResources under process.resourcesPath.
 const APP_ICON = app.isPackaged
   ? join(process.resourcesPath, 'resources', 'icon.ico')
   : join(__dirname, '../../resources/icon.ico')
-import { getSettings, initDatabase, flushPersist } from './db/database'
-import { warmPathCache } from './pty/shells'
-import { registerIpc } from './ipc/registerIpc'
-import type { PtyController } from './pty/backend'
 
 let mainWindow: BrowserWindow | null = null
-let ptyController: PtyController | null = null
-let tray: Tray | null = null
-let isQuitting = false
-let recoveryFile = ''
-let previousSessionCrashed = false
-const isE2E = process.env.TERMFLOW_E2E === '1'
-if (isE2E) app.setPath('userData', join(app.getPath('temp'), `termflow-e2e-${process.pid}`))
-
-function configureUpdater(channel: 'stable' | 'beta'): void {
-  autoUpdater.channel = channel === 'beta' ? 'beta' : 'latest'
-  autoUpdater.allowPrerelease = channel === 'beta'
-  // Opting out of automatic updates still allows the launch-time *check* — it
-  // just stops the download, so the status bar can report a new version without
-  // pulling it in the background.
-  autoUpdater.autoDownload = getSettings().autoUpdate
-}
-function publishUpdateStatus(status: string, detail?: string): void { mainWindow?.webContents.send(IPC.UPDATE_STATUS, { status, detail }) }
+let settingsStore: SettingsStore | null = null
+let manager: TerminalManager | null = null
 
 function showMainWindow(): void {
   if (!mainWindow || mainWindow.isDestroyed()) createWindow()
@@ -40,33 +26,30 @@ function showMainWindow(): void {
   mainWindow.focus()
 }
 
-function createTray(): void {
-  if (tray) return
-  tray = new Tray(APP_ICON)
-  tray.setToolTip('TermFlow')
-  tray.setContextMenu(Menu.buildFromTemplate([
-    { label: 'Open TermFlow', click: showMainWindow },
-    { type: 'separator' },
-    { label: 'Quit TermFlow', click: () => { isQuitting = true; app.quit() } }
-  ]))
-  tray.on('double-click', showMainWindow)
+// Single-instance: focus the existing window instead of spawning a second
+// process that would fight over the userData/cache locks.
+const gotLock = app.requestSingleInstanceLock()
+if (!gotLock) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    showMainWindow()
+  })
 }
 
 function createWindow(): void {
+  if (!settingsStore) return
+  const settings = settingsStore.get()
+
   mainWindow = new BrowserWindow({
-    width: 1440,
-    height: 900,
-    minWidth: 1024,
-    minHeight: 680,
+    width: settings.windowWidth,
+    height: settings.windowHeight,
+    minWidth: 640,
+    minHeight: 400,
     show: false,
-    transparent: true,
-    backgroundColor: '#00000000',
-    icon: APP_ICON,
-    titleBarStyle: 'hidden',
-    // Overlay is 1px shorter than the 44px toolbar so the toolbar's bottom
-    // border stays visible under the native window controls.
-    titleBarOverlay: { color: '#20242c', symbolColor: '#a0a7b4', height: 43 },
+    // Native title bar — V1 stability (no custom titlebar overlay).
     autoHideMenuBar: true,
+    icon: APP_ICON,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       // Sandboxed renderer: the preload only uses contextBridge/ipcRenderer
@@ -78,9 +61,8 @@ function createWindow(): void {
   })
 
   // Show the window reliably. `ready-to-show` can fail to fire on some Windows
-  // configurations (seen with titleBarOverlay), leaving the process running with
-  // a hidden window — the app appears "not to open". Show on both events plus a
-  // hard fallback timer, all idempotent.
+  // configurations, leaving the process running with a hidden window — the app
+  // appears "not to open". Show on both events plus a hard fallback timer.
   const reveal = (): void => {
     if (!mainWindow || mainWindow.isDestroyed()) return
     if (!mainWindow.isVisible()) mainWindow.show()
@@ -90,14 +72,15 @@ function createWindow(): void {
   mainWindow.webContents.once('did-finish-load', reveal)
   setTimeout(reveal, 3000)
 
-  mainWindow.on('close', (event) => {
-    if (isQuitting || !getSettings().minimizeToTray) return
-    event.preventDefault()
-    mainWindow?.hide()
-  })
-
   mainWindow.on('closed', () => {
     mainWindow = null
+  })
+
+  // Persist the window size so the next launch restores it.
+  mainWindow.on('resize', () => {
+    if (!settingsStore || !mainWindow || mainWindow.isDestroyed()) return
+    const [width, height] = mainWindow.getSize()
+    settingsStore.update({ windowWidth: width, windowHeight: height })
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -121,75 +104,32 @@ function createWindow(): void {
   }
 }
 
-// Single-instance: focus the existing window instead of spawning a second
-// process that would fight over the userData/cache locks.
-const gotLock = isE2E || app.requestSingleInstanceLock()
-if (!gotLock) {
-  app.quit()
-} else {
-  app.on('second-instance', () => {
-    showMainWindow()
-  })
-}
-
 app.whenReady().then(() => {
   // Warm the registry PATH cache off the critical path so the first terminal
   // never pays for a `reg query` round trip.
   warmPathCache()
-  recoveryFile = join(app.getPath('userData'), 'session-state.json')
-  if (existsSync(recoveryFile)) { try { previousSessionCrashed = !(JSON.parse(readFileSync(recoveryFile, 'utf-8')) as { cleanExit?: boolean }).cleanExit } catch { previousSessionCrashed = true } }
-  try { writeFileSync(recoveryFile, JSON.stringify({ cleanExit: false, startedAt: new Date().toISOString() }), 'utf-8') } catch (err) { console.warn('[recovery] failed to write session-state:', err) }
-  ipcMain.handle(IPC.RECOVERY_STATUS, () => ({ crashed: previousSessionCrashed }))
-  ipcMain.handle(IPC.RECOVERY_ACK, () => { previousSessionCrashed = false })
-  ipcMain.handle(IPC.UPDATE_CHECK, async (_event, channel: 'stable' | 'beta') => { if (!app.isPackaged) return { status: 'development' }; configureUpdater(channel); publishUpdateStatus('checking'); await autoUpdater.checkForUpdates(); return { status: 'checking' } })
-  ipcMain.handle(IPC.UPDATE_INSTALL, () => autoUpdater.quitAndInstall())
-  // Desktop notifications are reserved for update events only — new version
-  // found and update downloaded/ready. (user request)
-  const notifyUpdate = (title: string, body: string): void => {
-    try {
-      if (getSettings().notificationsEnabled && Notification.isSupported()) {
-        const n = new Notification({ title, body, icon: APP_ICON })
-        n.on('click', showMainWindow)
-        n.show()
-      }
-    } catch { /* notifications unavailable on this system */ }
-  }
-  autoUpdater.on('update-available', (info) => {
-    publishUpdateStatus('available', info.version)
-    notifyUpdate('TermFlow update available', `Version ${info.version} is downloading in the background.`)
+
+  settingsStore = new SettingsStore(join(app.getPath('userData'), 'settings.json'))
+  manager = new TerminalManager(() => mainWindow, () => (settingsStore ? settingsStore.get() : DEFAULT_SETTINGS))
+  manager.setShells(discoverShells())
+
+  registerTerminalIpc(manager)
+  registerSettingsIpc(settingsStore)
+  registerShellIpc()
+
+  // Renderer asks for the current window size at startup (window persist).
+  ipcMain.handle(IPC.WINDOW_GET_SIZE, () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return { width: 1100, height: 700 }
+    const [width, height] = mainWindow.getSize()
+    return { width, height }
   })
-  autoUpdater.on('update-not-available', () => publishUpdateStatus('current'))
-  autoUpdater.on('download-progress', (progress) => publishUpdateStatus('downloading', `${Math.round(progress.percent)}%`))
-  autoUpdater.on('update-downloaded', (info) => {
-    publishUpdateStatus('ready', info.version)
-    notifyUpdate('TermFlow update ready', `Version ${info.version} will install when you restart the app.`)
+  ipcMain.on(IPC.WINDOW_RESIZE, (_event, width: unknown, height: unknown) => {
+    if (typeof width !== 'number' || typeof height !== 'number') return
+    if (!mainWindow || mainWindow.isDestroyed()) return
+    mainWindow.setSize(Math.max(640, Math.floor(width)), Math.max(400, Math.floor(height)))
   })
-  autoUpdater.on('error', (error) => {
-    // A 404 from GitHub just means no published release exists yet (or the
-    // repo is private) — show a friendly message instead of the raw HTTP dump.
-    const msg = error.message || ''
-    if (/404|releases\.atom|no published versions/i.test(msg)) {
-      publishUpdateStatus('no-releases')
-    } else {
-      publishUpdateStatus('error', msg.split('\n')[0].slice(0, 160))
-    }
-  })
-  initDatabase()
-  const settings = getSettings()
-  configureUpdater(settings.updateChannel)
-  if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: settings.startAtLogin, path: process.execPath })
-  ptyController = registerIpc(() => mainWindow)
-  createTray()
+
   createWindow()
-  // One version check per app launch, whatever the autoUpdate setting says, so
-  // the status-bar version chip always shows a fresh verdict. 5s in: the window
-  // and its renderer are up, so the 'checking' -> result statuses are received.
-  if (app.isPackaged) {
-    setTimeout(() => {
-      publishUpdateStatus('checking')
-      void autoUpdater.checkForUpdates().catch(() => undefined)
-    }, 5000)
-  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -197,13 +137,10 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
-  if (isQuitting && process.platform !== 'darwin') app.quit()
+  if (process.platform !== 'darwin') app.quit()
 })
 
 app.on('before-quit', () => {
-  isQuitting = true
-  if (recoveryFile) { try { writeFileSync(recoveryFile, JSON.stringify({ cleanExit: true, endedAt: new Date().toISOString() }), 'utf-8') } catch { /* ignore shutdown write failure */ } }
-  flushPersist() // write any debounced store mutations before the process dies
-  // Detached daemon sessions stay alive on purpose; only in-process shells die.
-  ptyController?.shutdown()
+  settingsStore?.flush() // write any debounced settings mutations
+  manager?.shutdown() // kill every live PTY
 })

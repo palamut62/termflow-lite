@@ -80,12 +80,12 @@ function resolveWindowsSigning() {
 
 /** @type {import('electron-builder').Configuration} */
 module.exports = {
-  appId: 'com.termflow.app',
-  productName: 'TermFlow',
+  appId: 'com.palamut62.termflowlite',
+  productName: 'TermFlow Lite',
   publish: {
     provider: 'github',
     owner: 'palamut62',
-    repo: 'termflow',
+    repo: 'termflow-lite',
     releaseType: 'release'
   },
   directories: {
@@ -100,13 +100,7 @@ module.exports = {
       filter: ['icon.ico', 'icon.png']
     }
   ],
-  asarUnpack: [
-    '**/node_modules/@lydell/node-pty*/**',
-    // The detached PTY daemon is spawned with `process.execPath` +
-    // ELECTRON_RUN_AS_NODE, so it must be readable as a plain file on disk.
-    'out/main/ptyDaemon.js',
-    'out/main/chunks/**'
-  ],
+  asarUnpack: ['**/node_modules/@lydell/node-pty*/**'],
   win: {
     icon: 'build/icon.ico',
     target: ['nsis', 'zip'],
@@ -116,7 +110,6 @@ module.exports = {
   nsis: {
     oneClick: false,
     allowToChangeInstallationDirectory: true,
-    include: 'build/installer.nsh',
     installerIcon: 'build/icon.ico',
     uninstallerIcon: 'build/icon.ico',
     installerHeaderIcon: 'build/icon.ico'

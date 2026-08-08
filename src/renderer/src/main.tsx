@@ -2,7 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import '@xterm/xterm/css/xterm.css'
-import './styles/global.css'
+import './styles/app.css' // app.css diğer stilleri de import eder
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

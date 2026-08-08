@@ -1,0 +1,67 @@
+.terminal-view {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.terminal-host {
+  width: 100%;
+  height: 100%;
+}
+
+/* xterm canvas'ları host'u doldursun, taşma olmasın. */
+.terminal-host .xterm {
+  height: 100%;
+}
+
+.terminal-host .xterm .xterm-viewport {
+  overflow-y: auto;
+}
+
+.terminal-host .xterm-viewport::-webkit-scrollbar {
+  width: 10px;
+}
+
+.terminal-host .xterm-viewport::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 5px;
+}
+
+/* Process exited overlay (PRD §74) */
+.exit-overlay {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  background: var(--app-background);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--app-foreground);
+  font-size: 13px;
+  z-index: 20;
+}
+
+.exit-overlay-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.exit-overlay-btn {
+  padding: 6px 16px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--app-foreground);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.exit-overlay-btn:hover {
+  border-color: var(--accent-color);
+}

@@ -1,0 +1,43 @@
+/* TermFlow Lite — app.css diğer stilleri de import eder. */
+@import './terminal.css';
+@import './tabs.css';
+@import './settings.css';
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: var(--app-background);
+  color: var(--app-foreground);
+  overflow: hidden;
+  user-select: none;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: var(--app-background);
+}
+
+/* Tab bar sabit yükseklikte; terminal alanı kalanı kaplar. */
+.terminal-area {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  /* opacity < 100 iken terminal arka planı yarı saydam olur (PRD §67). */
+  background: color-mix(in srgb, var(--terminal-background) var(--terminal-opacity, 100%), transparent);
+  backdrop-filter: blur(var(--terminal-blur, 0px));
+}
