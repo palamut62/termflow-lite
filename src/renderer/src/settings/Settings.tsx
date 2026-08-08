@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, InputHTMLAttributes, ReactNode } from 'react'
 import { Info, Keyboard, Palette, SquareTerminal, UserRound, X } from 'lucide-react'
 import { useSettingsStore } from '../store/settingsStore'
@@ -26,6 +26,15 @@ const SECTIONS: { id: SectionId; label: string; icon: ReactNode }[] = [
 export function Settings(): React.JSX.Element {
   const closeSettings = useSettingsStore((s) => s.closeSettings)
   const [section, setSection] = useState<SectionId>('appearance')
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  // Modal focus management: opening the modal does NOT blur the xterm
+  // textarea, whose keydown handler swallows events (Escape included) before
+  // they bubble to this document listener — Escape could never close the
+  // modal. Focus the panel instead so keys target the modal subtree.
+  useEffect(() => {
+    panelRef.current?.focus()
+  }, [])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -42,7 +51,7 @@ export function Settings(): React.JSX.Element {
         if (e.target === e.currentTarget) closeSettings()
       }}
     >
-      <div className="settings-panel" role="dialog" aria-label="Settings">
+      <div className="settings-panel" role="dialog" aria-label="Settings" ref={panelRef} tabIndex={-1}>
         <header className="settings-header">
           <span className="settings-header-title">Settings</span>
           <button className="settings-icon-btn" onClick={closeSettings} aria-label="Close settings" title="Close (Esc)">

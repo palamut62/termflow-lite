@@ -5,6 +5,7 @@ import {
   parseWslOutput,
   refreshPathCache,
   resolveShell,
+  unixShellCandidates,
   __resetPathCacheForTests
 } from './ShellDiscovery'
 
@@ -80,6 +81,42 @@ describe('parseWslOutput', () => {
   it('returns [] for empty or header-only output', () => {
     expect(parseWslOutput(Buffer.from(''))).toEqual([])
     expect(parseWslOutput(Buffer.from('\r\n\r\n', 'utf8'))).toEqual([])
+  })
+})
+
+describe('unixShellCandidates (Linux/macOS discovery, pure — no subprocess)', () => {
+  it('falls back to /bin/bash and /bin/sh when $SHELL is unset and zsh/fish are missing', () => {
+    const shells = unixShellCandidates({}, () => null)
+    expect(shells.map((s) => s.id)).toEqual(['bash', 'sh'])
+    expect(shells[0].command).toBe('/bin/bash')
+    expect(shells[0].kind).toBe('custom')
+  })
+
+  it('prefers $SHELL and names it "<Capitalized> (default)"', () => {
+    const shells = unixShellCandidates({ SHELL: '/usr/bin/zsh' }, () => null)
+    expect(shells.map((s) => s.id)).toEqual(['zsh', 'bash', 'sh'])
+    expect(shells[0].name).toBe('Zsh (default)')
+    expect(shells[0].command).toBe('/usr/bin/zsh')
+  })
+
+  it('does not duplicate a $SHELL that matches a well-known shell', () => {
+    const shells = unixShellCandidates({ SHELL: '/bin/bash' }, () => null)
+    expect(shells.filter((s) => s.id === 'bash')).toHaveLength(1)
+    expect(shells[0].name).toBe('Bash (default)')
+  })
+
+  it('adds shells found on PATH via which, skipping ones that are absent', () => {
+    const which = (name: string): string | null => (name === 'fish' ? '/usr/local/bin/fish' : null)
+    const shells = unixShellCandidates({}, which)
+    const ids = shells.map((s) => s.id)
+    expect(ids).toContain('fish')
+    expect(shells.find((s) => s.id === 'fish')?.command).toBe('/usr/local/bin/fish')
+    expect(ids).not.toContain('zsh') // which('zsh') returned null -> skipped
+    expect(ids).toContain('bash') // fixed fallback stays
+  })
+
+  it('never returns an empty list (bash + sh always exist)', () => {
+    expect(unixShellCandidates({}, () => null).length).toBeGreaterThan(0)
   })
 })
 

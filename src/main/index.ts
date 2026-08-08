@@ -15,6 +15,14 @@ const APP_ICON = app.isPackaged
   ? join(process.resourcesPath, 'resources', 'icon.ico')
   : join(__dirname, '../../resources/icon.ico')
 
+// E2E isolation: Playwright launches (TERMFLOW_E2E=1, see e2e/app.spec.ts)
+// get a throwaway pid-scoped userData dir so they never touch the real
+// settings.json. Must run before any userData use — including the
+// single-instance lock below.
+if (process.env.TERMFLOW_E2E === '1') {
+  app.setPath('userData', join(app.getPath('temp'), `termflow-lite-e2e-${process.pid}`))
+}
+
 let mainWindow: BrowserWindow | null = null
 let settingsStore: SettingsStore | null = null
 let manager: TerminalManager | null = null

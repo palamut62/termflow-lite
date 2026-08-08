@@ -1,6 +1,6 @@
 import { existsSync } from 'fs'
 import { join } from 'path'
-import { execFile } from 'child_process'
+import { execFile, execFileSync } from 'child_process'
 import type { CreateTerminalInput, ShellInfo, ShellKind } from '../../shared/types'
 
 export interface ResolvedShell {
@@ -63,6 +63,60 @@ function slug(name: string): string {
   return s || 'distro'
 }
 
+/** Unix basename: '/usr/bin/zsh' -> 'zsh'. */
+function basenameOf(path: string): string {
+  const i = path.lastIndexOf('/')
+  return i >= 0 ? path.slice(i + 1) : path
+}
+
+/** 'zsh' -> 'Zsh'. */
+function capitalize(name: string): string {
+  return name ? name[0].toUpperCase() + name.slice(1) : name
+}
+
+/** Resolve an executable name via `which`; null when it is not on PATH. */
+function whichOf(name: string): string | null {
+  try {
+    const out = execFileSync('which', [name], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim()
+    return out || null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Enumerate shells for the shared unix branch — Linux (PRD §12) and macOS
+ * (PRD §13, §78) run the exact same discovery. Order matters:
+ *   1. `$SHELL` (the user's actual default login shell), id = basename, e.g.
+ *      `$SHELL=/usr/bin/zsh` -> id 'zsh', name 'Zsh (default)'.
+ *   2. Well-known shells: bash (fixed /bin/bash fallback), zsh, fish (only
+ *      when found on PATH), sh (fixed /bin/sh). Entries whose id is already
+ *      taken by `$SHELL` are skipped, so a `$SHELL=/bin/bash` user sees one
+ *      'bash' entry, not two.
+ * Pure and injectable (env + `which` resolver) so the logic is unit-testable
+ * on Windows without spawning any process.
+ */
+export function unixShellCandidates(env: Record<string, string>, which: (name: string) => string | null): ShellInfo[] {
+  const list: ShellInfo[] = []
+
+  const userShell = env.SHELL
+  if (userShell) {
+    const id = basenameOf(userShell) || 'shell'
+    list.push({ id, name: `${capitalize(id)} (default)`, kind: 'custom', command: userShell, args: [], icon: id })
+  }
+
+  const add = (id: string, path: string | null): void => {
+    if (!path || list.some((s) => s.id === id)) return
+    list.push({ id, name: capitalize(id), kind: 'custom', command: path, args: [], icon: id })
+  }
+  add('bash', which('bash') ?? '/bin/bash')
+  add('zsh', which('zsh'))
+  add('fish', which('fish'))
+  add('sh', '/bin/sh')
+
+  return list
+}
+
 /** Enumerate installed WSL distros; `[]` on error or when none are installed. */
 export function listWslDistros(): Promise<string[]> {
   return new Promise((resolve) => {
@@ -80,14 +134,10 @@ export function listWslDistros(): Promise<string[]> {
 
 /** Discover which shells are available on this machine (PRD FR-010). */
 export async function discoverShells(): Promise<ShellInfo[]> {
-  // Full Linux support lands in a later phase — here we only make sure the
-  // app never crashes when started on a non-Windows machine.
+  // Unix branch — Linux (PRD §12) and macOS (PRD §13, §78) share this
+  // discovery: $SHELL first, well-known shells via `which`, deduped by id.
   if (process.platform !== 'win32') {
-    const bash = process.env.SHELL || '/bin/bash'
-    return [
-      { id: 'bash', name: 'Bash', kind: 'custom', command: bash, args: [], icon: 'bash' },
-      { id: 'sh', name: 'Shell', kind: 'custom', command: '/bin/sh', args: [], icon: 'sh' }
-    ]
+    return unixShellCandidates(process.env as Record<string, string>, (name) => whichOf(name))
   }
 
   const pwsh = pwshPath()
@@ -259,7 +309,8 @@ export function resolveShell(input: CreateTerminalInput): ResolvedShell {
   // NO_COLOR deliberately without inheriting the launcher's global flag.
   Object.assign(env, input.env || {})
 
-  // Non-Windows: minimal bash/sh support (crash guard; full support later).
+  // Unix (Linux + macOS, PRD §12/§13): explicit input.shell wins, then $SHELL,
+  // then the universal /bin/bash default.
   if (process.platform !== 'win32') {
     return { shell: input.shell || process.env.SHELL || '/bin/bash', args: input.args ?? [], cwd, env }
   }
