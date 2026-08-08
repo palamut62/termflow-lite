@@ -123,7 +123,7 @@ module.exports = {
   ],
   asarUnpack: ['**/node_modules/@lydell/node-pty*/**'],
   win: {
-    icon: 'build/icon.ico',
+    icon: 'resources/icon.ico',
     target: ['nsis', 'zip'],
     artifactName: 'TermFlow-Lite-${version}-${arch}.${ext}',
     ...resolveWindowsSigning()
@@ -131,9 +131,9 @@ module.exports = {
   nsis: {
     oneClick: false,
     allowToChangeInstallationDirectory: true,
-    installerIcon: 'build/icon.ico',
-    uninstallerIcon: 'build/icon.ico',
-    installerHeaderIcon: 'build/icon.ico'
+    installerIcon: 'resources/icon.ico',
+    uninstallerIcon: 'resources/icon.ico',
+    installerHeaderIcon: 'resources/icon.ico'
   },
   linux: {
     icon: 'resources/icon.png',
