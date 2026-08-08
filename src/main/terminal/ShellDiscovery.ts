@@ -36,15 +36,57 @@ function gitBashPath(): string | undefined {
   ])
 }
 
+/**
+ * Parse raw `wsl.exe -l -q` output into distro names. WSL prints UTF-16LE on
+ * most inbox builds, UTF-8 on Store builds; newer builds append `(Default)`
+ * (and sometimes `*`) to the default distro, and a header line appears when
+ * `-q` is not supported. Pure so the decoding/cleaning logic can be tested.
+ */
+export function parseWslOutput(raw: Buffer): string[] {
+  // ASCII text in UTF-16LE contains 0x00 bytes between every character; UTF-8
+  // never does — sniff the encoding from the bytes themselves.
+  const text = raw.includes(0) ? raw.toString('utf16le') : raw.toString('utf8')
+  return text
+    .replace(/﻿/g, '') // BOM (either encoding)
+    .replace(/\0/g, '') // stray NULs
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .filter((line) => !line.includes(':')) // e.g. "Windows Subsystem for Linux Distributions:"
+    .map((line) => line.replace(/\s*\(Default\)\s*$/, '').replace(/\*+$/, '').trim())
+    .filter((line) => line.length > 0)
+}
+
+/** 'Ubuntu-22.04' -> 'ubuntu-22-04' (used for wsl-<distro> shell ids). */
+function slug(name: string): string {
+  const s = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+  return s || 'distro'
+}
+
+/** Enumerate installed WSL distros; `[]` on error or when none are installed. */
+export function listWslDistros(): Promise<string[]> {
+  return new Promise((resolve) => {
+    execFile(
+      'wsl.exe',
+      ['-l', '-q'],
+      { encoding: 'buffer', windowsHide: true, maxBuffer: 4 * 1024 * 1024 },
+      (err, stdout) => {
+        if (err) return resolve([])
+        resolve(parseWslOutput(Buffer.isBuffer(stdout) ? stdout : Buffer.from(String(stdout))))
+      }
+    )
+  })
+}
+
 /** Discover which shells are available on this machine (PRD FR-010). */
-export function discoverShells(): ShellInfo[] {
+export async function discoverShells(): Promise<ShellInfo[]> {
   // Full Linux support lands in a later phase — here we only make sure the
   // app never crashes when started on a non-Windows machine.
   if (process.platform !== 'win32') {
     const bash = process.env.SHELL || '/bin/bash'
     return [
-      { id: 'bash', name: 'Bash', kind: 'custom', command: bash, args: [] },
-      { id: 'sh', name: 'Shell', kind: 'custom', command: '/bin/sh', args: [] }
+      { id: 'bash', name: 'Bash', kind: 'custom', command: bash, args: [], icon: 'bash' },
+      { id: 'sh', name: 'Shell', kind: 'custom', command: '/bin/sh', args: [], icon: 'sh' }
     ]
   }
 
@@ -52,13 +94,35 @@ export function discoverShells(): ShellInfo[] {
   const gitBash = gitBashPath()
   const wsl = firstExisting([join(winDir, 'System32', 'wsl.exe')])
   const list: ShellInfo[] = [
-    { id: 'powershell', name: 'PowerShell', kind: 'powershell', command: powershellPath(), args: [] },
-    { id: 'pwsh', name: 'PowerShell Core', kind: 'pwsh', command: pwsh ?? '', args: [] },
-    { id: 'cmd', name: 'Command Prompt', kind: 'cmd', command: join(winDir, 'System32', 'cmd.exe'), args: [] },
-    { id: 'wsl', name: 'WSL', kind: 'wsl', command: wsl ?? '', args: [] },
-    { id: 'gitbash', name: 'Git Bash', kind: 'gitbash', command: gitBash ?? '', args: ['--login', '-i'] }
+    { id: 'powershell', name: 'PowerShell', kind: 'powershell', command: powershellPath(), args: [], icon: 'powershell' },
+    { id: 'pwsh', name: 'PowerShell Core', kind: 'pwsh', command: pwsh ?? '', args: [], icon: 'powershell' },
+    { id: 'cmd', name: 'Command Prompt', kind: 'cmd', command: join(winDir, 'System32', 'cmd.exe'), args: [], icon: 'cmd' },
+    { id: 'wsl', name: 'WSL', kind: 'wsl', command: wsl ?? '', args: [], icon: 'linux' },
+    { id: 'gitbash', name: 'Git Bash', kind: 'gitbash', command: gitBash ?? '', args: ['--login', '-i'], icon: 'gitbash' }
   ]
-  return list.filter((s) => (s.command ? existsSync(s.command) : false))
+  const base = list.filter((s) => (s.command ? existsSync(s.command) : false))
+
+  // Distro enumeration: one shell per installed distro. Without any distros
+  // (or when the query fails) the generic 'wsl' entry stays — it launches the
+  // default distro without args.
+  const wslEntry = base.find((s) => s.id === 'wsl')
+  if (wslEntry) {
+    const distros = await listWslDistros()
+    if (distros.length > 0) {
+      return [
+        ...base.filter((s) => s.id !== 'wsl'),
+        ...distros.map((name) => ({
+          id: `wsl-${slug(name)}`,
+          name,
+          kind: 'wsl' as const,
+          command: wslEntry.command,
+          args: ['-d', name],
+          icon: 'linux'
+        }))
+      ]
+    }
+  }
+  return base
 }
 
 /**

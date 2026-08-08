@@ -26,9 +26,9 @@ function makeTab(profileId: string): TerminalTab {
 interface TerminalState {
   tabs: TerminalTab[]
   activeTabId: string | null
-  /** id nanoid(10); title = profile adı; aktif yapar. */
-  addTab(profileId: string): string
-  /** Aktifse komşuya geçer; son sekme kapanırsa default profile ile yenisi açılır. */
+  /** id nanoid(10); title = profile adı. activate=false ile arka planda açar (sonraki fazlar). */
+  addTab(profileId: string, activate?: boolean): string
+  /** settings.confirmBeforeClose ise onay ister; Aktifse komşuya geçer; son sekme kapanırsa default profile ile yenisi açılır. */
   closeTab(id: string): void
   setActiveTab(id: string): void
   renameTab(id: string, title: string): void
@@ -41,9 +41,9 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
   tabs: [],
   activeTabId: null,
 
-  addTab(profileId) {
+  addTab(profileId, activate = true) {
     const tab = makeTab(profileId)
-    set((s) => ({ tabs: [...s.tabs, tab], activeTabId: tab.id }))
+    set((s) => ({ tabs: [...s.tabs, tab], activeTabId: activate ? tab.id : s.activeTabId }))
     return tab.id
   },
 
@@ -51,6 +51,11 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
     const { tabs, activeTabId } = get()
     const idx = tabs.findIndex((t) => t.id === id)
     if (idx < 0) return
+
+    // settings.confirmBeforeClose: user confirmation first (cancel aborts).
+    if (useSettingsStore.getState().settings.confirmBeforeClose && !window.confirm('Close this terminal tab?')) {
+      return
+    }
 
     // Tear the PTY down and drop the stream handlers for this tab.
     window.termflow.pty.kill(id)

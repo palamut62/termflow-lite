@@ -1,9 +1,11 @@
 import { useEffect } from 'react'
 import type { CSSProperties } from 'react'
+import { DEFAULT_SETTINGS } from '../../shared/types'
 import { resolveDefaultProfileId, useSettingsStore } from './store/settingsStore'
 import { dataHandlers, exitHandlers, useTerminalStore } from './store/terminalStore'
 import { TabBar } from './tabs/TabBar'
 import { TerminalView } from './terminal/TerminalView'
+import { matchShortcut } from './shortcuts'
 
 // StrictMode double-mounts effects in dev — the boot sequence must run once.
 let bootStarted = false
@@ -30,6 +32,57 @@ export default function App(): React.JSX.Element {
       const { settings, shells } = useSettingsStore.getState()
       useTerminalStore.getState().addTab(resolveDefaultProfileId(settings, shells))
     })()
+  }, [])
+
+  // Klavye kısayolları (PRD §39): CAPTURE fazında — xterm'in textarea'sından
+  // önce çalışır. Sadece eşleşen kısayollarda preventDefault; xterm'e giden
+  // diğer tuşlar etkilenmez.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent): void => {
+      const action = matchShortcut(e, useSettingsStore.getState().settings.shortcuts)
+      if (!action) return
+
+      const termStore = useTerminalStore.getState()
+      switch (action) {
+        case 'new-tab': {
+          const { settings, shells } = useSettingsStore.getState()
+          termStore.addTab(resolveDefaultProfileId(settings, shells))
+          break
+        }
+        case 'close-tab': {
+          const id = termStore.activeTabId
+          if (id) termStore.closeTab(id)
+          break
+        }
+        case 'next-tab':
+        case 'prev-tab': {
+          const { tabs, activeTabId } = termStore
+          if (tabs.length === 0) break
+          const idx = Math.max(0, tabs.findIndex((t) => t.id === activeTabId))
+          const dir = action === 'next-tab' ? 1 : -1
+          termStore.setActiveTab(tabs[(idx + dir + tabs.length) % tabs.length].id)
+          break
+        }
+        case 'font-increase':
+        case 'font-decrease': {
+          const fontSize = useSettingsStore.getState().settings.fontSize
+          const step = action === 'font-increase' ? 1 : -1
+          void useSettingsStore.getState().update({
+            fontSize: Math.max(8, Math.min(32, fontSize + step))
+          })
+          break
+        }
+        case 'font-reset':
+          void useSettingsStore.getState().update({ fontSize: DEFAULT_SETTINGS.fontSize })
+          break
+        default:
+          return // search/settings bindings land in Faz 6-7
+      }
+      e.preventDefault()
+      e.stopPropagation()
+    }
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [])
 
   // PTY stream listeners: tek global onData/onExit/onCwd kaydı, per-tab

@@ -77,17 +77,131 @@
   opacity: 1;
 }
 
-.tab-add {
+/* ---- Tab icon (kind-based; colors from theme variables) ---- */
+.tab-icon {
+  display: flex;
+  align-items: center;
   flex-shrink: 0;
-  width: 36px;
+  color: currentColor;
+}
+
+.tab-icon-powershell {
+  color: var(--term-blue);
+}
+
+.tab-icon-cmd {
+  color: var(--tab-foreground);
+  opacity: 0.75;
+}
+
+.tab-icon-text {
+  font-size: 16px;
+  line-height: 1;
+  width: 16px;
+  justify-content: center;
+}
+
+/* ---- "+" + caret + new-tab dropdown (PRD §15) ---- */
+.new-tab-area {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+}
+
+.new-tab-btn,
+.new-tab-caret {
   background: transparent;
   border: none;
   color: var(--tab-foreground);
-  font-size: 18px;
   cursor: pointer;
   opacity: 0.6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 120ms, background 120ms;
 }
 
-.tab-add:hover {
+.new-tab-btn {
+  width: 32px;
+}
+
+.new-tab-caret {
+  width: 18px;
+}
+
+.new-tab-btn:hover,
+.new-tab-caret:hover,
+.new-tab-caret[aria-expanded='true'] {
   opacity: 1;
+  background: var(--selection-background);
+}
+
+.new-tab-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 100;
+  min-width: 240px;
+  max-width: 320px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 4px;
+  background: var(--tab-background);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--tab-foreground) 25%, transparent);
+}
+
+.menu-section {
+  padding: 6px 10px 2px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--tab-foreground);
+  opacity: 0.55;
+  user-select: none;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: inherit;
+  text-align: left;
+  color: var(--tab-foreground);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.menu-item:hover {
+  background: var(--selection-background);
+}
+
+.menu-item-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menu-default-badge {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  background: var(--accent-color);
+  color: var(--app-background);
+}
+
+.menu-divider {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--border-color);
 }

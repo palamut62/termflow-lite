@@ -110,8 +110,11 @@ app.whenReady().then(() => {
   warmPathCache()
 
   settingsStore = new SettingsStore(join(app.getPath('userData'), 'settings.json'))
-  manager = new TerminalManager(() => mainWindow, () => (settingsStore ? settingsStore.get() : DEFAULT_SETTINGS))
-  manager.setShells(discoverShells())
+  const mgr = new TerminalManager(() => mainWindow, () => (settingsStore ? settingsStore.get() : DEFAULT_SETTINGS))
+  manager = mgr
+  // WSL distro enumeration makes discovery async — the renderer re-queries
+  // via SHELLS_DISCOVER anyway, so the warm value is only a fallback.
+  void discoverShells().then((shells) => mgr.setShells(shells))
 
   registerTerminalIpc(manager)
   registerSettingsIpc(settingsStore)
