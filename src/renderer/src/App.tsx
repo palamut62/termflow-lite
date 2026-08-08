@@ -5,6 +5,7 @@ import { resolveDefaultProfileId, useSettingsStore } from './store/settingsStore
 import { dataHandlers, exitHandlers, useTerminalStore } from './store/terminalStore'
 import { TabBar } from './tabs/TabBar'
 import { TerminalView } from './terminal/TerminalView'
+import { Settings } from './settings/Settings'
 import { matchShortcut } from './shortcuts'
 
 // StrictMode double-mounts effects in dev — the boot sequence must run once.
@@ -16,6 +17,7 @@ export default function App(): React.JSX.Element {
   const opacity = useSettingsStore((s) => s.settings.opacity)
   const blur = useSettingsStore((s) => s.settings.blur)
   const themeId = useSettingsStore((s) => s.settings.themeId)
+  const settingsOpen = useSettingsStore((s) => s.settingsOpen)
   const tabs = useTerminalStore((s) => s.tabs)
   const activeTabId = useTerminalStore((s) => s.activeTabId)
 
@@ -39,6 +41,10 @@ export default function App(): React.JSX.Element {
   // diğer tuşlar etkilenmez.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent): void => {
+      // Settings modal açıkken kısayollar sessize alınır — yoksa Ctrl+W gibi
+      // bağlamalar ayarları düzenlerken tab kapatabilir (KeyboardSettings
+      // kayıt modu zaten document capture'da yakalayıp yutar).
+      if (useSettingsStore.getState().settingsOpen) return
       const action = matchShortcut(e, useSettingsStore.getState().settings.shortcuts)
       if (!action) return
 
@@ -75,8 +81,11 @@ export default function App(): React.JSX.Element {
         case 'font-reset':
           void useSettingsStore.getState().update({ fontSize: DEFAULT_SETTINGS.fontSize })
           break
+        case 'settings':
+          useSettingsStore.getState().openSettings()
+          break
         default:
-          return // search/settings bindings land in Faz 6-7
+          return // search binding lands in Faz 7
       }
       e.preventDefault()
       e.stopPropagation()
@@ -145,6 +154,7 @@ export default function App(): React.JSX.Element {
         {/* Sadece aktif tab mount edilir — TerminalView mount = PTY create. */}
         {activeTab && <TerminalView key={activeTab.id} tabId={activeTab.id} active />}
       </div>
+      {settingsOpen && <Settings />}
     </div>
   )
 }

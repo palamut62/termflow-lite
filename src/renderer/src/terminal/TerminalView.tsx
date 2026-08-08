@@ -6,7 +6,7 @@ import { SearchAddon } from '@xterm/addon-search'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { useSettingsStore } from '../store/settingsStore'
 import { dataHandlers, exitHandlers, useTerminalStore } from '../store/terminalStore'
-import { getTheme } from '../themes/themes'
+import { resolveTheme } from '../themes/themes'
 
 interface Props {
   tabId: string
@@ -49,14 +49,19 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
     const host = hostRef.current
     if (!host || !profileId) return
 
+    const themeColors = resolveTheme(settings).colors
     const term = new Terminal({
       fontFamily: settings.fontFamily,
       fontSize: settings.fontSize,
+      // Settings'te serbest string; xterm yalnızca normal/bold/100..900 kabul eder.
+      fontWeight: settings.fontWeight as 'normal' | 'bold' | number,
       lineHeight: settings.lineHeight,
       cursorBlink: settings.cursorBlink,
       cursorStyle: settings.cursorStyle,
+      cursorWidth: settings.cursorWidth,
       scrollback: settings.scrollback,
-      theme: getTheme(settings.themeId).colors,
+      // cursorColor override: '' = tema default (PRD §32).
+      theme: settings.cursorColor ? { ...themeColors, cursor: settings.cursorColor } : themeColors,
       allowProposedApi: true,
       // Draw box-drawing / block glyphs procedurally instead of using the
       // font's own (often misaligned) glyphs — keeps TUI borders crisp.
@@ -217,11 +222,14 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
     if (!term) return
     term.options.fontFamily = settings.fontFamily
     term.options.fontSize = settings.fontSize
+    term.options.fontWeight = settings.fontWeight as 'normal' | 'bold' | number
     term.options.lineHeight = settings.lineHeight
     term.options.cursorStyle = settings.cursorStyle
     term.options.cursorBlink = settings.cursorBlink
+    term.options.cursorWidth = settings.cursorWidth
     term.options.scrollback = settings.scrollback
-    term.options.theme = getTheme(settings.themeId).colors
+    const themeColors = resolveTheme(settings).colors
+    term.options.theme = settings.cursorColor ? { ...themeColors, cursor: settings.cursorColor } : themeColors
     // A font/size change alters the cell metrics, so the fit result may change;
     // route it through the single atomic resize channel.
     scheduleResizeRef.current?.()
@@ -229,11 +237,15 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
   }, [
     settings.fontFamily,
     settings.fontSize,
+    settings.fontWeight,
     settings.lineHeight,
     settings.cursorStyle,
     settings.cursorBlink,
+    settings.cursorWidth,
+    settings.cursorColor,
     settings.scrollback,
-    settings.themeId
+    settings.themeId,
+    settings.customTheme
   ])
 
   const handleRestart = (): void => {

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { DEFAULT_SETTINGS, type AppSettings, type ShellInfo } from '../../../shared/types'
-import { applyThemeToDom, getTheme } from '../themes/themes'
+import { applyThemeToDom, resolveTheme } from '../themes/themes'
 
 /** Shells tried in order when the configured default profile is unavailable. */
 const SHELL_PRIORITY: string[] = ['pwsh', 'powershell', 'cmd', 'gitbash', 'wsl', 'bash', 'sh']
@@ -23,11 +23,15 @@ interface SettingsState {
   settings: AppSettings
   shells: ShellInfo[]
   loaded: boolean
+  /** Settings modal açık mı (Ctrl+, / NewTabMenu "Settings" — Faz 6). */
+  settingsOpen: boolean
+  openSettings(): void
+  closeSettings(): void
   /** settings.get + shells.discover; varsayılan tab için defaultProfileId resolve edilir. */
   load(): Promise<void>
   /** Optimistic update: set locally, then persist through window.termflow. */
   update(patch: Partial<AppSettings>): Promise<void>
-  /** applyThemeToDom(getTheme(settings.themeId)) + xterm için. */
+  /** resolveTheme + applyThemeToDom + UI font ayarları (canlı uygulanır). */
   applyTheme(): void
 }
 
@@ -35,6 +39,9 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   settings: { ...DEFAULT_SETTINGS },
   shells: [],
   loaded: false,
+  settingsOpen: false,
+  openSettings: () => set({ settingsOpen: true }),
+  closeSettings: () => set({ settingsOpen: false }),
 
   async load() {
     const [settings, shells] = await Promise.all([
@@ -56,6 +63,12 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   },
 
   applyTheme() {
-    applyThemeToDom(getTheme(get().settings.themeId))
+    const s = get().settings
+    applyThemeToDom(resolveTheme(s))
+    // Letter-spacing + ligatures yalnızca UI metinlerine uygulanır — xterm
+    // canvas renderer'ı bu CSS özelliklerini desteklemez (PRD §28).
+    const style = document.documentElement.style
+    style.setProperty('--ui-letter-spacing', `${s.letterSpacing}px`)
+    style.setProperty('--ui-font-ligatures', s.fontLigatures ? 'contextual' : 'none')
   }
 }))

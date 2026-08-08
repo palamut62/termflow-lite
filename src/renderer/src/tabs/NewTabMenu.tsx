@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { Settings as SettingsIcon } from 'lucide-react'
 import { resolveDefaultProfileId, useSettingsStore } from '../store/settingsStore'
 import { useTerminalStore } from '../store/terminalStore'
 import { TabIcon } from './TabIcon'
@@ -10,8 +11,8 @@ interface NewTabMenuProps {
 
 /**
  * Dropdown opened by the caret next to the "+" button (PRD §15): every
- * discovered shell plus custom profiles. Closes on outside click / Escape.
- * A Settings entry lands in Faz 6.
+ * discovered shell plus custom profiles, then a Settings entry (Faz 6).
+ * Closes on outside click / Escape.
  */
 export function NewTabMenu({ onClose }: NewTabMenuProps): React.JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
@@ -76,6 +77,18 @@ export function NewTabMenu({ onClose }: NewTabMenuProps): React.JSX.Element {
           ))}
         </>
       )}
+      <div className="menu-divider" />
+      <button
+        className="menu-item"
+        role="menuitem"
+        onClick={() => {
+          useSettingsStore.getState().openSettings()
+          onClose()
+        }}
+      >
+        <SettingsIcon size={14} />
+        <span className="menu-item-label">Settings</span>
+      </button>
     </div>
   )
 }

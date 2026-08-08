@@ -29,6 +29,33 @@ export interface CreateTerminalInput {
   rows?: number
 }
 
+/**
+ * Full 20-color terminal palette (PRD §27). Shared with the renderer theme
+ * system so `settings.customTheme` can live in the persisted AppSettings.
+ */
+export interface ThemeColors {
+  background: string
+  foreground: string
+  cursor: string
+  selection: string
+  black: string
+  red: string
+  green: string
+  yellow: string
+  blue: string
+  magenta: string
+  cyan: string
+  white: string
+  brightBlack: string
+  brightRed: string
+  brightGreen: string
+  brightYellow: string
+  brightBlue: string
+  brightMagenta: string
+  brightCyan: string
+  brightWhite: string
+}
+
 export interface ShellInfo {
   /** 'powershell' | 'pwsh' | 'cmd' | 'wsl' | 'gitbash' | 'bash' | 'sh' */
   id: string
@@ -50,6 +77,12 @@ export type PtyEvent =
 
 export interface AppSettings {
   themeId: string
+  /** Custom 20-color palette; null = use the 'dark' fallback (PRD §27). */
+  customTheme: ThemeColors | null
+  /** Cursor color override; '' = theme default (PRD §32). */
+  cursorColor: string
+  cursorWidth: number
+  fontWeight: string
   fontFamily: string
   fontSize: number
   fontLigatures: boolean
@@ -68,7 +101,7 @@ export interface AppSettings {
   confirmBeforeClose: boolean
   bell: boolean
   defaultProfileId: string
-  startupDirectory: 'home' | 'last'
+  startupDirectory: 'home' | 'last' | 'custom'
   customStartupDirectory: string
   shortcuts: Record<string, string>
   profiles: TerminalProfile[]
@@ -79,6 +112,10 @@ export interface AppSettings {
 
 export const DEFAULT_SETTINGS: AppSettings = {
   themeId: 'dark',
+  customTheme: null,
+  cursorColor: '',
+  cursorWidth: 2,
+  fontWeight: 'normal',
   fontFamily: "'Cascadia Mono', Consolas, 'Courier New', monospace",
   fontSize: 13,
   fontLigatures: false,

@@ -117,7 +117,7 @@ app.whenReady().then(() => {
   void discoverShells().then((shells) => mgr.setShells(shells))
 
   registerTerminalIpc(manager)
-  registerSettingsIpc(settingsStore)
+  registerSettingsIpc(settingsStore, mgr)
   registerShellIpc()
 
   // Renderer asks for the current window size at startup (window persist).

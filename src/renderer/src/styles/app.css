@@ -20,6 +20,10 @@ body {
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
   background: var(--app-background);
   color: var(--app-foreground);
+  /* UI metin font ayarları (settingsStore.applyTheme set eder; xterm canvas'ı
+     etkilemez — PRD §28). */
+  letter-spacing: var(--ui-letter-spacing, 0px);
+  font-variant-ligatures: var(--ui-font-ligatures, none);
   overflow: hidden;
   user-select: none;
 }

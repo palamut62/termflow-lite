@@ -1,1 +1,599 @@
-/* Settings UI lands in a later phase (Faz 2+). */
+/* Settings modal (Faz 6, PRD §33/§54) — tüm renkler tema CSS variable'larından. */
+
+.settings-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--app-background) 55%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  width: 880px;
+  max-width: calc(100vw - 48px);
+  max-height: 80vh;
+  background: var(--tab-background);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  box-shadow: 0 16px 48px color-mix(in srgb, var(--tab-foreground) 30%, transparent);
+  color: var(--tab-foreground);
+  user-select: none;
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.settings-header-title {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.settings-body {
+  display: flex;
+  min-height: 0;
+}
+
+.settings-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 170px;
+  flex-shrink: 0;
+  padding: 8px;
+  border-right: 1px solid var(--border-color);
+}
+
+.settings-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--tab-foreground);
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.settings-nav-item:hover {
+  background: var(--selection-background);
+  opacity: 1;
+}
+
+.settings-nav-item-active {
+  background: var(--selection-background);
+  color: var(--accent-color);
+  opacity: 1;
+}
+
+.settings-content {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 16px 20px 24px;
+}
+
+.settings-content input {
+  user-select: text;
+}
+
+.settings-section-title {
+  margin: 20px 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.55;
+}
+
+.settings-section-title:first-child {
+  margin-top: 0;
+}
+
+.settings-hint {
+  margin-bottom: 10px;
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+/* ---- Form kontrolleri ---- */
+.settings-field {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 7px 0;
+}
+
+.settings-field-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-field-label {
+  font-size: 13px;
+}
+
+.settings-field-hint {
+  margin-top: 2px;
+  font-size: 11px;
+  opacity: 0.55;
+}
+
+.settings-field-control {
+  flex-shrink: 0;
+}
+
+.settings-input {
+  padding: 5px 10px;
+  background: var(--app-background);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--tab-foreground);
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.settings-input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+.settings-input-wide {
+  width: 320px;
+}
+
+.settings-input-narrow {
+  width: 120px;
+}
+
+.settings-number {
+  width: 76px;
+}
+
+.settings-number-sm {
+  width: 64px;
+}
+
+.settings-select {
+  min-width: 160px;
+}
+
+.settings-toggle {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+  background: var(--selection-background);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 120ms;
+}
+
+.settings-toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--tab-foreground);
+  opacity: 0.8;
+  transition: left 120ms;
+}
+
+.settings-toggle-on {
+  background: var(--accent-color);
+  border-color: transparent;
+}
+
+.settings-toggle-on .settings-toggle-knob {
+  left: 18px;
+  background: var(--app-background);
+  opacity: 1;
+}
+
+.settings-range {
+  width: 200px;
+  accent-color: var(--accent-color);
+}
+
+/* ---- Butonlar ---- */
+.settings-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--tab-foreground);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.settings-btn:hover {
+  border-color: var(--accent-color);
+}
+
+.settings-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.settings-btn-small {
+  padding: 3px 10px;
+  font-size: 12px;
+}
+
+.settings-btn-primary {
+  background: var(--accent-color);
+  border-color: transparent;
+  color: var(--app-background);
+}
+
+.settings-btn-danger {
+  color: var(--term-red);
+  border-color: var(--term-red);
+}
+
+.settings-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--tab-foreground);
+  cursor: pointer;
+}
+
+.settings-icon-btn:hover {
+  border-color: var(--accent-color);
+}
+
+/* ---- Chips ---- */
+.settings-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.settings-chip {
+  padding: 3px 10px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  color: var(--tab-foreground);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.settings-chip:hover {
+  border-color: var(--accent-color);
+}
+
+.settings-chip-active {
+  background: var(--accent-color);
+  border-color: transparent;
+  color: var(--app-background);
+}
+
+/* ---- Tema kartları ---- */
+.settings-theme-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.theme-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--tab-foreground);
+  font-family: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.theme-card:hover {
+  border-color: var(--accent-color);
+}
+
+.theme-card-active {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 1px var(--accent-color);
+}
+
+.theme-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: 58px;
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.theme-preview-fg {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.theme-preview-colors {
+  display: flex;
+  gap: 3px;
+}
+
+.theme-preview-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.theme-card-name {
+  padding-left: 2px;
+}
+
+/* ---- Renk editörü (custom theme) ---- */
+.settings-color-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.settings-color-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 0;
+}
+
+.settings-color-label {
+  width: 130px;
+  flex-shrink: 0;
+  font-size: 13px;
+}
+
+.settings-color-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-color-input {
+  width: 34px;
+  height: 26px;
+  padding: 0 2px;
+  background: var(--app-background);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.settings-color-hex {
+  width: 92px;
+  font-family: 'Cascadia Mono', Consolas, monospace;
+}
+
+/* ---- Stepper (font size) ---- */
+.settings-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ---- Profiller ---- */
+.settings-empty {
+  padding: 10px 0;
+  font-size: 13px;
+  opacity: 0.55;
+}
+
+.profile-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 6px;
+}
+
+.profile-row-icon {
+  font-size: 16px;
+  width: 22px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.profile-row-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-row-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.profile-row-command {
+  font-size: 11px;
+  opacity: 0.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 10px 0 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.profile-form-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.settings-env-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.settings-env-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.settings-input-env-key {
+  width: 130px;
+}
+
+.settings-input-env-value {
+  width: 180px;
+}
+
+/* ---- Klavye kısayolları ---- */
+.settings-shortcut-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+}
+
+.settings-shortcut-label {
+  flex: 1;
+  font-size: 13px;
+}
+
+.settings-shortcut-bind {
+  min-width: 150px;
+  text-align: center;
+}
+
+.settings-kbd {
+  display: inline-block;
+  padding: 2px 8px;
+  background: var(--app-background);
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  font-family: 'Cascadia Mono', Consolas, monospace;
+  font-size: 12px;
+}
+
+.settings-kbd-empty {
+  opacity: 0.5;
+}
+
+.settings-kbd-recording {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.settings-shortcut-actions {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+}
+
+/* ---- About ---- */
+.about-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 18px 0 14px;
+}
+
+.about-title {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.about-slogan {
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+.about-version {
+  font-size: 12px;
+  opacity: 0.5;
+}
+
+.about-description {
+  font-size: 13px;
+  line-height: 1.6;
+  opacity: 0.85;
+}
+
+.about-stack {
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+.about-owner {
+  font-size: 13px;
+}
+
+.about-links {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.about-links a {
+  color: var(--accent-color);
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.about-links a:hover {
+  text-decoration: underline;
+}
+
+.about-license {
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+.settings-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
