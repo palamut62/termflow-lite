@@ -78,6 +78,27 @@ function resolveWindowsSigning() {
   return {}
 }
 
+/**
+ * PRD §90 artifact names. The Linux TargetConfiguration schema does not allow a
+ * per-target `artifactName`, so when exactly one linux target is requested via
+ * CLI (see the `dist:linux:*` scripts) we return the PRD name for that target.
+ * Any other invocation lets electron-builder use its default naming.
+ * A plain `TermFlow-Lite` literal (not `${productName}`) is used because the
+ * productName contains a space, which electron-builder keeps in file names.
+ */
+function resolveLinuxArtifactName() {
+  const argv = process.argv
+  const linuxIndex = argv.indexOf('--linux')
+  if (linuxIndex === -1) return undefined
+  // Only the argument immediately after `--linux` can be a target name;
+  // everything later belongs to other flags (e.g. `--publish never`).
+  const next = argv[linuxIndex + 1]
+  if (!next || next.startsWith('--')) return undefined
+  if (next === 'AppImage') return 'TermFlow-Lite-${version}-x86_64.${ext}'
+  if (next === 'deb') return 'TermFlow-Lite-${version}-amd64.${ext}'
+  return undefined
+}
+
 /** @type {import('electron-builder').Configuration} */
 module.exports = {
   appId: 'com.palamut62.termflowlite',
@@ -104,7 +125,7 @@ module.exports = {
   win: {
     icon: 'build/icon.ico',
     target: ['nsis', 'zip'],
-    artifactName: '${productName}-${version}-${arch}.${ext}',
+    artifactName: 'TermFlow-Lite-${version}-${arch}.${ext}',
     ...resolveWindowsSigning()
   },
   nsis: {
@@ -113,5 +134,12 @@ module.exports = {
     installerIcon: 'build/icon.ico',
     uninstallerIcon: 'build/icon.ico',
     installerHeaderIcon: 'build/icon.ico'
+  },
+  linux: {
+    icon: 'resources/icon.png',
+    target: ['AppImage', 'deb'],
+    category: 'Development',
+    maintainer: 'Umut Çelik (palamut62)',
+    ...(resolveLinuxArtifactName() ? { artifactName: resolveLinuxArtifactName() } : {})
   }
 }

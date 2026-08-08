@@ -19,6 +19,10 @@
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "package": "electron-vite build && electron-builder --win",
+    "dist:win": "electron-builder --win --x64 --publish never",
+    "dist:linux": "npm run dist:linux:appimage && npm run dist:linux:deb",
+    "dist:linux:appimage": "electron-builder --linux AppImage --x64 --publish never",
+    "dist:linux:deb": "electron-builder --linux deb --x64 --publish never",
     "package:verify": "npm run package && node scripts/verify-artifacts.mjs",
     "icons": "node scripts/gen-icons.mjs"
   },
