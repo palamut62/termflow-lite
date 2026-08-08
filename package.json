@@ -1,0 +1,56 @@
+{
+  "name": "termflow",
+  "version": "0.4.4",
+  "description": "TermFlow — Windows multi-terminal & multi-agent canvas workspace",
+  "main": "./out/main/index.js",
+  "author": "TermFlow",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/palamut62/termflow.git"
+  },
+  "scripts": {
+    "dev": "electron-vite dev",
+    "typecheck": "tsc --build --force",
+    "test": "vitest run src",
+    "test:e2e": "npm run build && playwright test",
+    "verify": "npm run test && npm run typecheck && electron-vite build",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "package": "electron-vite build && electron-builder --win",
+    "package:verify": "npm run package && node scripts/verify-artifacts.mjs",
+    "icons": "node scripts/gen-icons.mjs",
+    "plugin": "node scripts/termflow-plugin.mjs"
+  },
+  "dependencies": {
+    "@lydell/node-pty": "^1.2.0-beta.12",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/addon-search": "^0.16.0",
+    "@xterm/addon-unicode11": "^0.9.0",
+    "@xterm/addon-web-links": "^0.12.0",
+    "@xterm/xterm": "^6.0.0",
+    "electron-updater": "^6.8.9",
+    "nanoid": "^3.3.15",
+    "pidusage": "^4.0.1",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^22.10.1",
+    "@types/pidusage": "^2.0.5",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^5.2.0",
+    "electron": "39.8.10",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "lucide-react": "^0.462.0",
+    "png-to-ico": "^3.0.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "sharp": "^0.35.3",
+    "typescript": "^7.0.2",
+    "vite": "^7.3.6",
+    "vitest": "^4.1.10"
+  }
+}

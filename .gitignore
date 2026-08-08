@@ -1,0 +1,85 @@
+# Dependencies
+node_modules/
+
+# Build output
+out/
+dist/
+build/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# AI tool local files
+CLAUDE.md
+.claude/
+AGENTS.md
+.codex/
+GEMINI.md
+.gemini/
+.cursor/
+.cursorrules
+.windsurf/
+.windsurfrules
+.aider*
+.opencode/
+opencode.json
+.github/copilot-instructions.md
+.specstory/
+.continue/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Electron-builder artifacts
+release/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Snapshots / screenshots
+*.png
+*.jpg
+*.jpeg
+*.gif
+!resources/**/*.png
+!resources/**/*.ico
+
+# Playwright output
+test-results/
+playwright-report/
+
+# Local unpacked build kept for running (not a source artifact)
+dist-current/
+
+# Scratch / promo assets
+tmp-promo/
+
+# Scratch build variants
+dist-*/
+
+# Local inspection/report outputs
+outputs/
+
+# Keep promo website assets
+!website/assets/**
+
+# Playwright debug/scratch output
+.playwright-mcp/
+.playwright-cli/
+
+# Local scratch files (not repo assets)
+*.mp4
+ORCHESTRA.md
