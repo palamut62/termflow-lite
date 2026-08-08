@@ -4,9 +4,11 @@ import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { SearchAddon } from '@xterm/addon-search'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
-import { useSettingsStore } from '../store/settingsStore'
-import { dataHandlers, exitHandlers, useTerminalStore } from '../store/terminalStore'
+import { resolveDefaultProfileId, useSettingsStore } from '../store/settingsStore'
+import { dataHandlers, exitHandlers, searchAddons, useTerminalStore } from '../store/terminalStore'
 import { resolveTheme } from '../themes/themes'
+import { TerminalContextMenu } from './TerminalContextMenu'
+import { TerminalSearch } from './TerminalSearch'
 
 interface Props {
   tabId: string
@@ -16,6 +18,26 @@ interface Props {
 interface ExitInfo {
   exitCode: number
   durationMs: number
+}
+
+interface ContextMenuState {
+  x: number
+  y: number
+  hasSelection: boolean
+}
+
+/** Seçimi sistem panosuna kopyala (navigator.clipboard; yazma izni otomatik). */
+function copySelection(term: Terminal): void {
+  const sel = term.getSelection()
+  if (!sel) return
+  void navigator.clipboard.writeText(sel).catch(() => {})
+}
+
+/** Panoyu okuyup xterm'e yapıştır — tek yol preload IPC (sandbox uyumlu). */
+function pasteFromClipboard(term: Terminal): void {
+  void window.termflow.clipboard.readText().then((text) => {
+    if (text) term.paste(text)
+  })
 }
 
 /**
@@ -39,6 +61,8 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
 
   const profileId = useTerminalStore((s) => s.tabs.find((t) => t.id === tabId)?.profileId)
   const settings = useSettingsStore((s) => s.settings)
+  const uiSearchTabId = useSettingsStore((s) => s.uiSearchTabId)
+  const [menu, setMenu] = useState<ContextMenuState | null>(null)
 
   useEffect(() => {
     activeRef.current = active
@@ -74,7 +98,8 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
     term.loadAddon(fit)
     term.loadAddon(new WebLinksAddon()) // URLs open in the default browser
     const searchAddon = new SearchAddon()
-    term.loadAddon(searchAddon) // loaded now; the search UI lands in a later phase
+    term.loadAddon(searchAddon)
+    searchAddons.set(tabId, searchAddon) // TerminalSearch lookup (Faz 7)
     term.loadAddon(new Unicode11Addon())
     term.unicode.activeVersion = '11'
     term.open(host)
@@ -187,6 +212,33 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
       window.termflow.pty.write(tabId, data)
     })
 
+    // PRD §23: Ctrl+Shift+C — seçim varsa kopyala ve tuşu yut; yoksa Ctrl+C
+    // normal şekilde PTY'ye gitsin (no-op copy'de tuş kaybolmaz). Ctrl+Shift+V
+    // paste'ı xterm kendisi ele alır — ek handler gerekmez.
+    term.attachCustomKeyEventHandler((e) => {
+      if (e.type !== 'keydown') return true
+      if (e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey && (e.key === 'C' || e.key === 'c')) {
+        if (term.hasSelection()) {
+          copySelection(term)
+          return false
+        }
+      }
+      return true
+    })
+
+    // Sağ tık (PRD §24): 'paste' davranışı — seçim varsa kopyala, yoksa
+    // yapıştır (Windows Terminal); 'context-menu' — menüyü aç.
+    const onCtxMenu = (e: MouseEvent): void => {
+      e.preventDefault()
+      if (useSettingsStore.getState().settings.rightClickBehavior === 'paste') {
+        if (term.hasSelection()) copySelection(term)
+        else pasteFromClipboard(term)
+        return
+      }
+      setMenu({ x: e.clientX, y: e.clientY, hasSelection: term.hasSelection() })
+    }
+    host.addEventListener('contextmenu', onCtxMenu)
+
     // Visible terminals stream live; offscreen ones are paused by main.
     window.termflow.pty.setMode(tabId, 'active')
 
@@ -196,8 +248,10 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
       scheduleResizeRef.current = null
       ro.disconnect()
       dataSub.dispose()
+      host.removeEventListener('contextmenu', onCtxMenu)
       dataHandlers.delete(tabId)
       exitHandlers.delete(tabId)
+      searchAddons.delete(tabId)
       // Component unmounts when its tab is deselected -> switch main to
       // buffer-only mode so the process keeps running without streaming.
       window.termflow.pty.setMode(tabId, 'buffer')
@@ -262,9 +316,66 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
     useTerminalStore.getState().closeTab(tabId)
   }
 
+  // ---- Context menu actions (PRD §24) ----
+  const closeMenu = (): void => setMenu(null)
+  const handleCopy = (): void => {
+    if (termRef.current) copySelection(termRef.current)
+    closeMenu()
+  }
+  const handlePaste = (): void => {
+    if (termRef.current) pasteFromClipboard(termRef.current)
+    closeMenu()
+  }
+  const handleSelectAll = (): void => {
+    termRef.current?.selectAll()
+    closeMenu()
+  }
+  const handleClear = (): void => {
+    termRef.current?.clear() // sadece görünüm; PTY geçmişine dokunulmaz
+    closeMenu()
+  }
+  const handleSearch = (): void => {
+    closeMenu()
+    useSettingsStore.getState().openSearch(tabId)
+  }
+  const handleNewTab = (): void => {
+    closeMenu()
+    const { settings, shells } = useSettingsStore.getState()
+    useTerminalStore.getState().addTab(resolveDefaultProfileId(settings, shells))
+  }
+  const handleSettings = (): void => {
+    closeMenu()
+    useSettingsStore.getState().openSettings()
+  }
+
   return (
     <div className="terminal-view" style={{ padding: settings.terminalPadding }}>
       <div ref={hostRef} className="terminal-host" />
+      {uiSearchTabId === tabId && (
+        <TerminalSearch
+          tabId={tabId}
+          onClose={() => {
+            useSettingsStore.getState().closeSearch()
+            termRef.current?.focus()
+          }}
+        />
+      )}
+      {menu !== null && (
+        <TerminalContextMenu
+          x={menu.x}
+          y={menu.y}
+          hasSelection={menu.hasSelection}
+          onClose={closeMenu}
+          onCopy={handleCopy}
+          onPaste={handlePaste}
+          onSelectAll={handleSelectAll}
+          onClear={handleClear}
+          onSearch={handleSearch}
+          onNewTab={handleNewTab}
+          onCloseTab={handleCloseTab}
+          onSettings={handleSettings}
+        />
+      )}
       {exited !== null && (
         <div className="exit-overlay">
           <span>Process exited with code {exited.exitCode}</span>

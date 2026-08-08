@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { nanoid } from 'nanoid'
+import type { SearchAddon } from '@xterm/addon-search'
 import type { TerminalTab } from '../../../shared/types'
 import { resolveDefaultProfileId, useSettingsStore } from './settingsStore'
 
@@ -11,6 +12,13 @@ import { resolveDefaultProfileId, useSettingsStore } from './settingsStore'
  */
 export const dataHandlers = new Map<string, (data: string) => void>()
 export const exitHandlers = new Map<string, (exitCode: number, durationMs: number) => void>()
+
+/**
+ * Per-tab SearchAddon instances (registered by TerminalView on mount, same
+ * lifecycle as dataHandlers). The search bar UI (TerminalSearch) looks its
+ * addon up here instead of threading refs through props.
+ */
+export const searchAddons = new Map<string, SearchAddon>()
 
 function tabTitleFor(profileId: string): string {
   const st = useSettingsStore.getState()

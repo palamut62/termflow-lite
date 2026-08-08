@@ -27,6 +27,10 @@ interface SettingsState {
   settingsOpen: boolean
   openSettings(): void
   closeSettings(): void
+  /** Açık search bar'ın sahibi tab id; null = kapalı (Faz 7 — kısayol/menü açar). */
+  uiSearchTabId: string | null
+  openSearch(tabId: string): void
+  closeSearch(): void
   /** settings.get + shells.discover; varsayılan tab için defaultProfileId resolve edilir. */
   load(): Promise<void>
   /** Optimistic update: set locally, then persist through window.termflow. */
@@ -42,6 +46,9 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   settingsOpen: false,
   openSettings: () => set({ settingsOpen: true }),
   closeSettings: () => set({ settingsOpen: false }),
+  uiSearchTabId: null,
+  openSearch: (tabId) => set({ uiSearchTabId: tabId }),
+  closeSearch: () => set({ uiSearchTabId: null }),
 
   async load() {
     const [settings, shells] = await Promise.all([

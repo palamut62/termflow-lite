@@ -16,6 +16,7 @@ export const IPC = {
   SHELLS_DISCOVER: 'shells:discover', // -> ShellInfo[]
   SETTINGS_GET: 'settings:get', // -> AppSettings
   SETTINGS_SET: 'settings:set', // (patch) -> AppSettings
+  CLIPBOARD_READ: 'clipboard:read', // -> string (sandboxed renderer paste fallback)
   WINDOW_RESIZE: 'window:resize', // (width, height) — window size persist için
   WINDOW_GET_SIZE: 'window:getSize' // -> { width, height }
 } as const

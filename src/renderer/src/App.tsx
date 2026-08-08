@@ -81,11 +81,17 @@ export default function App(): React.JSX.Element {
         case 'font-reset':
           void useSettingsStore.getState().update({ fontSize: DEFAULT_SETTINGS.fontSize })
           break
+        case 'search': {
+          // Aktif tab'ın search bar'ını aç (TerminalView uiSearchTabId'yi dinler).
+          const id = termStore.activeTabId
+          if (id) useSettingsStore.getState().openSearch(id)
+          break
+        }
         case 'settings':
           useSettingsStore.getState().openSettings()
           break
         default:
-          return // search binding lands in Faz 7
+          return
       }
       e.preventDefault()
       e.stopPropagation()
@@ -101,9 +107,17 @@ export default function App(): React.JSX.Element {
     const unExit = window.termflow.pty.onExit(({ ptyId, exitCode, durationMs }) =>
       exitHandlers.get(ptyId)?.(exitCode, durationMs)
     )
-    const unCwd = window.termflow.pty.onCwd(({ ptyId, cwd }) =>
+    // cwd her prompt'ta gelebilir; son kullanılan dizini en fazla 2s'de 1 kez
+    // persist et (PRD §38 — startupDirectory 'last' için settings.lastCwd).
+    let lastCwdWrite = 0
+    const unCwd = window.termflow.pty.onCwd(({ ptyId, cwd }) => {
       useTerminalStore.getState().setTabCwd(ptyId, cwd)
-    )
+      const now = Date.now()
+      if (now - lastCwdWrite >= 2000) {
+        lastCwdWrite = now
+        void useSettingsStore.getState().update({ lastCwd: cwd })
+      }
+    })
     return () => {
       unData()
       unExit()

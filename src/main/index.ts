@@ -8,6 +8,7 @@ import { SettingsStore } from './storage/SettingsStore'
 import { registerTerminalIpc } from './ipc/terminal'
 import { registerSettingsIpc } from './ipc/settings'
 import { registerShellIpc } from './ipc/shell'
+import { registerClipboardIpc } from './ipc/clipboard'
 
 // Dev: project resources/. Packaged: extraResources under process.resourcesPath.
 const APP_ICON = app.isPackaged
@@ -119,6 +120,7 @@ app.whenReady().then(() => {
   registerTerminalIpc(manager)
   registerSettingsIpc(settingsStore, mgr)
   registerShellIpc()
+  registerClipboardIpc()
 
   // Renderer asks for the current window size at startup (window persist).
   ipcMain.handle(IPC.WINDOW_GET_SIZE, () => {

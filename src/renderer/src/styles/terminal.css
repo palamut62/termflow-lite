@@ -28,6 +28,101 @@
   border-radius: 5px;
 }
 
+/* ---- Terminal context menu (PRD §24) ---- */
+.ctx-menu {
+  position: fixed;
+  z-index: 200;
+  min-width: 180px;
+  padding: 4px;
+  background: var(--tab-background);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--tab-foreground) 25%, transparent);
+}
+
+.ctx-menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 6px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: inherit;
+  text-align: left;
+  color: var(--tab-foreground);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.ctx-menu-item:hover:not(:disabled) {
+  background: var(--selection-background);
+}
+
+.ctx-menu-item:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.ctx-menu-divider {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--border-color);
+}
+
+/* ---- Terminal search overlay (PRD §22) ---- */
+.terminal-search {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: var(--tab-background);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--tab-foreground) 20%, transparent);
+}
+
+.terminal-search-input {
+  width: 180px;
+  padding: 3px 8px;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--app-foreground);
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.terminal-search-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--tab-foreground);
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.terminal-search-btn:hover {
+  background: var(--selection-background);
+  opacity: 1;
+}
+
+.terminal-search-btn.active {
+  color: var(--accent-color);
+  opacity: 1;
+}
+
 /* Process exited overlay (PRD §74) */
 .exit-overlay {
   position: absolute;

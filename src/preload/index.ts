@@ -57,6 +57,10 @@ const api = {
     get: (): Promise<AppSettings> => ipcRenderer.invoke(IPC.SETTINGS_GET),
     set: (patch: Partial<AppSettings>): Promise<AppSettings> => ipcRenderer.invoke(IPC.SETTINGS_SET, patch)
   },
+  // ---- Clipboard ----
+  clipboard: {
+    readText: (): Promise<string> => ipcRenderer.invoke(IPC.CLIPBOARD_READ)
+  },
   // ---- Window ----
   window: {
     getSize: (): Promise<{ width: number; height: number }> => ipcRenderer.invoke(IPC.WINDOW_GET_SIZE),

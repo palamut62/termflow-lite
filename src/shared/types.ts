@@ -106,6 +106,8 @@ export interface AppSettings {
   shortcuts: Record<string, string>
   profiles: TerminalProfile[]
   lastActiveProfileId?: string
+  /** Son kullanılan çalışma dizini (PRD §38: startupDirectory 'last'). */
+  lastCwd?: string
   windowWidth: number
   windowHeight: number
 }

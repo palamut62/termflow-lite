@@ -49,6 +49,33 @@
   font-size: 13px;
 }
 
+/* ---- Tab rename inline edit (PRD §14) ---- */
+.tab-edit-input {
+  flex: 1;
+  min-width: 40px;
+  padding: 1px 4px;
+  background: var(--tab-active-background);
+  border: 1px solid var(--accent-color);
+  border-radius: 4px;
+  color: var(--tab-foreground);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+}
+
+/* ---- Tab drag & drop reorder (PRD §14) ---- */
+.tab-dragging {
+  opacity: 0.4;
+}
+
+.tab-drop-before {
+  box-shadow: inset 2px 0 0 var(--accent-color);
+}
+
+.tab-drop-after {
+  box-shadow: inset -2px 0 0 var(--accent-color);
+}
+
 /* Kapatma butonu hover'da görünür. */
 .tab-close {
   visibility: hidden;

@@ -43,12 +43,14 @@ export function profileToInput(
   const shell = shells.find((s) => s.id === profileId)
   const profile = settings.profiles.find((p) => p.id === profileId)
 
-  // Startup directory (PRD §34): profil cwd'si > settings.startupDirectory
-  // ('home' veya 'custom' dizini); 'last' persisti Faz 7'de gelir.
+  // Startup directory (PRD §34, §38): profil cwd'si > settings.startupDirectory
+  // ('custom' dizini, 'last' = son kullanılan dizin, yoksa home).
   const startupCwd =
     settings.startupDirectory === 'custom' && settings.customStartupDirectory.trim()
       ? settings.customStartupDirectory.trim()
-      : homeDirectory()
+      : settings.startupDirectory === 'last'
+        ? settings.lastCwd ?? homeDirectory()
+        : homeDirectory()
   const cwd = opts.cwd ?? profile?.cwd ?? startupCwd
   const base = { cols: opts.cols, rows: opts.rows, cwd }
 
