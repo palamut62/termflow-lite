@@ -11,6 +11,10 @@ TermFlow Lite opens straight into a terminal — no welcome screens, no setup wi
 - **Cross-platform** - Windows (10/11 x64) and Linux (x64) support
 - **8 themes** - Dark, Light, Dracula, Nord, Tokyo Night, Catppuccin Mocha, Gruvbox, plus a Custom theme editor for your own palette
 - **Shell profiles** - PowerShell, CMD, WSL, and Git Bash out of the box, plus fully custom profiles
+- **CLI agents and providers** - launch Claude Code, Codex, OpenCode, Ollama, DeepSeek, OpenRouter, or your own provider profile
+- **Open at folder** - choose any shell, agent, custom profile, or provider and start it directly in a selected path
+- **Controlled full permissions** - command and provider profiles default to full access; permission mode and CLI-specific flags remain editable in Settings
+- **Simple status bar** - see the active profile, full-access state, current directory, and tab count without visual clutter
 - **Keyboard shortcuts** - every action is bound to a key; rebind them in Settings
 - **Terminal search** - find anything in the current buffer with `Ctrl+Shift+F`
 - **Right-click menu & copy-paste** - context menu with copy/paste (or configure right-click to paste directly)
@@ -47,6 +51,7 @@ All settings apply in real time and are stored locally:
 - **Appearance** - theme, custom palette, font family, font size, line height, letter spacing, cursor style and color, opacity and blur, terminal padding
 - **Terminal** - scrollback, bell, copy-on-select, right-click behavior, confirm on close, startup directory
 - **Profiles** - default profile and custom shell profiles (command, arguments, working directory, environment)
+- **Providers** - current selectable models, CLI command, endpoint, environment-variable mapping, permission controls, and menu color; secret values remain in the OS environment
 - **Keyboard** - rebind any shortcut
 - **About** - version, product owner, links
 

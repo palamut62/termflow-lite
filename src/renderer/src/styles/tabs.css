@@ -3,8 +3,11 @@
   align-items: stretch;
   flex-shrink: 0;
   background: var(--tab-background);
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--tab-border);
   overflow: hidden;
+  /* Custom title bar (PRD §68): boş alan pencereyi sürükler; tıklanabilir
+     öğeler aşağıda tek tek no-drag ile geri alınır. */
+  -webkit-app-region: drag;
 }
 
 .tab-list {
@@ -24,21 +27,24 @@
   padding: 0 12px;
   cursor: pointer;
   user-select: none;
-  background: var(--tab-background);
-  color: var(--tab-foreground);
-  border-right: 1px solid var(--border-color);
-  opacity: 0.7;
-  transition: opacity 120ms, background 120ms;
+  background: var(--tab-inactive-background);
+  color: var(--tab-inactive-foreground);
+  /* VS Code: köşe yuvarlaması yok, sekmeler arasında 1px dikey ayırıcı. */
+  border-right: 1px solid var(--tab-border);
+  border-radius: 0;
+  transition: background 120ms, color 120ms;
+  -webkit-app-region: no-drag;
 }
 
 .tab:hover {
-  opacity: 1;
+  color: var(--tab-active-foreground);
 }
 
+/* Aktif sekme editor arka planıyla aynı renkte + üstte 1px vurgu çizgisi. */
 .tab-active {
   background: var(--tab-active-background);
-  opacity: 1;
-  box-shadow: inset 0 2px 0 var(--accent-color);
+  color: var(--tab-active-foreground);
+  box-shadow: inset 0 1px 0 var(--tab-active-top-border);
 }
 
 .tab-title {
@@ -54,13 +60,14 @@
   flex: 1;
   min-width: 40px;
   padding: 1px 4px;
-  background: var(--tab-active-background);
-  border: 1px solid var(--accent-color);
-  border-radius: 4px;
-  color: var(--tab-foreground);
+  background: var(--input-background);
+  border: 1px solid var(--focus-border);
+  border-radius: 2px;
+  color: var(--input-foreground);
   font-size: 13px;
   font-family: inherit;
   outline: none;
+  -webkit-app-region: no-drag;
 }
 
 /* ---- Tab drag & drop reorder (PRD §14) ---- */
@@ -86,12 +93,13 @@
   justify-content: center;
   background: transparent;
   border: none;
-  border-radius: 4px;
-  color: var(--tab-foreground);
+  border-radius: 3px;
+  color: currentColor;
   font-size: 14px;
   line-height: 1;
   cursor: pointer;
-  opacity: 0.6;
+  opacity: 0.8;
+  -webkit-app-region: no-drag;
 }
 
 .tab:hover .tab-close,
@@ -100,7 +108,7 @@
 }
 
 .tab-close:hover {
-  background: var(--selection-background);
+  background: var(--menu-selection-background);
   opacity: 1;
 }
 
@@ -147,6 +155,7 @@
   align-items: center;
   justify-content: center;
   transition: opacity 120ms, background 120ms;
+  -webkit-app-region: no-drag;
 }
 
 .new-tab-btn {
@@ -161,23 +170,25 @@
 .new-tab-caret:hover,
 .new-tab-caret[aria-expanded='true'] {
   opacity: 1;
-  background: var(--selection-background);
+  background: var(--menu-selection-background);
 }
 
+/* body'ye portal edilir (tab bar overflow'una kırpılmasın); konum inline
+   left/top ile TabBar caret'inden hesaplanır. */
 .new-tab-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  z-index: 100;
+  position: fixed;
+  z-index: 200;
+  -webkit-app-region: no-drag;
   min-width: 240px;
   max-width: 320px;
   max-height: 70vh;
   overflow-y: auto;
+  scrollbar-width: none;
   padding: 4px;
-  background: var(--tab-background);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--tab-foreground) 25%, transparent);
+  background: var(--menu-background);
+  border: 1px solid var(--widget-border);
+  border-radius: 3px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
 .menu-section {
@@ -185,7 +196,7 @@
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--tab-foreground);
+  color: var(--menu-foreground);
   opacity: 0.55;
   user-select: none;
 }
@@ -198,18 +209,27 @@
   padding: 6px 10px;
   background: transparent;
   border: none;
-  border-radius: 4px;
+  border-radius: 3px;
   font-size: 13px;
   font-family: inherit;
   text-align: left;
-  color: var(--tab-foreground);
+  color: var(--menu-foreground);
   cursor: pointer;
   user-select: none;
   white-space: nowrap;
 }
 
 .menu-item:hover {
-  background: var(--selection-background);
+  background: var(--menu-selection-background);
+}
+
+/* Renkli profil göstergesi (CLI ajan profilleri) — TabIcon yerine geçer. */
+.menu-item-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  margin: 0 4px;
+  border-radius: 50%;
 }
 
 .menu-item-label {
@@ -223,12 +243,92 @@
   padding: 1px 6px;
   border-radius: 8px;
   font-size: 10px;
-  background: var(--accent-color);
-  color: var(--app-background);
+  background: var(--button-background);
+  color: var(--button-foreground);
 }
 
 .menu-divider {
   height: 1px;
   margin: 4px 6px;
-  background: var(--border-color);
+  background: var(--widget-border);
+}
+
+.tab-process-indicator {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.28;
+}
+
+.tab-process-running {
+  background: var(--accent-color);
+  opacity: 0.9;
+  animation: tab-process-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes tab-process-pulse {
+  0%, 100% { transform: scale(0.72); opacity: 0.45; }
+  50% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color) 18%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-process-running { animation: none; }
+}
+
+.new-tab-menu::-webkit-scrollbar {
+  display: none;
+}
+
+.path-launch-backdrop {
+  z-index: 400;
+}
+
+.path-launch-panel {
+  width: min(520px, calc(100vw - 32px));
+  background: var(--panel-background);
+  color: var(--menu-foreground);
+  border: 1px solid var(--widget-border);
+  border-radius: 6px;
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.path-launch-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px;
+}
+
+.path-launch-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.path-launch-select {
+  width: 100%;
+}
+
+.path-launch-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.path-launch-row .settings-input {
+  width: 100%;
+}
+
+.path-launch-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--widget-border);
 }

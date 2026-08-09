@@ -4,6 +4,8 @@ import { resolveShell } from './ShellDiscovery'
 
 const ACTIVE_INTERVAL_MS = 16 // PRD §11.6 IPC batching for the focused terminal
 const DEFAULT_SCROLLBACK_LINES = 10000 // PRD §10.9.1
+/** Kabuk prompt'u hazır olsun diye startupCommand'dan önce beklenen süre. */
+const STARTUP_COMMAND_DELAY_MS = 400
 
 // OSC 7 "current working directory" escape sequence, emitted by most modern
 // shells on every prompt redraw: ESC ] 7 ; file://<host>/<path> BEL|ST
@@ -17,6 +19,8 @@ interface ManagedPty {
   bufferLines: number
   pending: string
   flushTimer: NodeJS.Timeout | null
+  /** Profil startupCommand'ını yazan gecikmeli timer (kill'de temizlenir). */
+  startupTimer: NodeJS.Timeout | null
   exited: boolean
   exitCode?: number
   mode: RenderMode
@@ -76,6 +80,7 @@ export class PtyCore {
       bufferLines: 0,
       pending: '',
       flushTimer: null,
+      startupTimer: null,
       exited: false,
       mode: 'active',
       createdAt: Date.now(),
@@ -94,6 +99,21 @@ export class PtyCore {
       this.flush(managed, true)
       this.emit({ kind: 'exit', ptyId: id, exitCode, durationMs: Date.now() - managed.createdAt })
     })
+
+    // Profil startupCommand'ı: kabuğun ilk prompt'u çizilsin diye kısa bir
+    // gecikmeyle yazılır. `input` saklandığı için restart sonrası da çalışır.
+    const startupCommand = input.startupCommand?.trim()
+    if (startupCommand) {
+      managed.startupTimer = setTimeout(() => {
+        managed.startupTimer = null
+        if (managed.exited) return
+        try {
+          managed.proc.write(`${startupCommand}\r`)
+        } catch {
+          /* pty may have exited in the meantime */
+        }
+      }, STARTUP_COMMAND_DELAY_MS)
+    }
 
     return { pid: proc.pid }
   }
@@ -211,6 +231,7 @@ export class PtyCore {
     const t = this.terminals.get(id)
     if (!t) return
     if (t.flushTimer) clearTimeout(t.flushTimer)
+    if (t.startupTimer) clearTimeout(t.startupTimer)
     try {
       if (!t.exited) t.proc.kill()
     } catch {

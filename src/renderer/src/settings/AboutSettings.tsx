@@ -13,7 +13,7 @@ export function AboutSettings(): React.JSX.Element {
 
       <p className="about-description">
         Hafif, hızlı ve özelleştirilebilir bir Windows terminali. Çoklu sekmeler,
-        tam tema sistemi (custom theme editor dahil), özel profiller ve
+        tam tema sistemi (custom theme editor dahil), özel profiller, provider profilleri ve
         klavye kısayolları ile günlük iş akışınıza uyar.
       </p>
 

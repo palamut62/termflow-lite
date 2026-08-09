@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { nanoid } from 'nanoid'
 import type { TerminalProfile } from '../../../shared/types'
+import { BUILTIN_PROFILES, defaultFullPermissionArgs } from '../../../shared/profiles'
 import { useSettingsStore } from '../store/settingsStore'
-import { Field, TextInput } from './Settings'
+import { Field, TextInput, Toggle } from './Settings'
 
 interface EnvRow {
   key: string
@@ -16,10 +17,25 @@ interface ProfileDraft {
   args: string
   cwd: string
   icon: string
+  startupCommand: string
+  color: string
+  fullPermissions: boolean
+  fullPermissionArgs: string
   env: EnvRow[]
 }
 
-const emptyDraft = (): ProfileDraft => ({ name: '', command: '', args: '', cwd: '', icon: '', env: [] })
+const emptyDraft = (): ProfileDraft => ({
+  name: '',
+  command: '',
+  args: '',
+  cwd: '',
+  icon: '',
+  startupCommand: '',
+  color: '',
+  fullPermissions: true,
+  fullPermissionArgs: '',
+  env: []
+})
 
 function toDraft(p: TerminalProfile): ProfileDraft {
   return {
@@ -28,6 +44,10 @@ function toDraft(p: TerminalProfile): ProfileDraft {
     args: (p.args ?? []).join(' '),
     cwd: p.cwd ?? '',
     icon: p.icon ?? '',
+    startupCommand: p.startupCommand ?? '',
+    color: p.color ?? '',
+    fullPermissions: p.fullPermissions !== false,
+    fullPermissionArgs: p.fullPermissionArgs ?? defaultFullPermissionArgs(p.startupCommand || p.command),
     env: Object.entries(p.env ?? {}).map(([key, value]) => ({ key, value }))
   }
 }
@@ -46,8 +66,21 @@ function fromDraft(d: ProfileDraft, id: string): TerminalProfile {
     args,
     cwd: d.cwd.trim() || undefined,
     icon: d.icon.trim() || undefined,
+    startupCommand: d.startupCommand.trim() || undefined,
+    color: d.color.trim() || undefined,
+    fullPermissions: d.fullPermissions,
+    fullPermissionArgs: d.fullPermissionArgs.trim() || undefined,
     env: Object.keys(env).length > 0 ? env : undefined
   }
+}
+
+/**
+ * Geçerlilik: ad zorunlu; komut VEYA startup command'dan en az biri gerekir —
+ * komut boş bırakılınca profil platformun varsayılan kabuğunda açılıp startup
+ * command ile başlatılır (CLI ajan profilleri).
+ */
+function isValid(d: ProfileDraft): boolean {
+  return d.name.trim().length > 0 && (d.command.trim().length > 0 || d.startupCommand.trim().length > 0)
 }
 
 /** Custom profiller (PRD §36): ekle/düzenle/sil; silme onay istemez. */
@@ -79,10 +112,11 @@ export function ProfileSettings(): React.JSX.Element {
   }
 
   const save = (): void => {
-    if (!draft.name.trim() || !draft.command.trim()) return
+    if (!isValid(draft)) return
     const id = editingId ?? nanoid(10)
     const payload = fromDraft(draft, id)
-    const profiles = editingId
+    const exists = editingId ? settings.profiles.some((p) => p.id === editingId) : false
+    const profiles = exists
       ? settings.profiles.map((p) => (p.id === editingId ? payload : p))
       : [...settings.profiles, payload]
     // defaultProfileId'ye dokunulmaz — yeni profil otomatik default olmaz.
@@ -102,23 +136,40 @@ export function ProfileSettings(): React.JSX.Element {
   const addEnv = (): void => setDraft((d) => ({ ...d, env: [...d.env, { key: '', value: '' }] }))
   const removeEnv = (idx: number): void => setDraft((d) => ({ ...d, env: d.env.filter((_, i) => i !== idx) }))
 
-  const valid = draft.name.trim().length > 0 && draft.command.trim().length > 0
+  const valid = isValid(draft)
+  const builtinIds = new Set(BUILTIN_PROFILES.map((profile) => profile.id))
+  const effectiveBuiltins = BUILTIN_PROFILES.map(
+    (profile) => settings.profiles.find((candidate) => candidate.id === profile.id) ?? profile
+  )
+  const customProfiles = settings.profiles.filter((profile) => !builtinIds.has(profile.id))
 
   return (
     <section>
+      <div className="settings-section-title">Command Profiles</div>
+      <p className="settings-note">Built-in command profiles launch with full permissions by default. Edit any profile to disable it or change its CLI-specific permission arguments.</p>
+      {effectiveBuiltins.map((p) => editingId !== p.id && (
+        <div className="profile-row" key={p.id}>
+          <span className="menu-item-dot" style={{ background: p.color || '#6467f2' }} />
+          <span className="profile-row-info">
+            <span className="profile-row-name">{p.name}</span>
+            <span className="profile-row-command">{p.startupCommand} · {p.fullPermissions !== false ? 'Full permissions' : 'Standard permissions'}</span>
+          </span>
+          <button className="settings-btn settings-btn-small" onClick={() => startEdit(p)}>Edit</button>
+        </div>
+      ))}
       <div className="settings-section-title">Custom Profiles</div>
-      {settings.profiles.length === 0 && !editing && (
+      {customProfiles.length === 0 && !editing && (
         <div className="settings-empty">Henüz özel profil yok — aşağıdan ekleyebilirsiniz.</div>
       )}
 
-      {settings.profiles.map(
+      {customProfiles.map(
         (p) =>
           editingId !== p.id && (
             <div className="profile-row" key={p.id}>
               <span className="profile-row-icon">{p.icon ?? '▸'}</span>
               <span className="profile-row-info">
                 <span className="profile-row-name">{p.name}</span>
-                <span className="profile-row-command">{p.command}</span>
+                <span className="profile-row-command">{p.command || p.startupCommand}</span>
               </span>
               <button className="settings-btn settings-btn-small" onClick={() => startEdit(p)}>
                 Edit
@@ -135,7 +186,7 @@ export function ProfileSettings(): React.JSX.Element {
           <Field label="Name">
             <TextInput value={draft.name} placeholder="My Terminal" onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
           </Field>
-          <Field label="Command" hint="zorunlu">
+          <Field label="Command" hint="boşsa varsayılan kabuk">
             <TextInput
               className="settings-input-wide"
               value={draft.command}
@@ -165,6 +216,33 @@ export function ProfileSettings(): React.JSX.Element {
               value={draft.icon}
               placeholder="🐚"
               onChange={(e) => setDraft({ ...draft, icon: e.target.value })}
+            />
+          </Field>
+          <Field label="Startup Command" hint="kabuk hazır olunca yazılır">
+            <TextInput
+              className="settings-input-wide"
+              value={draft.startupCommand}
+              placeholder="claude"
+              onChange={(e) => setDraft({ ...draft, startupCommand: e.target.value })}
+            />
+          </Field>
+          <Field label="Color" hint="#rrggbb — sekme/menü noktası">
+            <TextInput
+              className="settings-input-narrow"
+              value={draft.color}
+              placeholder="#d97757"
+              onChange={(e) => setDraft({ ...draft, color: e.target.value })}
+            />
+          </Field>
+          <Field label="Full Permissions" hint="approval/sandbox kontrollerini CLI argümanıyla kapatır">
+            <Toggle checked={draft.fullPermissions} onChange={(fullPermissions) => setDraft({ ...draft, fullPermissions })} label="Command profile full permissions" />
+          </Field>
+          <Field label="Permission Arguments" hint="Claude, Codex ve OpenCode için varsayılan gelir">
+            <TextInput
+              className="settings-input-wide"
+              value={draft.fullPermissionArgs}
+              placeholder="--dangerously-skip-permissions"
+              onChange={(e) => setDraft({ ...draft, fullPermissionArgs: e.target.value })}
             />
           </Field>
           <div className="settings-field">
@@ -203,7 +281,7 @@ export function ProfileSettings(): React.JSX.Element {
             <button className="settings-btn" onClick={cancel}>
               Cancel
             </button>
-            {editingId && (
+            {editingId && !builtinIds.has(editingId) && (
               <button className="settings-btn settings-btn-danger" onClick={() => remove(editingId)}>
                 Delete
               </button>

@@ -1,5 +1,6 @@
+import { useEffect, useState } from 'react'
 import { Minus, Plus } from 'lucide-react'
-import { getTheme, THEMES } from '../themes/themes'
+import { DEFAULT_THEME_ID, getTheme, THEMES } from '../themes/themes'
 import { useSettingsStore } from '../store/settingsStore'
 import type { ThemeColors } from '../../../shared/types'
 import { ColorPicker, Field, NumberInput, Select, TextInput, Toggle } from './Settings'
@@ -76,9 +77,30 @@ function ThemePreview({ colors }: { colors: ThemeColors }): React.JSX.Element {
 export function AppearanceSettings(): React.JSX.Element {
   const settings = useSettingsStore((s) => s.settings)
   const update = useSettingsStore((s) => s.update)
+  // Sistem fontları (PRD §29): Local Font Access API varsa datalist'i doldurur,
+  // yoksa sessizce FONT_SUGGESTIONS davranışında kalınır.
+  const [systemFonts, setSystemFonts] = useState<string[]>([])
+  const isWindows = window.termflow.system.platform === 'win32'
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      if (typeof window.queryLocalFonts !== 'function') return
+      try {
+        const fonts = await window.queryLocalFonts()
+        const families = [...new Set(fonts.map((f) => f.family))].sort((a, b) => a.localeCompare(b))
+        if (!cancelled) setSystemFonts(families)
+      } catch {
+        // İzin reddi / desteklenmeyen ortam: öneri listesiyle devam.
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // Custom tema düzenleyici her zaman tam 20 renkle çalışır; yoksa dark palet.
-  const customColors = settings.customTheme ?? getTheme('dark').colors
+  const customColors = settings.customTheme ?? getTheme(DEFAULT_THEME_ID).colors
 
   return (
     <>
@@ -123,9 +145,17 @@ export function AppearanceSettings(): React.JSX.Element {
         <Field label="Font Family">
           <TextInput
             className="settings-input-wide"
+            list="system-font-list"
             value={settings.fontFamily}
             onChange={(e) => void update({ fontFamily: e.target.value })}
           />
+          {systemFonts.length > 0 && (
+            <datalist id="system-font-list">
+              {systemFonts.map((f) => (
+                <option key={f} value={f} />
+              ))}
+            </datalist>
+          )}
         </Field>
         <div className="settings-chips">
           {FONT_SUGGESTIONS.map((name) => (
@@ -175,10 +205,10 @@ export function AppearanceSettings(): React.JSX.Element {
         <Field label="Line Height" hint="0.8-2.0">
           <NumberInput value={settings.lineHeight} min={0.8} max={2} step={0.05} onChange={(v) => void update({ lineHeight: v })} />
         </Field>
-        <Field label="Letter Spacing" hint="px; yalnızca UI metinlerine uygulanır — xterm canvas renderer desteklemez">
+        <Field label="Letter Spacing" hint="px; terminal ve UI metinlerine uygulanır">
           <NumberInput value={settings.letterSpacing} min={-1} max={10} onChange={(v) => void update({ letterSpacing: v })} />
         </Field>
-        <Field label="Ligatures" hint="yalnızca UI metinleri — xterm canvas'ı desteklemez">
+        <Field label="Ligatures" hint="yalnızca uygulama arayüzü metinlerini etkiler; terminal çıktısı ligature kullanmaz">
           <Toggle checked={settings.fontLigatures} onChange={(v) => void update({ fontLigatures: v })} label="Ligatures" />
         </Field>
       </section>
@@ -214,11 +244,11 @@ export function AppearanceSettings(): React.JSX.Element {
 
       <section>
         <div className="settings-section-title">Window</div>
-        <Field label="Opacity" hint={`%${settings.opacity}`}>
+        <Field label="Opacity" hint={`%${settings.opacity} — pencerenin tamamına uygulanır (min %30)`}>
           <input
             type="range"
             className="settings-range"
-            min={60}
+            min={30}
             max={100}
             step={1}
             value={settings.opacity}
@@ -226,8 +256,31 @@ export function AppearanceSettings(): React.JSX.Element {
             aria-label="Window opacity"
           />
         </Field>
-        <Field label="Blur" hint="yarı saydam arka plana blur ekler">
-          <Toggle checked={settings.blur} onChange={(v) => void update({ blur: v })} label="Blur" />
+        <Field
+          label="Blur"
+          hint={isWindows ? 'Windows 11 acrylic arka plan' : 'yalnızca Windows 11 üzerinde etkilidir'}
+        >
+          <Toggle
+            checked={settings.blur}
+            onChange={(v) => void update({ blur: v })}
+            label="Blur"
+            disabled={!isWindows}
+          />
+        </Field>
+        <Field label="Window Border" hint="pencere içeriğine 1px kenarlık ekler">
+          <Toggle
+            checked={settings.windowBorder}
+            onChange={(v) => void update({ windowBorder: v })}
+            label="Window border"
+          />
+        </Field>
+        <Field label="Corner Radius" hint="0-20; native çerçevede yalnızca iç yüzeyde görünür">
+          <NumberInput
+            value={settings.cornerRadius}
+            min={0}
+            max={20}
+            onChange={(v) => void update({ cornerRadius: v })}
+          />
         </Field>
         <Field label="Terminal Padding">
           <span className="settings-chips">

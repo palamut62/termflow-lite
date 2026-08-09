@@ -117,6 +117,11 @@ export function TerminalTab({
       ) : (
         <span className="tab-title">{tab.title}</span>
       )}
+      <span
+        className={`tab-process-indicator${tab.running ? ' tab-process-running' : ''}`}
+        aria-label={tab.running ? 'Process running' : 'Process stopped'}
+        title={tab.running ? 'Process running' : 'Process stopped'}
+      />
       <button
         className="tab-close"
         onClick={(e) => {

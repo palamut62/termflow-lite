@@ -1,6 +1,10 @@
 import { create } from 'zustand'
+import { mergeProfiles } from '../../../shared/profiles'
 import { DEFAULT_SETTINGS, type AppSettings, type ShellInfo } from '../../../shared/types'
-import { applyThemeToDom, resolveTheme } from '../themes/themes'
+import { applyThemeToDom, resolveTheme, tabBarSurface } from '../themes/themes'
+
+/** .tab-bar'ın alt kenarlığı (tabs.css: border-bottom: 1px). */
+const TAB_BAR_BORDER = 1
 
 /** Shells tried in order when the configured default profile is unavailable. */
 const SHELL_PRIORITY: string[] = ['pwsh', 'powershell', 'cmd', 'gitbash', 'wsl', 'bash', 'sh']
@@ -12,11 +16,19 @@ const SHELL_PRIORITY: string[] = ['pwsh', 'powershell', 'cmd', 'gitbash', 'wsl',
 export function resolveDefaultProfileId(settings: AppSettings, shells: ShellInfo[]): string {
   if (
     shells.some((s) => s.id === settings.defaultProfileId) ||
-    settings.profiles.some((p) => p.id === settings.defaultProfileId)
+    mergeProfiles(settings.profiles).some((p) => p.id === settings.defaultProfileId)
   ) {
     return settings.defaultProfileId
   }
   return SHELL_PRIORITY.find((id) => shells.some((s) => s.id === id)) ?? shells[0]?.id ?? 'custom'
+}
+
+/** Title bar overlay yalnızca #rrggbb kabul eder; #rgb genişletilir. */
+function normalizeHex(color: string, fallback: string): string {
+  const v = (color ?? '').trim()
+  if (/^#[0-9a-fA-F]{6}$/.test(v)) return v
+  if (/^#[0-9a-fA-F]{3}$/.test(v)) return `#${[...v.slice(1)].map((ch) => ch + ch).join('')}`
+  return fallback
 }
 
 interface SettingsState {
@@ -71,11 +83,25 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
 
   applyTheme() {
     const s = get().settings
-    applyThemeToDom(resolveTheme(s))
+    const theme = resolveTheme(s)
+    applyThemeToDom(theme)
+    // Windows Controls Overlay tema rengini alsın (PRD §68). Renkler CSS'e
+    // yazılan --tab-background/--tab-foreground ile BİREBİR aynı kaynaktan
+    // gelir; yükseklik ise .tab-bar'ın alt kenarlığı hariç tutularak verilir ki
+    // sekme barının alt çizgisi overlay bölgesinde de kesintisiz görünsün.
+    const surface = tabBarSurface(theme)
+    window.termflow?.window?.setTitleBarOverlay({
+      color: normalizeHex(surface.background, '#1e1e1e'),
+      symbolColor: normalizeHex(surface.foreground, '#cccccc'),
+      height: Math.max(1, s.tabHeight - TAB_BAR_BORDER)
+    })
     // Letter-spacing + ligatures yalnızca UI metinlerine uygulanır — xterm
     // canvas renderer'ı bu CSS özelliklerini desteklemez (PRD §28).
     const style = document.documentElement.style
     style.setProperty('--ui-letter-spacing', `${s.letterSpacing}px`)
     style.setProperty('--ui-font-ligatures', s.fontLigatures ? 'contextual' : 'none')
+    // Window border / corner radius (PRD §30) — .app üzerinde kullanılır.
+    style.setProperty('--window-border', s.windowBorder ? '1px solid var(--border-color)' : 'none')
+    style.setProperty('--window-corner-radius', `${s.cornerRadius}px`)
   }
 }))

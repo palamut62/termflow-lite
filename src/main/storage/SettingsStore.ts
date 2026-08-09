@@ -33,6 +33,9 @@ export class SettingsStore {
     // shortcuts is a nested object -> deep merge; profiles is replaced whole.
     merged.shortcuts = { ...DEFAULT_SETTINGS.shortcuts, ...(settings.shortcuts ?? {}) }
     merged.profiles = Array.isArray(settings.profiles) ? settings.profiles : []
+    merged.providerProfiles = Array.isArray(settings.providerProfiles)
+      ? settings.providerProfiles
+      : structuredClone(DEFAULT_SETTINGS.providerProfiles)
     return merged
   }
 

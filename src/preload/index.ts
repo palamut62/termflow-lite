@@ -1,5 +1,5 @@
-import { contextBridge, ipcRenderer } from 'electron'
-import { IPC } from '../shared/ipc'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
+import { IPC, type GitStatus, type TitleBarOverlayPayload } from '../shared/ipc'
 import type { AppSettings, RenderMode, ShellInfo } from '../shared/types'
 
 // Windows OS build number (e.g. 26200 for current Win11). xterm's windowsPty
@@ -18,12 +18,26 @@ function osBuildNumber(): number {
 const api = {
   // ---- System ----
   system: {
-    osBuildNumber: osBuildNumber()
+    osBuildNumber: osBuildNumber(),
+    // Blur (acrylic) yalnızca Windows'ta desteklenir — UI buna göre uyarlanır.
+    platform: process.platform as NodeJS.Platform,
+    /**
+     * Sürükle-bırak edilen bir File'ın gerçek disk yolu. Renderer'da `file.path`
+     * artık yok; tek yol webUtils. API kullanılamazsa boş string döner ve çağıran
+     * o dosyayı sessizce atlar (yol asla loglanmaz — PRD §72).
+     */
+    getPathForFile: (file: File): string => {
+      try {
+        return webUtils.getPathForFile(file)
+      } catch {
+        return ''
+      }
+    }
   },
   // ---- PTY ----
   pty: {
-    create: (tabId: string, profileId: string, cols: number, rows: number): Promise<{ pid: number }> =>
-      ipcRenderer.invoke(IPC.PTY_CREATE, tabId, profileId, cols, rows),
+    create: (tabId: string, profileId: string, cols: number, rows: number, cwd?: string): Promise<{ pid: number }> =>
+      ipcRenderer.invoke(IPC.PTY_CREATE, tabId, profileId, cols, rows, cwd),
     write: (tabId: string, data: string): void => ipcRenderer.send(IPC.PTY_WRITE, tabId, data),
     resize: (tabId: string, cols: number, rows: number): void =>
       ipcRenderer.send(IPC.PTY_RESIZE, tabId, cols, rows),
@@ -57,14 +71,21 @@ const api = {
     get: (): Promise<AppSettings> => ipcRenderer.invoke(IPC.SETTINGS_GET),
     set: (patch: Partial<AppSettings>): Promise<AppSettings> => ipcRenderer.invoke(IPC.SETTINGS_SET, patch)
   },
-  // ---- Clipboard ----
-  clipboard: {
-    readText: (): Promise<string> => ipcRenderer.invoke(IPC.CLIPBOARD_READ)
+  dialog: {
+    openDir: (): Promise<string | null> => ipcRenderer.invoke(IPC.DIALOG_OPEN_DIR)
+  },
+  git: {
+    status: (cwd: string): Promise<GitStatus | null> => ipcRenderer.invoke(IPC.GIT_STATUS, cwd)
   },
   // ---- Window ----
   window: {
-    getSize: (): Promise<{ width: number; height: number }> => ipcRenderer.invoke(IPC.WINDOW_GET_SIZE),
-    resize: (width: number, height: number): void => ipcRenderer.send(IPC.WINDOW_RESIZE, width, height)
+    /** Tema değişince Windows Controls Overlay renklerini bildir (PRD §68). */
+    setTitleBarOverlay: (overlay: TitleBarOverlayPayload): void =>
+      ipcRenderer.send(IPC.WINDOW_TITLEBAR_OVERLAY, overlay)
+  },
+  // ---- Clipboard ----
+  clipboard: {
+    readText: (): Promise<string> => ipcRenderer.invoke(IPC.CLIPBOARD_READ)
   }
 }
 

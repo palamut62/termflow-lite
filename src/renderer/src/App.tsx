@@ -1,11 +1,11 @@
-import { useEffect } from 'react'
-import type { CSSProperties } from 'react'
+import { useEffect, useRef } from 'react'
 import { DEFAULT_SETTINGS } from '../../shared/types'
 import { resolveDefaultProfileId, useSettingsStore } from './store/settingsStore'
 import { dataHandlers, exitHandlers, useTerminalStore } from './store/terminalStore'
 import { TabBar } from './tabs/TabBar'
 import { TerminalView } from './terminal/TerminalView'
 import { Settings } from './settings/Settings'
+import { StatusBar } from './components/StatusBar'
 import { matchShortcut } from './shortcuts'
 
 // StrictMode double-mounts effects in dev — the boot sequence must run once.
@@ -14,14 +14,11 @@ let bootStarted = false
 export default function App(): React.JSX.Element {
   const loaded = useSettingsStore((s) => s.loaded)
   const tabHeight = useSettingsStore((s) => s.settings.tabHeight)
-  const opacity = useSettingsStore((s) => s.settings.opacity)
-  const blur = useSettingsStore((s) => s.settings.blur)
   const themeId = useSettingsStore((s) => s.settings.themeId)
   const settingsOpen = useSettingsStore((s) => s.settingsOpen)
   const tabs = useTerminalStore((s) => s.tabs)
   const activeTabId = useTerminalStore((s) => s.activeTabId)
-
-  const activeTab = tabs.find((t) => t.id === activeTabId)
+  const pendingCloseTabId = useTerminalStore((s) => s.pendingCloseTabId)
 
   // Boot: settings + shells yükle, sonra default profile ile ilk tab'ı aç.
   useEffect(() => {
@@ -57,7 +54,7 @@ export default function App(): React.JSX.Element {
         }
         case 'close-tab': {
           const id = termStore.activeTabId
-          if (id) termStore.closeTab(id)
+          if (id) termStore.requestCloseTab(id)
           break
         }
         case 'next-tab':
@@ -125,28 +122,8 @@ export default function App(): React.JSX.Element {
     }
   }, [])
 
-  // Pencere boyutu: mount'ta gerçek boyutu al ve persist et; resize'da
-  // settingsStore'a debounce ile yansıt.
-  useEffect(() => {
-    void (async () => {
-      const size = await window.termflow.window.getSize()
-      useSettingsStore.getState().update({ windowWidth: size.width, windowHeight: size.height })
-    })()
-    let timer: ReturnType<typeof setTimeout> | null = null
-    const onResize = (): void => {
-      if (timer) clearTimeout(timer)
-      timer = setTimeout(() => {
-        useSettingsStore
-          .getState()
-          .update({ windowWidth: window.innerWidth, windowHeight: window.innerHeight })
-      }, 300)
-    }
-    window.addEventListener('resize', onResize)
-    return () => {
-      window.removeEventListener('resize', onResize)
-      if (timer) clearTimeout(timer)
-    }
-  }, [])
+  // NOT: Pencere boyutu persistency'sinin tek sahibi main process'tir
+  // (BrowserWindow 'resize' -> settings.json); renderer boyut yazmaz.
 
   // Tema değişince CSS variable'ları yeniden uygula.
   useEffect(() => {
@@ -156,19 +133,72 @@ export default function App(): React.JSX.Element {
   return (
     <div className="app">
       <TabBar height={tabHeight} />
-      <div
-        className="terminal-area"
-        style={
-          {
-            '--terminal-opacity': `${opacity}%`,
-            '--terminal-blur': blur ? '8px' : '0px'
-          } as CSSProperties
-        }
-      >
-        {/* Sadece aktif tab mount edilir — TerminalView mount = PTY create. */}
-        {activeTab && <TerminalView key={activeTab.id} tabId={activeTab.id} active />}
+      <div className="terminal-area">
+        {/* Tüm tab'lar mount kalır (mount = PTY create); aktif olmayanlar CSS ile
+            gizlenir ama layout boyutunu korur, böylece arka plandaki process
+            ölmez ve gizli terminal doğru cols/rows'a fit olmaya devam eder. */}
+        {tabs.map((t) => (
+          <TerminalView key={t.id} tabId={t.id} active={t.id === activeTabId} />
+        ))}
       </div>
+      <StatusBar />
       {settingsOpen && <Settings />}
+      {pendingCloseTabId && <CloseTabConfirm />}
+    </div>
+  )
+}
+
+/**
+ * Uygulama içi kapatma onayı (PRD §36 confirmBeforeClose). Native
+ * window.confirm renderer'ı bloke ettiği için kullanılmaz: Escape/dışa tık
+ * iptal eder, Enter onaylar.
+ */
+function CloseTabConfirm(): React.JSX.Element {
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    panelRef.current?.focus()
+  }, [])
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>): void => {
+    if (e.key === 'Escape') {
+      e.stopPropagation()
+      useTerminalStore.getState().cancelCloseTab()
+    } else if (e.key === 'Enter') {
+      e.stopPropagation()
+      useTerminalStore.getState().confirmCloseTab()
+    }
+  }
+
+  return (
+    <div
+      className="settings-backdrop"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) useTerminalStore.getState().cancelCloseTab()
+      }}
+    >
+      <div
+        ref={panelRef}
+        className="confirm-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Close terminal tab"
+        tabIndex={-1}
+        onKeyDown={onKeyDown}
+      >
+        <div className="confirm-dialog-text">Close this terminal tab?</div>
+        <div className="confirm-dialog-actions">
+          <button className="settings-btn" onClick={() => useTerminalStore.getState().cancelCloseTab()}>
+            Cancel
+          </button>
+          <button
+            className="settings-btn settings-btn-primary"
+            onClick={() => useTerminalStore.getState().confirmCloseTab()}
+          >
+            Close
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

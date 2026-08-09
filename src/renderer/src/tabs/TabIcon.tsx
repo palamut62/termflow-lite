@@ -1,4 +1,5 @@
 import { ChevronsRight, Shell, SquareTerminal, Terminal, TerminalSquare } from 'lucide-react'
+import { mergeProfiles } from '../../../shared/profiles'
 import { useSettingsStore } from '../store/settingsStore'
 
 interface TabIconProps {
@@ -15,12 +16,18 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u
  */
 export function TabIcon({ shellId }: TabIconProps): React.JSX.Element {
   const shell = useSettingsStore((s) => s.shells.find((sh) => sh.id === shellId))
-  const profile = useSettingsStore((s) => s.settings.profiles.find((p) => p.id === shellId))
+  const userProfiles = useSettingsStore((s) => s.settings.profiles)
+  const profile = mergeProfiles(userProfiles).find((p) => p.id === shellId)
 
   // Custom profile with an explicit emoji/short icon: render as text.
   const customIcon = profile?.icon
   if (customIcon && (customIcon.length === 1 || EMOJI.test(customIcon))) {
     return <span className="tab-icon tab-icon-text">{customIcon}</span>
+  }
+
+  // Renkli profiller (CLI ajanları) küçük bir renk noktasıyla gösterilir.
+  if (profile?.color) {
+    return <span className="tab-icon menu-item-dot" style={{ background: profile.color }} aria-hidden="true" />
   }
 
   switch (shell?.icon ?? shell?.kind) {

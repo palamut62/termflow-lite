@@ -1,7 +1,7 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, shell } from 'electron'
 import { join } from 'path'
-import { IPC } from '../shared/ipc'
 import { DEFAULT_SETTINGS } from '../shared/types'
+import { applyWindowAppearance, titleBarOptions } from './window'
 import { TerminalManager } from './terminal/TerminalManager'
 import { discoverShells, warmPathCache } from './terminal/ShellDiscovery'
 import { SettingsStore } from './storage/SettingsStore'
@@ -9,6 +9,9 @@ import { registerTerminalIpc } from './ipc/terminal'
 import { registerSettingsIpc } from './ipc/settings'
 import { registerShellIpc } from './ipc/shell'
 import { registerClipboardIpc } from './ipc/clipboard'
+import { registerWindowIpc } from './ipc/window'
+import { registerDialogIpc } from './ipc/dialog'
+import { registerGitIpc } from './ipc/git'
 
 // Dev: project resources/. Packaged: extraResources under process.resourcesPath.
 const APP_ICON = app.isPackaged
@@ -56,7 +59,9 @@ function createWindow(): void {
     minWidth: 640,
     minHeight: 400,
     show: false,
-    // Native title bar — V1 stability (no custom titlebar overlay).
+    // Custom title bar (PRD §68): sekme barı title bar ile birleşir. Windows'ta
+    // Controls Overlay ile native düğmeler korunur, Linux'ta native bar kalır.
+    ...titleBarOptions(settings),
     autoHideMenuBar: true,
     icon: APP_ICON,
     webPreferences: {
@@ -77,6 +82,8 @@ function createWindow(): void {
     if (!mainWindow.isVisible()) mainWindow.show()
     mainWindow.focus()
   }
+  applyWindowAppearance(mainWindow, settings)
+
   mainWindow.once('ready-to-show', reveal)
   mainWindow.webContents.once('did-finish-load', reveal)
   setTimeout(reveal, 3000)
@@ -85,9 +92,12 @@ function createWindow(): void {
     mainWindow = null
   })
 
-  // Persist the window size so the next launch restores it.
+  // Persist the window size so the next launch restores it. Tek sahip main
+  // process'tir (renderer boyut yazmaz). Maximize/fullscreen ölçüsü kalıcı
+  // olmasın diye o durumlarda yazma atlanır.
   mainWindow.on('resize', () => {
     if (!settingsStore || !mainWindow || mainWindow.isDestroyed()) return
+    if (mainWindow.isMaximized() || mainWindow.isFullScreen()) return
     const [width, height] = mainWindow.getSize()
     settingsStore.update({ windowWidth: width, windowHeight: height })
   })
@@ -126,21 +136,14 @@ app.whenReady().then(() => {
   void discoverShells().then((shells) => mgr.setShells(shells))
 
   registerTerminalIpc(manager)
-  registerSettingsIpc(settingsStore, mgr)
+  registerSettingsIpc(settingsStore, mgr, () =>
+    mainWindow && !mainWindow.isDestroyed() ? mainWindow : null
+  )
   registerShellIpc()
   registerClipboardIpc()
-
-  // Renderer asks for the current window size at startup (window persist).
-  ipcMain.handle(IPC.WINDOW_GET_SIZE, () => {
-    if (!mainWindow || mainWindow.isDestroyed()) return { width: 1100, height: 700 }
-    const [width, height] = mainWindow.getSize()
-    return { width, height }
-  })
-  ipcMain.on(IPC.WINDOW_RESIZE, (_event, width: unknown, height: unknown) => {
-    if (typeof width !== 'number' || typeof height !== 'number') return
-    if (!mainWindow || mainWindow.isDestroyed()) return
-    mainWindow.setSize(Math.max(640, Math.floor(width)), Math.max(400, Math.floor(height)))
-  })
+  registerWindowIpc(() => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null))
+  registerDialogIpc(() => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null))
+  registerGitIpc()
 
   createWindow()
 

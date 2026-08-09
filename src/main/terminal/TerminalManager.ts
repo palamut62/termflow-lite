@@ -26,10 +26,10 @@ export class TerminalManager {
   }
 
   /** Resolve a profile id + create the PTY at the measured cell size. */
-  create(tabId: string, profileId: string, cols: number, rows: number): { pid: number } {
+  create(tabId: string, profileId: string, cols: number, rows: number, cwd?: string): { pid: number } {
     const settings = this.getSettings()
     const resolvedId = resolveProfileId(profileId, settings, this.shells)
-    const input = profileToInput(resolvedId, settings, this.shells, { cols, rows })
+    const input = profileToInput(resolvedId, settings, this.shells, { cols, rows, cwd })
     // Keep the ring buffer limit in sync with the current setting on every
     // spawn so a settings change applies even to terminals created later.
     this.core.setScrollback(settings.scrollback)

@@ -5,9 +5,11 @@ import { useTerminalStore } from './terminalStore'
 
 /**
  * Renderer store tests run in the plain node vitest environment — the
- * terminalStore's closeTab touches window.confirm and window.termflow.pty.kill,
- * so both are stubbed here. The settings store is imported for real (its
- * module init has no DOM side effects) and seeded per test via setState.
+ * terminalStore's closeTab touches window.termflow.pty.kill, so it is stubbed
+ * here. Kapatma onayı artık uygulama içi bir modal (pendingCloseTabId) ile
+ * yürür; native window.confirm kullanılmaz. The settings store is imported for
+ * real (its module init has no DOM side effects) and seeded per test via
+ * setState.
  */
 
 const SHELLS: ShellInfo[] = [
@@ -15,21 +17,18 @@ const SHELLS: ShellInfo[] = [
   { id: 'sh', name: 'Shell', kind: 'custom', command: '/bin/sh', args: [] }
 ]
 
-const confirmMock = vi.fn(() => true)
 const killMock = vi.fn()
 
 beforeEach(() => {
-  confirmMock.mockReset().mockReturnValue(true)
   killMock.mockReset()
   vi.stubGlobal('window', {
-    confirm: confirmMock,
     termflow: { pty: { kill: killMock } }
   })
   useSettingsStore.setState({
     settings: { ...DEFAULT_SETTINGS, confirmBeforeClose: true },
     shells: SHELLS
   })
-  useTerminalStore.setState({ tabs: [], activeTabId: null })
+  useTerminalStore.setState({ tabs: [], activeTabId: null, pendingCloseTabId: null })
 })
 
 afterEach(() => {
@@ -46,6 +45,14 @@ describe('addTab', () => {
     expect(st.tabs[0].profileId).toBe('bash')
   })
 
+  it('keeps an explicit launch directory separate from live cwd updates', () => {
+    const id = useTerminalStore.getState().addTab('bash', true, '/work/project')
+    useTerminalStore.getState().setTabCwd(id, '/work/project/subdir')
+    const tab = useTerminalStore.getState().tabs.find((item) => item.id === id)
+    expect(tab?.launchCwd).toBe('/work/project')
+    expect(tab?.cwd).toBe('/work/project/subdir')
+  })
+
   it('uses the custom profile name when the profile is user-defined', () => {
     useSettingsStore.setState({
       settings: { ...DEFAULT_SETTINGS, profiles: [{ id: 'dev', name: 'Dev Box', command: 'tmux' }] }
@@ -53,6 +60,16 @@ describe('addTab', () => {
     const id = useTerminalStore.getState().addTab('dev')
     expect(useTerminalStore.getState().tabs[0].title).toBe('Dev Box')
     expect(useTerminalStore.getState().tabs[0].id).toBe(id)
+  })
+
+  it('uses the built-in agent name for agent tabs', () => {
+    useTerminalStore.getState().addTab('claude')
+    expect(useTerminalStore.getState().tabs[0].title).toBe('Claude Code')
+  })
+
+  it('uses the provider name for provider tabs', () => {
+    useTerminalStore.getState().addTab('provider:deepseek')
+    expect(useTerminalStore.getState().tabs[0].title).toBe('DeepSeek')
   })
 
   it('keeps the current active tab when activate=false', () => {
@@ -85,24 +102,50 @@ describe('closeTab', () => {
     expect(st.tabs[0].profileId).toBe('bash')
   })
 
-  it('aborts when confirmBeforeClose is set and the user cancels', () => {
-    confirmMock.mockReturnValue(false)
+  it('requestCloseTab defers to the confirm modal when confirmBeforeClose is set', () => {
     const t1 = useTerminalStore.getState().addTab('bash')
     const t2 = useTerminalStore.getState().addTab('sh')
-    useTerminalStore.getState().closeTab(t1)
+    useTerminalStore.getState().requestCloseTab(t1)
+    expect(useTerminalStore.getState().pendingCloseTabId).toBe(t1)
     expect(useTerminalStore.getState().tabs.map((t) => t.id)).toEqual([t1, t2])
     expect(killMock).not.toHaveBeenCalled()
-    expect(confirmMock).toHaveBeenCalledTimes(1)
   })
 
-  it('closes without a confirm dialog when confirmBeforeClose is off', () => {
+  it('cancelCloseTab aborts the pending close', () => {
+    const t1 = useTerminalStore.getState().addTab('bash')
+    const t2 = useTerminalStore.getState().addTab('sh')
+    useTerminalStore.getState().requestCloseTab(t1)
+    useTerminalStore.getState().cancelCloseTab()
+    expect(useTerminalStore.getState().pendingCloseTabId).toBeNull()
+    expect(useTerminalStore.getState().tabs.map((t) => t.id)).toEqual([t1, t2])
+    expect(killMock).not.toHaveBeenCalled()
+  })
+
+  it('confirmCloseTab closes the pending tab', () => {
+    const t1 = useTerminalStore.getState().addTab('bash')
+    const t2 = useTerminalStore.getState().addTab('sh')
+    useTerminalStore.getState().requestCloseTab(t1)
+    useTerminalStore.getState().confirmCloseTab()
+    expect(useTerminalStore.getState().pendingCloseTabId).toBeNull()
+    expect(useTerminalStore.getState().tabs.map((t) => t.id)).toEqual([t2])
+    expect(killMock).toHaveBeenCalledWith(t1)
+  })
+
+  it('requestCloseTab closes directly when confirmBeforeClose is off', () => {
     useSettingsStore.setState({ settings: { ...DEFAULT_SETTINGS, confirmBeforeClose: false } })
     const t1 = useTerminalStore.getState().addTab('bash')
     const t2 = useTerminalStore.getState().addTab('sh')
-    useTerminalStore.getState().closeTab(t1)
+    useTerminalStore.getState().requestCloseTab(t1)
+    expect(useTerminalStore.getState().pendingCloseTabId).toBeNull()
     expect(useTerminalStore.getState().tabs.map((t) => t.id)).toEqual([t2])
-    expect(confirmMock).not.toHaveBeenCalled()
     expect(killMock).toHaveBeenCalledWith(t1)
+  })
+
+  it('requestCloseTab is a no-op for an unknown id', () => {
+    useTerminalStore.getState().addTab('bash')
+    useTerminalStore.getState().requestCloseTab('nope')
+    expect(useTerminalStore.getState().pendingCloseTabId).toBeNull()
+    expect(killMock).not.toHaveBeenCalled()
   })
 
   it('is a no-op for an unknown id', () => {

@@ -7,8 +7,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--app-background) 55%, transparent);
-  backdrop-filter: blur(6px);
+  padding: 56px 24px 24px;
+  box-sizing: border-box;
+  /* Düz yarı saydam katman: blur/parlama göz yorduğu için kullanılmaz. */
+  background: rgba(0, 0, 0, 0.45);
 }
 
 .settings-panel {
@@ -16,14 +18,13 @@
   flex-direction: column;
   /* Modal focus management (Settings.tsx focuses the panel on open). */
   outline: none;
-  width: 880px;
-  max-width: calc(100vw - 48px);
-  max-height: 80vh;
-  background: var(--tab-background);
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  box-shadow: 0 16px 48px color-mix(in srgb, var(--tab-foreground) 30%, transparent);
-  color: var(--tab-foreground);
+  width: min(880px, 100%);
+  height: min(680px, calc(100vh - 80px));
+  box-sizing: border-box;
+  background: var(--menu-background);
+  border: 1px solid var(--widget-border);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  color: var(--menu-foreground);
   user-select: none;
 }
 
@@ -42,6 +43,7 @@
 
 .settings-body {
   display: flex;
+  flex: 1;
   min-height: 0;
 }
 
@@ -72,13 +74,12 @@
 }
 
 .settings-nav-item:hover {
-  background: var(--selection-background);
+  background: var(--menu-selection-background);
   opacity: 1;
 }
 
 .settings-nav-item-active {
-  background: var(--selection-background);
-  color: var(--accent-color);
+  background: var(--menu-selection-background);
   opacity: 1;
 }
 
@@ -86,7 +87,12 @@
   flex: 1;
   min-width: 0;
   overflow-y: auto;
+  scrollbar-width: none;
   padding: 16px 20px 24px;
+}
+
+.settings-content::-webkit-scrollbar {
+  display: none;
 }
 
 .settings-content input {
@@ -141,17 +147,17 @@
 
 .settings-input {
   padding: 5px 10px;
-  background: var(--app-background);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  color: var(--tab-foreground);
+  background: var(--input-background);
+  border: 1px solid var(--input-border);
+  border-radius: 2px;
+  color: var(--input-foreground);
   font-family: inherit;
   font-size: 13px;
 }
 
 .settings-input:focus {
   outline: none;
-  border-color: var(--accent-color);
+  border-color: var(--focus-border);
 }
 
 .settings-input-wide {
@@ -184,6 +190,11 @@
   border-radius: 10px;
   cursor: pointer;
   transition: background 120ms;
+}
+
+.settings-toggle:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 .settings-toggle-knob {
@@ -222,8 +233,8 @@
   padding: 6px 14px;
   background: transparent;
   border: 1px solid var(--border-color);
-  border-radius: 6px;
-  color: var(--tab-foreground);
+  border-radius: 2px;
+  color: var(--menu-foreground);
   font-family: inherit;
   font-size: 13px;
   cursor: pointer;
@@ -244,9 +255,14 @@
 }
 
 .settings-btn-primary {
-  background: var(--accent-color);
+  background: var(--button-background);
   border-color: transparent;
-  color: var(--app-background);
+  color: var(--button-foreground);
+}
+
+.settings-btn-primary:hover {
+  background: var(--button-hover-background);
+  border-color: transparent;
 }
 
 .settings-btn-danger {
@@ -303,7 +319,7 @@
 /* ---- Tema kartları ---- */
 .settings-theme-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
   gap: 10px;
 }
 
@@ -392,9 +408,9 @@
   width: 34px;
   height: 26px;
   padding: 0 2px;
-  background: var(--app-background);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
+  background: var(--input-background);
+  border: 1px solid var(--input-border);
+  border-radius: 2px;
   cursor: pointer;
 }
 
@@ -512,9 +528,9 @@
 .settings-kbd {
   display: inline-block;
   padding: 2px 8px;
-  background: var(--app-background);
-  border: 1px solid var(--border-color);
-  border-radius: 5px;
+  background: var(--input-background);
+  border: 1px solid var(--input-border);
+  border-radius: 2px;
   font-family: 'Cascadia Mono', Consolas, monospace;
   font-size: 12px;
 }
@@ -598,4 +614,12 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+.settings-note {
+  margin: -2px 0 14px;
+  color: var(--menu-foreground);
+  opacity: 0.7;
+  font-size: 12px;
+  line-height: 1.5;
 }

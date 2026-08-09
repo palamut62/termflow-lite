@@ -1,19 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, InputHTMLAttributes, ReactNode } from 'react'
-import { Info, Keyboard, Palette, SquareTerminal, UserRound, X } from 'lucide-react'
+import { Bot, Info, Keyboard, Palette, SquareTerminal, UserRound, X } from 'lucide-react'
 import { useSettingsStore } from '../store/settingsStore'
 import { AppearanceSettings } from './AppearanceSettings'
 import { TerminalSettings } from './TerminalSettings'
 import { ProfileSettings } from './ProfileSettings'
 import { KeyboardSettings } from './KeyboardSettings'
 import { AboutSettings } from './AboutSettings'
+import { ProviderSettings } from './ProviderSettings'
 
-type SectionId = 'appearance' | 'terminal' | 'profiles' | 'keyboard' | 'about'
+type SectionId = 'appearance' | 'terminal' | 'profiles' | 'providers' | 'keyboard' | 'about'
 
 const SECTIONS: { id: SectionId; label: string; icon: ReactNode }[] = [
   { id: 'appearance', label: 'Appearance', icon: <Palette size={14} /> },
   { id: 'terminal', label: 'Terminal', icon: <SquareTerminal size={14} /> },
   { id: 'profiles', label: 'Profiles', icon: <UserRound size={14} /> },
+  { id: 'providers', label: 'Providers', icon: <Bot size={14} /> },
   { id: 'keyboard', label: 'Keyboard', icon: <Keyboard size={14} /> },
   { id: 'about', label: 'About', icon: <Info size={14} /> }
 ]
@@ -75,6 +77,7 @@ export function Settings(): React.JSX.Element {
             {section === 'appearance' && <AppearanceSettings />}
             {section === 'terminal' && <TerminalSettings />}
             {section === 'profiles' && <ProfileSettings />}
+            {section === 'providers' && <ProviderSettings />}
             {section === 'keyboard' && <KeyboardSettings />}
             {section === 'about' && <AboutSettings />}
           </div>
@@ -149,13 +152,24 @@ export function Select({ value, onChange, options }: { value: string; onChange: 
   )
 }
 
-export function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label?: string }): React.JSX.Element {
+export function Toggle({
+  checked,
+  onChange,
+  label,
+  disabled
+}: {
+  checked: boolean
+  onChange: (v: boolean) => void
+  label?: string
+  disabled?: boolean
+}): React.JSX.Element {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
       aria-label={label}
+      disabled={disabled}
       className={`settings-toggle${checked ? ' settings-toggle-on' : ''}`}
       onClick={() => onChange(!checked)}
     >

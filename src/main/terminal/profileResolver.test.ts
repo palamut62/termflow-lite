@@ -22,6 +22,10 @@ describe('resolveProfileId', () => {
     expect(resolveProfileId('dev', s, SHELLS)).toBe('dev')
   })
 
+  it('yerleşik profil id\'sini korur (settings.profiles boş olsa da)', () => {
+    expect(resolveProfileId('codex', settings(), SHELLS)).toBe('codex')
+  })
+
   it('falls back to the first available shell by priority when the id is unknown', () => {
     const shells = [SHELLS[0], SHELLS[2]] // bash + sh (no pwsh/powershell/cmd/gitbash/wsl)
     expect(resolveProfileId('does-not-exist', settings(), shells)).toBe('bash')
@@ -73,6 +77,24 @@ describe('profileToInput', () => {
     expect(input.cwd).toBe('/profiles/dev')
   })
 
+  it('yerleşik CLI ajan profilini varsayılan kabukta açıp startupCommand taşır', () => {
+    const input = profileToInput('claude', settings(), SHELLS, { cols: 80, rows: 24 })
+    expect(input.startupCommand).toBe('claude --dangerously-skip-permissions')
+    // command boş: Windows'ta cmd.exe, diğer platformlarda kullanıcı kabuğu.
+    if (process.platform === 'win32') expect(input.kind).toBe('cmd')
+    else expect(input.kind).toBe('custom')
+  })
+
+  it('kullanıcı aynı id ile profil tanımlarsa onunki kazanır', () => {
+    const s = settings({
+      profiles: [{ id: 'claude', name: 'My Claude', command: '/usr/bin/claude', startupCommand: '' }]
+    })
+    const input = profileToInput('claude', s, SHELLS, { cols: 80, rows: 24 })
+    expect(input.kind).toBe('custom')
+    expect(input.shell).toBe('/usr/bin/claude')
+    expect(input.startupCommand).toBeUndefined()
+  })
+
   it('lets an explicit opts.cwd win over everything', () => {
     const s = settings({
       startupDirectory: 'custom',
@@ -81,5 +103,27 @@ describe('profileToInput', () => {
     })
     const input = profileToInput('dev', s, SHELLS, { cols: 80, rows: 24, cwd: '/opts/cwd' })
     expect(input.cwd).toBe('/opts/cwd')
+  })
+
+  it('maps a provider profile to its CLI command and routing environment', () => {
+    const input = profileToInput('provider:deepseek', settings(), SHELLS, {
+      cols: 80,
+      rows: 24,
+      cwd: '/work/provider'
+    })
+    expect(input.cwd).toBe('/work/provider')
+    expect(input.startupCommand).toBe('claude --dangerously-skip-permissions')
+    expect(input.env).toEqual({
+      ANTHROPIC_MODEL: 'deepseek-v4-pro',
+      ANTHROPIC_BASE_URL: 'https://api.deepseek.com/anthropic'
+    })
+  })
+
+  it('honors standard permissions when a command profile disables full access', () => {
+    const s = settings({
+      profiles: [{ id: 'claude', name: 'Claude Code', command: '', startupCommand: 'claude', fullPermissions: false }]
+    })
+    const input = profileToInput('claude', s, SHELLS, { cols: 80, rows: 24 })
+    expect(input.startupCommand).toBe('claude')
   })
 })

@@ -6,17 +6,48 @@ export interface TerminalTab {
   id: string
   title: string
   profileId: string
+  /** True while the tab's PTY process is alive. */
+  running: boolean
   cwd?: string
+  /** Immutable working directory override used only for the initial spawn. */
+  launchCwd?: string
 }
 
 export interface TerminalProfile {
   id: string
   name: string
+  /** Boş bırakılırsa profil, platformun varsayılan kabuğunda açılır. */
   command: string
   args?: string[]
   cwd?: string
   icon?: string
   env?: Record<string, string>
+  /** Kabuk hazır olunca terminale yazılacak komut (CLI ajan profilleri). */
+  startupCommand?: string
+  /** Sekme/menü rengi (#rrggbb). */
+  color?: string
+  /** Undefined is treated as enabled for command profiles. */
+  fullPermissions?: boolean
+  /** CLI-specific arguments appended when fullPermissions is enabled. */
+  fullPermissionArgs?: string
+}
+
+export interface ProviderProfile {
+  id: string
+  name: string
+  /** CLI command started inside the platform default shell. */
+  command: string
+  model?: string
+  /** Selectable model ids shown in Settings; model is the active one. */
+  models?: string[]
+  baseUrl?: string
+  /** Existing OS environment variable that contains the provider secret. */
+  apiKeyEnv?: string
+  modelEnv?: string
+  baseUrlEnv?: string
+  color?: string
+  fullPermissions?: boolean
+  fullPermissionArgs?: string
 }
 
 export interface CreateTerminalInput {
@@ -27,6 +58,8 @@ export interface CreateTerminalInput {
   env?: Record<string, string>
   cols?: number
   rows?: number
+  /** PTY spawn edildikten kısa süre sonra kabuğa yazılacak komut. */
+  startupCommand?: string
 }
 
 /**
@@ -56,6 +89,39 @@ export interface ThemeColors {
   brightWhite: string
 }
 
+/**
+ * Uygulama kabuğunun (title bar, sekmeler, paneller, menüler, butonlar,
+ * inputlar) VS Code workbench renkleri. Temalar bunu isteğe bağlı verir;
+ * vermeyenler için terminal paletinden tek bir yerde türetilir
+ * (themes.ts → deriveUiColors).
+ */
+export interface ThemeUiColors {
+  titleBarBackground: string
+  titleBarForeground: string
+  tabActiveBackground: string
+  tabInactiveBackground: string
+  tabActiveForeground: string
+  tabInactiveForeground: string
+  tabBorder: string
+  /** VS Code'un aktif sekme üst vurgu çizgisi. */
+  activeTabTopBorder: string
+  panelBackground: string
+  sideBarBackground: string
+  inputBackground: string
+  inputForeground: string
+  inputBorder: string
+  buttonBackground: string
+  buttonForeground: string
+  buttonHoverBackground: string
+  focusBorder: string
+  menuBackground: string
+  menuForeground: string
+  menuSelectionBackground: string
+  statusBarBackground: string
+  statusBarForeground: string
+  widgetBorder: string
+}
+
 export interface ShellInfo {
   /** 'powershell' | 'pwsh' | 'cmd' | 'wsl' | 'gitbash' | 'bash' | 'sh' */
   id: string
@@ -77,7 +143,7 @@ export type PtyEvent =
 
 export interface AppSettings {
   themeId: string
-  /** Custom 20-color palette; null = use the 'dark' fallback (PRD §27). */
+  /** Custom 20-color palette; null = use the 'dark-plus' fallback (PRD §27). */
   customTheme: ThemeColors | null
   /** Cursor color override; '' = theme default (PRD §32). */
   cursorColor: string
@@ -95,6 +161,10 @@ export interface AppSettings {
   /** 0-100, 100 = opak */
   opacity: number
   blur: boolean
+  /** Pencere içeriğine 1px kenarlık çizer (PRD §30). */
+  windowBorder: boolean
+  /** İç yüzey köşe yuvarlaklığı, 0-20 px (PRD §30). */
+  cornerRadius: number
   tabHeight: number
   copyOnSelect: boolean
   rightClickBehavior: 'context-menu' | 'paste'
@@ -105,6 +175,7 @@ export interface AppSettings {
   customStartupDirectory: string
   shortcuts: Record<string, string>
   profiles: TerminalProfile[]
+  providerProfiles: ProviderProfile[]
   lastActiveProfileId?: string
   /** Son kullanılan çalışma dizini (PRD §38: startupDirectory 'last'). */
   lastCwd?: string
@@ -113,7 +184,7 @@ export interface AppSettings {
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  themeId: 'dark',
+  themeId: 'dark-plus',
   customTheme: null,
   cursorColor: '',
   cursorWidth: 2,
@@ -129,6 +200,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   terminalPadding: 8,
   opacity: 100,
   blur: false,
+  windowBorder: false,
+  cornerRadius: 0,
   tabHeight: 36,
   copyOnSelect: false,
   rightClickBehavior: 'context-menu',
@@ -149,6 +222,49 @@ export const DEFAULT_SETTINGS: AppSettings = {
     'ctrl+0': 'font-reset'
   },
   profiles: [],
+  providerProfiles: [
+    {
+      id: 'deepseek',
+      name: 'DeepSeek',
+      command: 'claude',
+      model: 'deepseek-v4-pro',
+      models: ['deepseek-v4-pro', 'deepseek-v4-flash'],
+      baseUrl: 'https://api.deepseek.com/anthropic',
+      apiKeyEnv: 'ANTHROPIC_AUTH_TOKEN',
+      modelEnv: 'ANTHROPIC_MODEL',
+      baseUrlEnv: 'ANTHROPIC_BASE_URL',
+      color: '#111827',
+      fullPermissions: true,
+      fullPermissionArgs: '--dangerously-skip-permissions'
+    },
+    {
+      id: 'openrouter',
+      name: 'OpenRouter',
+      command: 'claude',
+      model: 'openrouter/auto',
+      models: ['openrouter/auto', '~openai/gpt-latest', 'anthropic/claude-opus-4.5'],
+      baseUrl: 'https://openrouter.ai/api/v1',
+      apiKeyEnv: 'ANTHROPIC_AUTH_TOKEN',
+      modelEnv: 'ANTHROPIC_MODEL',
+      baseUrlEnv: 'ANTHROPIC_BASE_URL',
+      color: '#6467f2',
+      fullPermissions: true,
+      fullPermissionArgs: '--dangerously-skip-permissions'
+    },
+    {
+      id: 'ollama-local',
+      name: 'Ollama Local',
+      command: 'ollama run gemma3',
+      model: 'gemma3',
+      models: ['gemma3', 'deepseek-r1', 'qwen2.5-coder'],
+      baseUrl: 'http://127.0.0.1:11434',
+      modelEnv: 'OLLAMA_MODEL',
+      baseUrlEnv: 'OLLAMA_HOST',
+      color: '#b48ead',
+      fullPermissions: true,
+      fullPermissionArgs: ''
+    }
+  ],
   windowWidth: 1100,
   windowHeight: 700
 }

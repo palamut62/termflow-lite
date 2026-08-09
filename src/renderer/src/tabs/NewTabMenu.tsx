@@ -1,29 +1,64 @@
-import { useEffect, useRef } from 'react'
-import { Settings as SettingsIcon } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { FolderOpen, Settings as SettingsIcon } from 'lucide-react'
+import { mergeProfiles, providerProfileId } from '../../../shared/profiles'
 import { resolveDefaultProfileId, useSettingsStore } from '../store/settingsStore'
 import { useTerminalStore } from '../store/terminalStore'
 import { TabIcon } from './TabIcon'
 
 interface NewTabMenuProps {
+  /** Caret butonu — menü bunun alt-sağına hizalanır, dışa tıkta "içeri" sayılır. */
+  anchor: HTMLElement
   /** Called after a row was picked or when the menu should close itself. */
   onClose: () => void
+  onOpenAtPath: () => void
 }
+
+const VIEWPORT_MARGIN = 8
+const ANCHOR_GAP = 4
 
 /**
  * Dropdown opened by the caret next to the "+" button (PRD §15): every
  * discovered shell plus custom profiles, then a Settings entry (Faz 6).
- * Closes on outside click / Escape.
+ * `.tab-bar` overflow'a takılmasın diye body'ye portal edilir ve caret'in
+ * ekran koordinatlarından fixed konumlandırılır (TerminalContextMenu ile aynı
+ * measure-after-paint + viewport clamp deseni). Closes on outside click / Escape.
  */
-export function NewTabMenu({ onClose }: NewTabMenuProps): React.JSX.Element {
+export function NewTabMenu({ anchor, onClose, onOpenAtPath }: NewTabMenuProps): React.JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
   const shells = useSettingsStore((s) => s.shells)
-  const profiles = useSettingsStore((s) => s.settings.profiles)
+  const userProfiles = useSettingsStore((s) => s.settings.profiles)
+  // Yerleşik CLI ajan profilleri + kullanıcı profilleri (tek liste).
+  const profiles = mergeProfiles(userProfiles)
+  const providers = useSettingsStore((s) => s.settings.providerProfiles)
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
+
+  // Measure after paint: sağ kenarlar çakışacak şekilde hizala, taşarsa clamp'le.
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const a = anchor.getBoundingClientRect()
+    const { width, height } = el.getBoundingClientRect()
+    setPos({
+      x: Math.max(
+        VIEWPORT_MARGIN,
+        Math.min(a.right - width, window.innerWidth - width - VIEWPORT_MARGIN)
+      ),
+      y: Math.max(
+        VIEWPORT_MARGIN,
+        Math.min(a.bottom + ANCHOR_GAP, window.innerHeight - height - VIEWPORT_MARGIN)
+      )
+    })
+    // profiles her render'da yeniden türetildiği için bağımlılık userProfiles.
+  }, [anchor, shells, userProfiles])
 
   useEffect(() => {
     // mousedown (not click): the same press that opened the menu must not
-    // immediately close it again.
+    // immediately close it again. Caret'in kendisi de "içeri" sayılır — yoksa
+    // kapat + toggle üst üste binip menü hiç açılmaz.
     const onDocMouseDown = (e: MouseEvent): void => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
+      const target = e.target as Node
+      if (ref.current && !ref.current.contains(target) && !anchor.contains(target)) onClose()
     }
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') onClose()
@@ -34,7 +69,7 @@ export function NewTabMenu({ onClose }: NewTabMenuProps): React.JSX.Element {
       document.removeEventListener('mousedown', onDocMouseDown)
       document.removeEventListener('keydown', onKey)
     }
-  }, [onClose])
+  }, [anchor, onClose])
 
   const openTab = (profileId: string): void => {
     useTerminalStore.getState().addTab(profileId)
@@ -43,9 +78,20 @@ export function NewTabMenu({ onClose }: NewTabMenuProps): React.JSX.Element {
 
   const defaultProfileId = resolveDefaultProfileId(useSettingsStore.getState().settings, shells)
 
-  return (
-    <div className="new-tab-menu" ref={ref} role="menu" aria-label="New tab">
+  return createPortal(
+    <div
+      className="new-tab-menu"
+      ref={ref}
+      role="menu"
+      aria-label="New tab"
+      style={{ left: pos?.x ?? 0, top: pos?.y ?? 0, visibility: pos ? undefined : 'hidden' }}
+    >
       <div className="menu-section">Shells</div>
+      <button className="menu-item" role="menuitem" onClick={onOpenAtPath}>
+        <FolderOpen size={14} />
+        <span className="menu-item-label">Open at folder...</span>
+      </button>
+      <div className="menu-divider" />
       {shells.map((shell) => (
         <button
           key={shell.id}
@@ -69,10 +115,26 @@ export function NewTabMenu({ onClose }: NewTabMenuProps): React.JSX.Element {
               className="menu-item"
               role="menuitem"
               onClick={() => openTab(profile.id)}
-              title={profile.command}
+              title={profile.command || profile.startupCommand}
             >
-              <TabIcon shellId={profile.id} />
+              {profile.color ? (
+                <span className="menu-item-dot" style={{ background: profile.color }} aria-hidden="true" />
+              ) : (
+                <TabIcon shellId={profile.id} />
+              )}
               <span className="menu-item-label">{profile.name}</span>
+            </button>
+          ))}
+        </>
+      )}
+      {providers.length > 0 && (
+        <>
+          <div className="menu-divider" />
+          <div className="menu-section">Providers</div>
+          {providers.map((provider) => (
+            <button className="menu-item" role="menuitem" key={provider.id} onClick={() => openTab(providerProfileId(provider.id))}>
+              <span className="menu-item-dot" style={{ background: provider.color || '#6467f2' }} />
+              <span className="menu-item-label">{provider.name}</span>
             </button>
           ))}
         </>
@@ -89,6 +151,7 @@ export function NewTabMenu({ onClose }: NewTabMenuProps): React.JSX.Element {
         <SettingsIcon size={14} />
         <span className="menu-item-label">Settings</span>
       </button>
-    </div>
+    </div>,
+    document.body
   )
 }

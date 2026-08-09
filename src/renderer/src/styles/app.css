@@ -16,8 +16,17 @@ body,
   height: 100%;
 }
 
+:root {
+  /* VS Code'un workbench UI font stack'i (platform sırası korunur) — terminal
+     fontu buradan bağımsız, settings.fontFamily'den gelir. */
+  --ui-font-family: 'Segoe WPC', 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, 'Ubuntu',
+    'Droid Sans', sans-serif;
+  --ui-font-size: 13px;
+}
+
 body {
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: var(--ui-font-family);
+  font-size: var(--ui-font-size);
   background: var(--app-background);
   color: var(--app-foreground);
   /* UI metin font ayarları (settingsStore.applyTheme set eder; xterm canvas'ı
@@ -34,14 +43,97 @@ body {
   width: 100%;
   height: 100%;
   background: var(--app-background);
+  /* Window Border / Corner Radius (PRD §30) — settingsStore.applyTheme yazar.
+     Üst kenar bilinçli olarak kenarlıksız: Windows Controls Overlay sağ üst
+     köşeyi native olarak çizdiği için üstteki 1px orada kesilir ve pencere
+     kenarlığı kopuk görünür. Kenarlık sol/sağ/alt kenarlara uygulanır, yuvarlak
+     köşeler de yalnızca alt köşelerde tutulur. */
+  border: none;
+  border-left: var(--window-border, none);
+  border-right: var(--window-border, none);
+  border-bottom: var(--window-border, none);
+  border-radius: 0 0 var(--window-corner-radius, 0px) var(--window-corner-radius, 0px);
+  overflow: hidden;
 }
 
-/* Tab bar sabit yükseklikte; terminal alanı kalanı kaplar. */
+/* Tab bar sabit yükseklikte; terminal alanı kalanı kaplar. Opacity/blur artık
+   gerçek pencere seviyesinde uygulanır (main: setOpacity/setBackgroundMaterial),
+   burada çift kararma olmaması için arka plan tam opaktır. */
 .terminal-area {
   flex: 1;
   min-height: 0;
   position: relative;
-  /* opacity < 100 iken terminal arka planı yarı saydam olur (PRD §67). */
-  background: color-mix(in srgb, var(--terminal-background) var(--terminal-opacity, 100%), transparent);
-  backdrop-filter: blur(var(--terminal-blur, 0px));
+  background: var(--terminal-background);
+}
+
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 24px;
+  flex-shrink: 0;
+  padding: 0 8px;
+  background: var(--status-bar-background);
+  color: var(--status-bar-foreground);
+  font-size: 11px;
+}
+
+.status-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.status-spacer {
+  flex: 1;
+}
+
+.status-cwd {
+  max-width: min(48vw, 520px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-full {
+  color: var(--term-yellow);
+  font-weight: 700;
+}
+
+.status-process-running,
+.status-git {
+  color: var(--term-green);
+}
+
+@media (max-width: 760px) {
+  .status-cwd { display: none; }
+  .status-bar { gap: 8px; }
+}
+
+/* Sekme kapatma onayı (in-app; native window.confirm yerine). */
+.confirm-dialog {
+  min-width: 320px;
+  padding: 20px;
+  background: var(--menu-background);
+  border: 1px solid var(--widget-border);
+  outline: none;
+}
+
+.confirm-dialog-text {
+  margin-bottom: 16px;
+  color: var(--app-foreground);
+  font-size: 13px;
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Klavye odağı halkası VS Code'un focusBorder rengini kullanır (erişilebilirlik). */
+:focus-visible {
+  outline: 1px solid var(--focus-border);
+  outline-offset: -1px;
 }

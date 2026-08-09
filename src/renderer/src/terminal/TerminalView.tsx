@@ -7,6 +7,7 @@ import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { resolveDefaultProfileId, useSettingsStore } from '../store/settingsStore'
 import { dataHandlers, exitHandlers, searchAddons, useTerminalStore } from '../store/terminalStore'
 import { resolveTheme } from '../themes/themes'
+import { formatDroppedPaths } from './dropPaths'
 import { TerminalContextMenu } from './TerminalContextMenu'
 import { TerminalSearch } from './TerminalSearch'
 
@@ -26,6 +27,13 @@ interface ContextMenuState {
   hasSelection: boolean
 }
 
+/**
+ * Bu render'da PTY'si oluşturulmuş tab id'leri. Savunma amaçlı: PtyCore.create()
+ * var olan PTY'yi öldürüp yenisini spawn ettiği için (restart bunu kullanır),
+ * bir TerminalView aynı tabId için ikinci kez create çağırmamalı.
+ */
+const createdPtys = new Set<string>()
+
 /** Seçimi sistem panosuna kopyala (navigator.clipboard; yazma izni otomatik). */
 function copySelection(term: Terminal): void {
   const sel = term.getSelection()
@@ -42,7 +50,8 @@ function pasteFromClipboard(term: Terminal): void {
 
 /**
  * A single xterm.js instance bound to a PTY. Mounting this component creates
- * the PTY (only the active tab is mounted, so mount == PTY create), rehydrates
+ * the PTY (every tab stays mounted for its lifetime, so mount == PTY create
+ * exactly once — sekme değiştirmek arka plandaki process'i öldürmez), rehydrates
  * from the main-process ring buffer with live chunks queued to avoid ordering
  * races, and funnels every resize through one atomic channel: xterm view and
  * PTY move to the new size in the SAME tick, 250ms after the last change.
@@ -60,6 +69,7 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
   const [exited, setExited] = useState<ExitInfo | null>(null)
 
   const profileId = useTerminalStore((s) => s.tabs.find((t) => t.id === tabId)?.profileId)
+  const launchCwd = useTerminalStore((s) => s.tabs.find((t) => t.id === tabId)?.launchCwd)
   const settings = useSettingsStore((s) => s.settings)
   const uiSearchTabId = useSettingsStore((s) => s.uiSearchTabId)
   const [menu, setMenu] = useState<ContextMenuState | null>(null)
@@ -83,6 +93,7 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
       cursorBlink: settings.cursorBlink,
       cursorStyle: settings.cursorStyle,
       cursorWidth: settings.cursorWidth,
+      letterSpacing: settings.letterSpacing,
       scrollback: settings.scrollback,
       // cursorColor override: '' = tema default (PRD §32).
       theme: settings.cursorColor ? { ...themeColors, cursor: settings.cursorColor } : themeColors,
@@ -122,6 +133,7 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
       // Sarımsı mesaj terminal içine, butonlar overlay'de (PRD §74).
       term.write(`\r\n\x1b[33mProcess exited with code ${exitCode}\x1b[0m\r\n`)
       setExited({ exitCode, durationMs })
+      useTerminalStore.getState().setTabRunning(tabId, false)
     }
     exitHandlers.set(tabId, onExitHandler)
 
@@ -147,8 +159,22 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
 
     const createPty = (): void => {
       if (disposed || !profileId) return
+      if (createdPtys.has(tabId)) {
+        // PTY zaten yaşıyor (ör. StrictMode remount) — öldürüp yeniden
+        // spawn etmek yerine sadece buffer'dan rehydrate et.
+        window.termflow.pty.resize(tabId, lastSizeRef.current.cols, lastSizeRef.current.rows)
+        void window.termflow.pty.buffer(tabId).then((data) => {
+          if (disposed) return
+          if (data) term.write(data)
+          for (const q of queue) term.write(q)
+          queue.length = 0
+          ready = true
+        })
+        return
+      }
+      createdPtys.add(tabId)
       void window.termflow.pty
-        .create(tabId, profileId, lastSizeRef.current.cols, lastSizeRef.current.rows)
+        .create(tabId, profileId, lastSizeRef.current.cols, lastSizeRef.current.rows, launchCwd)
         .then(() => {
           if (disposed) return
           // Re-assert the current cell size so a size change that landed while
@@ -213,17 +239,43 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
     })
 
     // PRD §23: Ctrl+Shift+C — seçim varsa kopyala ve tuşu yut; yoksa Ctrl+C
-    // normal şekilde PTY'ye gitsin (no-op copy'de tuş kaybolmaz). Ctrl+Shift+V
-    // paste'ı xterm kendisi ele alır — ek handler gerekmez.
+    // normal şekilde PTY'ye gitsin (no-op copy'de tuş kaybolmaz).
+    // Ctrl+Shift+V — Chromium'un native paste hızlandırıcısı Ctrl+V olduğu için
+    // Ctrl+Shift+V kendiliğinden çalışmaz; burada elle ele alıyoruz.
     term.attachCustomKeyEventHandler((e) => {
       if (e.type !== 'keydown') return true
-      if (e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey && (e.key === 'C' || e.key === 'c')) {
-        if (term.hasSelection()) {
-          copySelection(term)
+      if (e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey) {
+        if (e.key === 'C' || e.key === 'c') {
+          if (term.hasSelection()) {
+            copySelection(term)
+            return false
+          }
+        } else if (e.key === 'V' || e.key === 'v') {
+          pasteFromClipboard(term)
           return false
         }
       }
       return true
+    })
+
+    // PRD: copyOnSelect — ayar açıkken seçim biter bitmez panoya kopyala.
+    // Ayar getState() ile okunur ki değişiklik terminali yeniden yaratmasın.
+    const selSub = term.onSelectionChange(() => {
+      if (!useSettingsStore.getState().settings.copyOnSelect) return
+      if (!term.hasSelection()) return
+      copySelection(term)
+    })
+
+    // PRD: bell — ayar açıkken kısa görsel flash (ek dependency yok).
+    let bellTimer: ReturnType<typeof setTimeout> | null = null
+    const bellSub = term.onBell(() => {
+      if (!useSettingsStore.getState().settings.bell) return
+      host.classList.remove('bell-flash')
+      // reflow: aynı sınıfın animasyonu üst üste gelen bell'lerde de yeniden başlasın
+      void host.offsetWidth
+      host.classList.add('bell-flash')
+      if (bellTimer) clearTimeout(bellTimer)
+      bellTimer = setTimeout(() => host.classList.remove('bell-flash'), 150)
     })
 
     // Sağ tık (PRD §24): 'paste' davranışı — seçim varsa kopyala, yoksa
@@ -239,31 +291,40 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
     }
     host.addEventListener('contextmenu', onCtxMenu)
 
-    // Visible terminals stream live; offscreen ones are paused by main.
-    window.termflow.pty.setMode(tabId, 'active')
+    // Visible terminals stream live; offscreen ones are throttled by main.
+    // (Gerçek mod aşağıdaki `active` effect'i tarafından yönetilir.)
+    window.termflow.pty.setMode(tabId, activeRef.current ? 'active' : 'passive')
 
     return () => {
       disposed = true
       if (resizeSettleTimer) clearTimeout(resizeSettleTimer)
+      if (bellTimer) clearTimeout(bellTimer)
       scheduleResizeRef.current = null
       ro.disconnect()
       dataSub.dispose()
+      selSub.dispose()
+      bellSub.dispose()
       host.removeEventListener('contextmenu', onCtxMenu)
+      // Bu view'lar tabId ile anahtarlanır; unmount yalnızca kendi kaydını siler.
       dataHandlers.delete(tabId)
       exitHandlers.delete(tabId)
       searchAddons.delete(tabId)
-      // Component unmounts when its tab is deselected -> switch main to
-      // buffer-only mode so the process keeps running without streaming.
-      window.termflow.pty.setMode(tabId, 'buffer')
+      // Unmount artık yalnızca tab kapanınca olur; tab kapanışı zaten pty.kill
+      // çağırdığı için ayrıca bir mod değişikliğine gerek yok. createdPtys'ten
+      // silmiyoruz: tab id'leri benzersiz, ve StrictMode'un unmount/remount
+      // döngüsünde PTY'nin yeniden spawn edilmesini de böylece engelliyoruz.
       term.dispose()
       termRef.current = null
       fitRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tabId, profileId])
+  }, [tabId, profileId, launchCwd])
 
-  // Focus + re-measure when this tab becomes active.
+  // Focus + re-measure when this tab becomes active. Tüm tab'lar mount kaldığı
+  // için render modunu da burada güncelliyoruz: aktif olan canlı stream alır,
+  // diğerleri passive (process çalışmaya devam eder).
   useEffect(() => {
+    window.termflow.pty.setMode(tabId, active ? 'active' : 'passive')
     if (active && termRef.current) {
       termRef.current.focus()
       scheduleResizeRef.current?.()
@@ -282,6 +343,9 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
     term.options.cursorBlink = settings.cursorBlink
     term.options.cursorWidth = settings.cursorWidth
     term.options.scrollback = settings.scrollback
+    // xterm letterSpacing'i (px) native olarak destekler; hücre metriğini
+    // değiştirdiği için aşağıdaki resize kanalı yeniden fit edecek.
+    term.options.letterSpacing = settings.letterSpacing
     const themeColors = resolveTheme(settings).colors
     term.options.theme = settings.cursorColor ? { ...themeColors, cursor: settings.cursorColor } : themeColors
     // A font/size change alters the cell metrics, so the fit result may change;
@@ -297,6 +361,7 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
     settings.cursorBlink,
     settings.cursorWidth,
     settings.cursorColor,
+    settings.letterSpacing,
     settings.scrollback,
     settings.themeId,
     settings.customTheme
@@ -307,13 +372,14 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
     const term = termRef.current
     void window.termflow.pty.restart(tabId).then((res) => {
       if (!res) return
+      useTerminalStore.getState().setTabRunning(tabId, true)
       term?.reset() // clear the view; fresh output streams through the handlers
       window.termflow.pty.resize(tabId, lastSizeRef.current.cols, lastSizeRef.current.rows)
     })
   }
 
   const handleCloseTab = (): void => {
-    useTerminalStore.getState().closeTab(tabId)
+    useTerminalStore.getState().requestCloseTab(tabId)
   }
 
   // ---- Context menu actions (PRD §24) ----
@@ -348,8 +414,34 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
     useSettingsStore.getState().openSettings()
   }
 
+  // ---- Dosya sürükle-bırak: yalnızca yolu input'a yaz (Enter'a BASILMAZ) ----
+  // Yalnızca gerçek dosya taşıyan sürüklemeler kabul edilir; metin/URL
+  // sürüklemeleri tarayıcının varsayılan davranışına bırakılır.
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>): void => {
+    if (e.dataTransfer.types.includes('Files')) e.preventDefault()
+  }
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>): void => {
+    if (!e.dataTransfer.types.includes('Files')) return
+    e.preventDefault()
+    e.stopPropagation()
+    const paths = formatDroppedPaths(
+      Array.from(e.dataTransfer.files),
+      window.termflow.system.getPathForFile
+    )
+    if (!paths) return
+    // Yazma yalnızca bu view'ın kendi tab id'sine gider.
+    window.termflow.pty.write(tabId, paths)
+    termRef.current?.focus()
+  }
+
   return (
-    <div className="terminal-view" style={{ padding: settings.terminalPadding }}>
+    <div
+      className={active ? 'terminal-view' : 'terminal-view inactive'}
+      style={{ padding: settings.terminalPadding }}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
       <div ref={hostRef} className="terminal-host" />
       {uiSearchTabId === tabId && (
         <TerminalSearch
