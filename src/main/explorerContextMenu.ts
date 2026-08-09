@@ -4,13 +4,11 @@ import { mergeProfiles, providerProfileId } from '../shared/profiles'
 import type { AppSettings, ShellInfo } from '../shared/types'
 
 const execFileAsync = promisify(execFile)
-const MENU_ROOT = 'HKCU\\Software\\Classes\\TermFlowLite.ContextMenu'
 const PARENT_KEYS = [
   'HKCU\\Software\\Classes\\Directory\\Background\\shell\\TermFlowLite',
   'HKCU\\Software\\Classes\\Directory\\shell\\TermFlowLite',
   'HKCU\\Software\\Classes\\Drive\\Background\\shell\\TermFlowLite'
 ]
-const EXTENDED_KEY = 'Software\\Classes\\TermFlowLite.ContextMenu'
 
 export interface ExplorerMenuEntry {
   key: string
@@ -36,18 +34,16 @@ async function setValue(key: string, name: string | null, value: string): Promis
 
 export async function syncExplorerContextMenu(exePath: string, settings: AppSettings, shells: ShellInfo[]): Promise<void> {
   if (process.platform !== 'win32') return
-  await reg(['delete', MENU_ROOT, '/f']).catch(() => undefined)
   for (const parent of PARENT_KEYS) {
     await reg(['delete', parent, '/f']).catch(() => undefined)
     await setValue(parent, 'MUIVerb', 'Open in TermFlow Lite')
     await setValue(parent, 'Icon', `${exePath},0`)
-    await setValue(parent, 'ExtendedSubCommandsKey', EXTENDED_KEY)
-  }
-  for (const entry of buildExplorerMenuEntries(settings, shells)) {
-    const key = `${MENU_ROOT}\\shell\\${entry.key}`
-    await setValue(key, 'MUIVerb', entry.label)
-    await setValue(key, 'Icon', `${exePath},0`)
-    const profileArg = entry.profileId ? ` --profile "${entry.profileId}"` : ''
-    await setValue(`${key}\\command`, null, `"${exePath}"${profileArg} "%V"`)
+    for (const entry of buildExplorerMenuEntries(settings, shells)) {
+      const key = `${parent}\\ExtendedSubCommandsKey\\shell\\${entry.key}`
+      await setValue(key, 'MUIVerb', entry.label)
+      await setValue(key, 'Icon', `${exePath},0`)
+      const profileArg = entry.profileId ? ` --profile "${entry.profileId}"` : ''
+      await setValue(`${key}\\command`, null, `"${exePath}"${profileArg} "%V"`)
+    }
   }
 }
