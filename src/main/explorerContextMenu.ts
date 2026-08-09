@@ -58,7 +58,10 @@ export async function syncExplorerContextMenu(exePath: string, resourcesPath: st
         ? join(resourcesPath, 'resources', 'menu-icons', `${entry.icon}.ico`)
         : entry.icon
       await setValue(key, 'Icon', bundledIcon || `${exePath},0`)
-      const profileArg = entry.profileId ? ` --profile "${entry.profileId}"` : ''
+      const launchProfileId = entry.profileId?.startsWith('provider:')
+        ? `provider--${entry.profileId.slice('provider:'.length)}`
+        : entry.profileId
+      const profileArg = launchProfileId ? ` --profile "${launchProfileId}"` : ''
       await setValue(`${key}\\command`, null, `"${exePath}"${profileArg} "%V"`)
     }
   }

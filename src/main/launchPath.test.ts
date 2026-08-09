@@ -21,6 +21,13 @@ describe('parseLaunchRequest', () => {
       .toEqual({ cwd: dir, profileId: 'provider:deepseek' })
   })
 
+  it('decodes an Explorer-safe provider profile id', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'termflow-launch-'))
+    cleanup.push(dir)
+    expect(parseLaunchRequest(['TermFlow Lite.exe', '--profile', 'provider--deepseek', dir]))
+      .toEqual({ cwd: dir, profileId: 'provider:deepseek' })
+  })
+
   it('rejects files, switches and relative app arguments', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'termflow-launch-'))
     cleanup.push(dir)

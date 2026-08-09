@@ -8,7 +8,9 @@ const PROFILE_ID = /^[a-zA-Z0-9:_-]{1,160}$/
 export function parseLaunchRequest(argv: string[]): AppLaunchRequest | null {
   const profileIndex = argv.indexOf('--profile')
   const candidate = profileIndex >= 0 ? argv[profileIndex + 1] : undefined
-  const profileId = candidate && PROFILE_ID.test(candidate) ? candidate : undefined
+  const profileId = candidate && PROFILE_ID.test(candidate)
+    ? candidate.startsWith('provider--') ? `provider:${candidate.slice('provider--'.length)}` : candidate
+    : undefined
   for (const value of argv.slice(1)) {
     if (!value || value === candidate || value.startsWith('--') || !isAbsolute(value)) continue
     try {

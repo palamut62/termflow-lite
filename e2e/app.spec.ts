@@ -16,10 +16,23 @@ let app: ElectronApplication
 let win: Page
 let cleanupDirectories: string[] = []
 
-test.beforeEach(async () => {
+const contextMenuCases = [
+  ['powershell', 'PowerShell'], ['cmd', 'Command Prompt'], ['gitbash', 'Git Bash'], ['wsl-ubuntu', 'Ubuntu'],
+  ['claude', 'Claude Code'], ['codex', 'Codex'], ['opencode', 'OpenCode'], ['ollama-serve', 'Ollama Serve'],
+  ['provider:deepseek', 'DeepSeek'], ['provider:openrouter', 'OpenRouter'], ['provider:ollama-local', 'Ollama Local']
+] as const
+
+test.beforeEach(async ({}, testInfo) => {
   cleanupDirectories = []
+  const contextCase = contextMenuCases.find(([id]) => testInfo.title === `Explorer menu opens ${id}`)
+  const args = ['.', '--no-sandbox']
+  if (contextCase) {
+    const cwd = mkdtempSync(join(tmpdir(), 'termflow-context-menu-'))
+    cleanupDirectories.push(cwd)
+    args.push('--profile', contextCase[0].replace('provider:', 'provider--'), cwd)
+  }
   app = await electron.launch({
-    args: ['.', '--no-sandbox'],
+    args,
     env: { ...process.env, TERMFLOW_E2E: '1' }
   })
   win = await app.firstWindow()
@@ -27,7 +40,7 @@ test.beforeEach(async () => {
 })
 
 test.afterEach(async () => {
-  await app.close()
+  if (app) await app.close()
   for (const directory of cleanupDirectories) rmSync(directory, { recursive: true, force: true })
 })
 
@@ -40,6 +53,15 @@ test('launches with a default terminal', async () => {
   // Default profile resolves to a real shell (PowerShell on Windows).
   await expect(win.locator('.tab-title').first()).not.toBeEmpty()
 })
+
+for (const [profileId, title] of contextMenuCases) {
+  test(`Explorer menu opens ${profileId}`, async () => {
+    await expect(win.locator('.tab-title').first()).toHaveText(title)
+    if (profileId === 'claude') {
+      await expect(win.locator('.terminal-view').first()).toContainText(/Claude Code|Accessing workspace/, { timeout: 30_000 })
+    }
+  })
+}
 
 test('new tab button adds an active second tab', async () => {
   await win.click('.new-tab-btn')
