@@ -100,6 +100,15 @@ npm run dist:linux   # Linux AppImage + deb (dist/)
 
 Distributed under the [MIT License](LICENSE).
 
+## Code signing policy
+
+Windows release signing is prepared through SignPath.io, with the certificate supplied
+by SignPath Foundation and artifacts built on GitHub-hosted runners. See the complete
+[code signing and privacy policy](docs/code-signing-policy.md).
+
+Free code signing provided by [SignPath.io](https://signpath.io/), certificate by
+[SignPath Foundation](https://signpath.org/).
+
 ---
 
 Ürün sahibi / Product owner: Umut Çelik (palamut62) — [X](https://x.com/palamut62) · [GitHub](https://github.com/palamut62)
