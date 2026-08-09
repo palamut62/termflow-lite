@@ -68,6 +68,7 @@ export function TerminalTab({
 
   return (
     <div
+      data-tab-id={tab.id}
       className={`tab${active ? ' tab-active' : ''}${dragging ? ' tab-dragging' : ''}${dragPosClass}`}
       draggable={!editing}
       onClick={onSelect}

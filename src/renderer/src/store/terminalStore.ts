@@ -1,9 +1,10 @@
 import { create } from 'zustand'
 import { nanoid } from 'nanoid'
 import type { SearchAddon } from '@xterm/addon-search'
-import type { TabActivity, TerminalTab } from '../../../shared/types'
+import type { AgentSessionRef, TabActivity, TerminalTab } from '../../../shared/types'
 import { mergeProfiles, providerFromProfileId } from '../../../shared/profiles'
 import { resolveDefaultProfileId, useSettingsStore } from './settingsStore'
+import { buildTiledPane, closePane, paneTerminalIds, setPaneRatio, splitPane, type PaneNode } from '../paneUtils'
 
 /**
  * Global per-tab stream listeners. App registers exactly ONE preload onData /
@@ -29,15 +30,20 @@ function tabTitleFor(profileId: string): string {
   return profile?.name ?? provider?.name ?? shell?.name ?? 'Terminal'
 }
 
-function makeTab(profileId: string, cwd?: string): TerminalTab {
-  return { id: nanoid(10), title: tabTitleFor(profileId), profileId, running: true, activity: 'running', cwd, launchCwd: cwd }
+function makeTab(profileId: string, cwd?: string, resumeSession?: AgentSessionRef): TerminalTab {
+  return { id: nanoid(10), title: tabTitleFor(profileId), profileId, running: true, activity: 'running', startedAt: Date.now(), cwd, launchCwd: cwd, resumeSession }
 }
 
 interface TerminalState {
   tabs: TerminalTab[]
   activeTabId: string | null
+  splitDirection: 'vertical' | 'horizontal' | null
+  splitTabIds: string[] | null
+  splitRatio: number
+  paneTree: PaneNode | null
   /** id nanoid(10); title = profile adı. activate=false ile arka planda açar (sonraki fazlar). */
   addTab(profileId: string, activate?: boolean, cwd?: string): string
+  resumeAgentSession(profileId: string, session: AgentSessionRef, cwd?: string): string
   /** Onay bekleyen sekme (uygulama içi modal); null = onay istenmiyor. */
   pendingCloseTabId: string | null
   /** UI girişi: settings.confirmBeforeClose ise onay modalını açar, değilse direkt kapatır. */
@@ -55,15 +61,36 @@ interface TerminalState {
   /** Reorder (Faz 7'de sürükleme; store şimdi hazır). */
   moveTab(id: string, toIndex: number): void
   setTabCwd(id: string, cwd: string): void
+  splitActive(direction: 'vertical' | 'horizontal'): void
+  setSplitDirection(direction: 'vertical' | 'horizontal'): void
+  closeSplit(): void
+  setSplitRatio(ratio: number): void
+  focusSplitPane(pane: 'first' | 'second'): void
+  setPaneRatio(path: number[], ratio: number): void
 }
 
 export const useTerminalStore = create<TerminalState>()((set, get) => ({
   tabs: [],
   activeTabId: null,
+  splitDirection: null,
+  splitTabIds: null,
+  splitRatio: 0.5,
+  paneTree: null,
 
   addTab(profileId, activate = true, cwd) {
     const tab = makeTab(profileId, cwd)
-    set((s) => ({ tabs: [...s.tabs, tab], activeTabId: activate ? tab.id : s.activeTabId }))
+    set((s) => ({
+      tabs: [...s.tabs, tab],
+      activeTabId: activate ? tab.id : s.activeTabId,
+      paneTree: activate && s.paneTree && s.activeTabId ? splitPane(s.paneTree, s.activeTabId, tab.id, s.splitDirection ?? 'vertical') : s.paneTree,
+      splitTabIds: activate && s.splitTabIds ? [...s.splitTabIds, tab.id] : s.splitTabIds
+    }))
+    return tab.id
+  },
+
+  resumeAgentSession(profileId, session, cwd) {
+    const tab = makeTab(profileId, cwd, session)
+    set((state) => ({ tabs: [...state.tabs, tab], activeTabId: tab.id }))
     return tab.id
   },
 
@@ -91,7 +118,7 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
   },
 
   closeTab(id) {
-    const { tabs, activeTabId } = get()
+    const { tabs, activeTabId, splitTabIds } = get()
     const idx = tabs.findIndex((t) => t.id === id)
     if (idx < 0) return
 
@@ -105,7 +132,7 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
       // Uygulama hiç boş kalmasın: default profile ile yeni tab aç.
       const { settings, shells } = useSettingsStore.getState()
       const tab = makeTab(resolveDefaultProfileId(settings, shells))
-      set({ tabs: [tab], activeTabId: tab.id })
+      set({ tabs: [tab], activeTabId: tab.id, splitDirection: null, splitTabIds: null, paneTree: null })
       return
     }
 
@@ -113,13 +140,23 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
     if (activeTabId === id) {
       nextActive = next[Math.min(idx, next.length - 1)]?.id ?? next[0].id
     }
-    set({ tabs: next, activeTabId: nextActive })
+    const nextTree = get().paneTree ? closePane(get().paneTree!, id) : null
+    const nextPaneIds = nextTree ? paneTerminalIds(nextTree) : null
+    const closesSplit = !!nextPaneIds && nextPaneIds.length < 2
+    set({
+      tabs: next,
+      activeTabId: nextActive,
+      splitDirection: closesSplit ? null : get().splitDirection,
+      splitTabIds: closesSplit ? null : nextPaneIds,
+      paneTree: closesSplit ? null : nextTree
+    })
   },
 
   setActiveTab(id) {
     if (!get().tabs.some((t) => t.id === id)) return
     set((s) => ({
       activeTabId: id,
+      splitTabIds: s.splitTabIds,
       tabs: s.tabs.map((tab) => tab.id === id && tab.activity === 'unread' ? { ...tab, activity: 'running' } : tab)
     }))
   },
@@ -154,5 +191,49 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
 
   setTabCwd(id, cwd) {
     set((s) => ({ tabs: s.tabs.map((t) => (t.id === id ? { ...t, cwd } : t)) }))
+  },
+
+  splitActive(direction) {
+    const state = get()
+    if (!state.activeTabId) return
+    if (state.paneTree) {
+      const { settings, shells } = useSettingsStore.getState()
+      const tab = makeTab(resolveDefaultProfileId(settings, shells))
+      const paneTree = splitPane(state.paneTree, state.activeTabId, tab.id, direction)
+      set({ tabs: [...state.tabs, tab], paneTree, splitDirection: direction, splitTabIds: paneTerminalIds(paneTree), activeTabId: tab.id })
+      return
+    }
+    let second = state.tabs.find((tab) => tab.id !== state.activeTabId)
+    let tabs = state.tabs
+    if (!second) {
+      const { settings, shells } = useSettingsStore.getState()
+      second = makeTab(resolveDefaultProfileId(settings, shells))
+      tabs = [...tabs, second]
+    }
+    const paneTree = buildTiledPane(tabs.map((tab) => tab.id), direction)!
+    set({ tabs, paneTree, splitDirection: direction, splitTabIds: paneTerminalIds(paneTree), splitRatio: 0.5, activeTabId: second.id })
+  },
+
+  setSplitDirection(direction) {
+    const tree = get().paneTree
+    if (tree?.type === 'split') set({ splitDirection: direction, paneTree: { ...tree, dir: direction } })
+  },
+
+  closeSplit() {
+    set({ splitDirection: null, splitTabIds: null, paneTree: null })
+  },
+
+  setSplitRatio(ratio) {
+    if (get().splitTabIds) set({ splitRatio: Math.max(0.15, Math.min(0.85, ratio)) })
+  },
+
+  focusSplitPane(pane) {
+    const ids = get().splitTabIds
+    if (ids) get().setActiveTab(ids[pane === 'first' ? 0 : 1])
+  },
+
+  setPaneRatio(path, ratio) {
+    const tree = get().paneTree
+    if (tree) set({ paneTree: setPaneRatio(tree, path, ratio), splitRatio: path.length === 0 ? Math.max(0.15, Math.min(0.85, ratio)) : get().splitRatio })
   }
 }))

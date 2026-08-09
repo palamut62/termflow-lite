@@ -1,12 +1,28 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_SETTINGS, type AppSettings, type ShellInfo } from '../../shared/types'
-import { profileToInput, resolveProfileId } from './profileResolver'
+import { agentAppearanceEnv, commandWithResume, profileToInput, resolveProfileId } from './profileResolver'
 
 const SHELLS: ShellInfo[] = [
   { id: 'bash', name: 'Bash', kind: 'custom', command: '/bin/bash', args: [] },
   { id: 'powershell', name: 'PowerShell', kind: 'powershell', command: 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe', args: ['-NoLogo'] },
   { id: 'sh', name: 'Shell', kind: 'custom', command: '/bin/sh', args: [] }
 ]
+
+describe('agent resume commands', () => {
+  it('uses each CLI native resume syntax', () => {
+    expect(commandWithResume('claude --model opus', { agent: 'claude', id: 'abc-1' })).toBe('claude --model opus --resume abc-1')
+    expect(commandWithResume('codex --dangerously-bypass-approvals-and-sandbox', { agent: 'codex', id: 'abc-2' })).toBe('codex resume abc-2 --dangerously-bypass-approvals-and-sandbox')
+    expect(commandWithResume('opencode --auto', { agent: 'opencode', id: 'abc-3' })).toBe('opencode --auto --session abc-3')
+  })
+})
+
+describe('agent terminal appearance', () => {
+  it('tells Codex whether the active terminal background is light or dark', () => {
+    expect(agentAppearanceEnv(settings({ themeId: 'light-plus' }), 'codex')).toMatchObject({ COLORFGBG: '0;15', TERM_PROGRAM_BACKGROUND: 'light' })
+    expect(agentAppearanceEnv(settings({ themeId: 'dark-plus' }), 'codex')).toMatchObject({ COLORFGBG: '15;0', TERM_PROGRAM_BACKGROUND: 'dark' })
+    expect(agentAppearanceEnv(settings({ themeId: 'light-plus' }), 'claude')).toEqual({})
+  })
+})
 
 function settings(overrides: Partial<AppSettings> = {}): AppSettings {
   return { ...DEFAULT_SETTINGS, ...overrides }
@@ -79,7 +95,7 @@ describe('profileToInput', () => {
 
   it('yerleşik CLI ajan profilini varsayılan kabukta açıp startupCommand taşır', () => {
     const input = profileToInput('claude', settings(), SHELLS, { cols: 80, rows: 24 })
-    expect(input.startupCommand).toBe('claude --dangerously-skip-permissions')
+    expect(input.startupCommand).toBe('claude --model opus --dangerously-skip-permissions')
     // command boş: Windows'ta cmd.exe, diğer platformlarda kullanıcı kabuğu.
     if (process.platform === 'win32') expect(input.kind).toBe('cmd')
     else expect(input.kind).toBe('custom')
@@ -124,6 +140,6 @@ describe('profileToInput', () => {
       profiles: [{ id: 'claude', name: 'Claude Code', command: '', startupCommand: 'claude', fullPermissions: false }]
     })
     const input = profileToInput('claude', s, SHELLS, { cols: 80, rows: 24 })
-    expect(input.startupCommand).toBe('claude')
+    expect(input.startupCommand).toBe('claude --model opus')
   })
 })

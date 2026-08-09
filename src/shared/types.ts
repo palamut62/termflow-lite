@@ -2,6 +2,18 @@
 
 export type ShellKind = 'powershell' | 'pwsh' | 'cmd' | 'wsl' | 'gitbash' | 'custom'
 export type TabActivity = 'running' | 'waiting' | 'unread' | 'completed' | 'error'
+export type AgentKind = 'claude' | 'codex' | 'opencode'
+
+export interface AgentSessionRef {
+  agent: AgentKind
+  id: string
+}
+
+export interface AgentSession extends AgentSessionRef {
+  title: string
+  cwd?: string
+  updatedAt: number
+}
 
 export interface TerminalTab {
   id: string
@@ -10,9 +22,12 @@ export interface TerminalTab {
   /** True while the tab's PTY process is alive. */
   running: boolean
   activity: TabActivity
+  startedAt: number
   cwd?: string
   /** Immutable working directory override used only for the initial spawn. */
   launchCwd?: string
+  /** Existing CLI conversation to resume when this tab's PTY starts. */
+  resumeSession?: AgentSessionRef
 }
 
 export interface TerminalProfile {
@@ -26,6 +41,8 @@ export interface TerminalProfile {
   env?: Record<string, string>
   /** Kabuk hazır olunca terminale yazılacak komut (CLI ajan profilleri). */
   startupCommand?: string
+  /** CLI model passed with --model; empty lets the CLI choose its own default. */
+  model?: string
   /** Sekme/menü rengi (#rrggbb). */
   color?: string
   /** Undefined is treated as enabled for command profiles. */

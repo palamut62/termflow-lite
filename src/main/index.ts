@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { join } from 'path'
 import { DEFAULT_SETTINGS } from '../shared/types'
 import { applyWindowAppearance, titleBarOptions } from './window'
@@ -13,6 +13,10 @@ import { registerWindowIpc } from './ipc/window'
 import { registerDialogIpc } from './ipc/dialog'
 import { registerGitIpc } from './ipc/git'
 import { registerTasksIpc } from './ipc/tasks'
+import { registerProjectIpc } from './ipc/project'
+import { registerAgentSessionsIpc } from './ipc/agentSessions'
+import { IPC } from '../shared/ipc'
+import { launchDirectory } from './launchPath'
 
 // Dev: project resources/. Packaged: extraResources under process.resourcesPath.
 const APP_ICON = app.isPackaged
@@ -31,6 +35,8 @@ let mainWindow: BrowserWindow | null = null
 let settingsStore: SettingsStore | null = null
 let manager: TerminalManager | null = null
 
+let initialLaunchCwd = launchDirectory(process.argv)
+
 function showMainWindow(): void {
   if (!mainWindow || mainWindow.isDestroyed()) createWindow()
   if (!mainWindow) return
@@ -45,8 +51,10 @@ const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) {
   app.quit()
 } else {
-  app.on('second-instance', () => {
+  app.on('second-instance', (_event, argv) => {
+    const cwd = launchDirectory(argv)
     showMainWindow()
+    if (cwd && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(IPC.APP_OPEN_PATH, cwd)
   })
 }
 
@@ -146,6 +154,13 @@ app.whenReady().then(() => {
   registerDialogIpc(() => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null))
   registerGitIpc()
   registerTasksIpc()
+  registerProjectIpc()
+  registerAgentSessionsIpc()
+  ipcMain.handle(IPC.APP_LAUNCH_CWD, () => {
+    const cwd = initialLaunchCwd
+    initialLaunchCwd = null
+    return cwd
+  })
 
   createWindow()
 

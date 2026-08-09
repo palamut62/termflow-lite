@@ -145,7 +145,8 @@
 }
 
 .new-tab-btn,
-.new-tab-caret {
+.new-tab-caret,
+.split-tab-btn {
   background: transparent;
   border: none;
   color: var(--tab-foreground);
@@ -162,12 +163,16 @@
   width: 32px;
 }
 
+.split-tab-btn { width: 28px; }
+.split-tab-btn-active { color: var(--accent-color); opacity: 1; background: var(--menu-selection-background); }
+
 .new-tab-caret {
   width: 18px;
 }
 
 .new-tab-btn:hover,
 .new-tab-caret:hover,
+.split-tab-btn:hover,
 .new-tab-caret[aria-expanded='true'] {
   opacity: 1;
   background: var(--menu-selection-background);
@@ -252,6 +257,10 @@
   margin: 4px 6px;
   background: var(--widget-border);
 }
+
+.tab-icon-linux { color: var(--term-orange); }
+.tab-icon-git { color: var(--term-red); }
+.tab-icon-bash { color: var(--term-green); }
 
 .tab-process-indicator {
   width: 6px;

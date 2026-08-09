@@ -18,6 +18,7 @@ interface ProfileDraft {
   cwd: string
   icon: string
   startupCommand: string
+  model: string
   color: string
   fullPermissions: boolean
   fullPermissionArgs: string
@@ -31,6 +32,7 @@ const emptyDraft = (): ProfileDraft => ({
   cwd: '',
   icon: '',
   startupCommand: '',
+  model: '',
   color: '',
   fullPermissions: true,
   fullPermissionArgs: '',
@@ -45,6 +47,7 @@ function toDraft(p: TerminalProfile): ProfileDraft {
     cwd: p.cwd ?? '',
     icon: p.icon ?? '',
     startupCommand: p.startupCommand ?? '',
+    model: p.model ?? '',
     color: p.color ?? '',
     fullPermissions: p.fullPermissions !== false,
     fullPermissionArgs: p.fullPermissionArgs ?? defaultFullPermissionArgs(p.startupCommand || p.command),
@@ -67,6 +70,7 @@ function fromDraft(d: ProfileDraft, id: string): TerminalProfile {
     cwd: d.cwd.trim() || undefined,
     icon: d.icon.trim() || undefined,
     startupCommand: d.startupCommand.trim() || undefined,
+    model: d.model.trim() || undefined,
     color: d.color.trim() || undefined,
     fullPermissions: d.fullPermissions,
     fullPermissionArgs: d.fullPermissionArgs.trim() || undefined,
@@ -152,7 +156,7 @@ export function ProfileSettings(): React.JSX.Element {
           <span className="menu-item-dot" style={{ background: p.color || '#6467f2' }} />
           <span className="profile-row-info">
             <span className="profile-row-name">{p.name}</span>
-            <span className="profile-row-command">{p.startupCommand} · {p.fullPermissions !== false ? 'Full permissions' : 'Standard permissions'}</span>
+            <span className="profile-row-command">{p.startupCommand}{p.model ? ` · ${p.model}` : ''} · {p.fullPermissions !== false ? 'Full permissions' : 'Standard permissions'}</span>
           </span>
           <button className="settings-btn settings-btn-small" onClick={() => startEdit(p)}>Edit</button>
         </div>
@@ -232,6 +236,14 @@ export function ProfileSettings(): React.JSX.Element {
               value={draft.color}
               placeholder="#d97757"
               onChange={(e) => setDraft({ ...draft, color: e.target.value })}
+            />
+          </Field>
+          <Field label="Default Model" hint="boşsa CLI varsayılanı; --model ile aktarılır">
+            <TextInput
+              className="settings-input-wide"
+              value={draft.model}
+              placeholder="opus"
+              onChange={(e) => setDraft({ ...draft, model: e.target.value })}
             />
           </Field>
           <Field label="Full Permissions" hint="approval/sandbox kontrollerini CLI argümanıyla kapatır">

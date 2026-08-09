@@ -28,7 +28,7 @@ beforeEach(() => {
     settings: { ...DEFAULT_SETTINGS, confirmBeforeClose: true },
     shells: SHELLS
   })
-  useTerminalStore.setState({ tabs: [], activeTabId: null, pendingCloseTabId: null })
+  useTerminalStore.setState({ tabs: [], activeTabId: null, pendingCloseTabId: null, splitDirection: null, splitTabIds: null, splitRatio: 0.5, paneTree: null })
 })
 
 afterEach(() => {
@@ -65,6 +65,15 @@ describe('addTab', () => {
   it('uses the built-in agent name for agent tabs', () => {
     useTerminalStore.getState().addTab('claude')
     expect(useTerminalStore.getState().tabs[0].title).toBe('Claude Code')
+  })
+
+  it('opens a resumed agent session with its id and original directory', () => {
+    const id = useTerminalStore.getState().resumeAgentSession('codex', { agent: 'codex', id: 'session-42' }, 'C:\\repo')
+    const tab = useTerminalStore.getState().tabs[0]
+    expect(tab.id).toBe(id)
+    expect(tab.profileId).toBe('codex')
+    expect(tab.launchCwd).toBe('C:\\repo')
+    expect(tab.resumeSession).toEqual({ agent: 'codex', id: 'session-42' })
   })
 
   it('uses the provider name for provider tabs', () => {
@@ -158,6 +167,21 @@ describe('closeTab', () => {
 })
 
 describe('renameTab / moveTab / setTabCwd', () => {
+  it('creates and closes a two-pane split while keeping both tabs alive', () => {
+    const first = useTerminalStore.getState().addTab('bash')
+    useTerminalStore.getState().splitActive('vertical')
+    const split = useTerminalStore.getState()
+    expect(split.tabs).toHaveLength(2)
+    expect(split.splitTabIds?.[0]).toBe(first)
+    expect(split.splitDirection).toBe('vertical')
+    useTerminalStore.getState().setSplitDirection('horizontal')
+    expect(useTerminalStore.getState().splitDirection).toBe('horizontal')
+    useTerminalStore.getState().setSplitRatio(0.95)
+    expect(useTerminalStore.getState().splitRatio).toBe(0.85)
+    useTerminalStore.getState().closeSplit()
+    expect(useTerminalStore.getState().splitTabIds).toBeNull()
+  })
+
   it('tracks process activity and clears unread output on selection', () => {
     const first = useTerminalStore.getState().addTab('bash')
     useTerminalStore.getState().addTab('sh')

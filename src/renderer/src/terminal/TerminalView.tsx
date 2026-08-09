@@ -15,6 +15,9 @@ import { TerminalSearch } from './TerminalSearch'
 interface Props {
   tabId: string
   active: boolean
+  visible?: boolean
+  splitPane?: 'first' | 'second'
+  splitDirection?: 'vertical' | 'horizontal' | null
 }
 
 interface ExitInfo {
@@ -57,7 +60,7 @@ function pasteFromClipboard(term: Terminal): void {
  * races, and funnels every resize through one atomic channel: xterm view and
  * PTY move to the new size in the SAME tick, 250ms after the last change.
  */
-export function TerminalView({ tabId, active }: Props): React.JSX.Element {
+export function TerminalView({ tabId, active, visible = active, splitPane, splitDirection }: Props): React.JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<Terminal | null>(null)
   const fitRef = useRef<FitAddon | null>(null)
@@ -70,6 +73,7 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
   const [exited, setExited] = useState<ExitInfo | null>(null)
 
   const profileId = useTerminalStore((s) => s.tabs.find((t) => t.id === tabId)?.profileId)
+  const resumeSession = useTerminalStore((s) => s.tabs.find((t) => t.id === tabId)?.resumeSession)
   const launchCwd = useTerminalStore((s) => s.tabs.find((t) => t.id === tabId)?.launchCwd)
   const settings = useSettingsStore((s) => s.settings)
   const uiSearchTabId = useSettingsStore((s) => s.uiSearchTabId)
@@ -185,7 +189,7 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
       }
       createdPtys.add(tabId)
       void window.termflow.pty
-        .create(tabId, profileId, lastSizeRef.current.cols, lastSizeRef.current.rows, launchCwd)
+        .create(tabId, profileId, lastSizeRef.current.cols, lastSizeRef.current.rows, launchCwd, resumeSession)
         .then(() => {
           if (disposed) return
           // Re-assert the current cell size so a size change that landed while
@@ -200,6 +204,48 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
         })
       })
     }
+
+    // Register terminal-generated input BEFORE spawning the PTY. TUI programs
+    // such as Codex query OSC 10/11 immediately at startup to discover the
+    // terminal foreground/background. xterm answers those queries through
+    // onData; if this bridge is attached after spawn, the answer is lost and
+    // Codex falls back to its dark composer palette even on a light theme.
+    const dataSub = term.onData((data) => {
+      // Protocol replies (OSC/CSI, always ESC-prefixed) must reach background
+      // PTYs too; only human keyboard input is restricted to the active tab.
+      if (!activeRef.current && !data.startsWith('\x1b')) return
+      const tab = useTerminalStore.getState().tabs.find((item) => item.id === tabId)
+      const cursorLine = term.buffer.active.getLine(term.buffer.active.cursorY)?.translateToString(true) ?? ''
+      const sensitivePrompt = /(?:password|passphrase|token|secret|api[_ -]?key)[^\r\n]*:\s*$/i.test(cursorLine)
+      if (!capturingCommand && !sensitivePrompt && !data.startsWith('\x1b')) capturingCommand = true
+      if (capturingCommand) {
+        if (data === '\x03' || data.startsWith('\x1b')) {
+          inputBuffer = ''
+          capturingCommand = false
+        }
+        for (const char of capturingCommand ? data : '') {
+          if (char === '\r' || char === '\n') {
+            const command = inputBuffer.trim()
+            if (command && tab) {
+              useCommandHistoryStore.getState().add({
+                command,
+                cwd: tab.cwd || tab.launchCwd || '',
+                profileId: tab.profileId,
+                profileName: tab.title
+              })
+            }
+            inputBuffer = ''
+            capturingCommand = false
+          } else if (char === '\x7f' || char === '\b') {
+            inputBuffer = inputBuffer.slice(0, -1)
+          } else if (char >= ' ' && char !== '\x7f') {
+            inputBuffer += char
+          }
+        }
+      }
+      useTerminalStore.getState().setTabActivity(tabId, 'running')
+      window.termflow.pty.write(tabId, data)
+    })
 
     // A brand-new tab's flexbox box is frequently still zero-sized in this
     // tick. Retry on the very next frame instead of falling into the 250ms
@@ -243,49 +289,11 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
     const ro = new ResizeObserver(() => scheduleResize())
     ro.observe(host)
 
-    // Forward input to the PTY only while this tab is the active one.
-    const dataSub = term.onData((data) => {
-      if (!activeRef.current) return
-      const tab = useTerminalStore.getState().tabs.find((item) => item.id === tabId)
-      const cursorLine = term.buffer.active.getLine(term.buffer.active.cursorY)?.translateToString(true) ?? ''
-      const sensitivePrompt = /(?:password|passphrase|token|secret|api[_ -]?key)[^\r\n]*:\s*$/i.test(cursorLine)
-      if (!capturingCommand && !sensitivePrompt && !data.startsWith('\x1b')) capturingCommand = true
-      if (capturingCommand) {
-        if (data === '\x03' || data.startsWith('\x1b')) {
-          inputBuffer = ''
-          capturingCommand = false
-        }
-        for (const char of capturingCommand ? data : '') {
-          if (char === '\r' || char === '\n') {
-            const command = inputBuffer.trim()
-            if (command && tab) {
-              useCommandHistoryStore.getState().add({
-                command,
-                cwd: tab.cwd || tab.launchCwd || '',
-                profileId: tab.profileId,
-                profileName: tab.title
-              })
-            }
-            inputBuffer = ''
-            capturingCommand = false
-          } else if (char === '\x7f' || char === '\b') {
-            inputBuffer = inputBuffer.slice(0, -1)
-          } else if (char >= ' ' && char !== '\x7f') {
-            inputBuffer += char
-          }
-        }
-      }
-      useTerminalStore.getState().setTabActivity(tabId, 'running')
-      window.termflow.pty.write(tabId, data)
-    })
-
-    // PRD §23: Ctrl+Shift+C — seçim varsa kopyala ve tuşu yut; yoksa Ctrl+C
-    // normal şekilde PTY'ye gitsin (no-op copy'de tuş kaybolmaz).
-    // Ctrl+Shift+V — Chromium'un native paste hızlandırıcısı Ctrl+V olduğu için
-    // Ctrl+Shift+V kendiliğinden çalışmaz; burada elle ele alıyoruz.
+    // Ctrl+C / Ctrl+Shift+C: seçim varsa kopyala; seçim yoksa Ctrl+C normal
+    // şekilde PTY'ye gider. Ctrl+V / Ctrl+Shift+V preload üzerinden yapıştırır.
     term.attachCustomKeyEventHandler((e) => {
       if (e.type !== 'keydown') return true
-      if (e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey) {
+      if (e.ctrlKey && !e.altKey && !e.metaKey) {
         if (e.key === 'C' || e.key === 'c') {
           if (term.hasSelection()) {
             copySelection(term)
@@ -360,7 +368,7 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
       fitRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tabId, profileId, launchCwd])
+  }, [tabId, profileId, launchCwd, resumeSession])
 
   // Focus + re-measure when this tab becomes active. Tüm tab'lar mount kaldığı
   // için render modunu da burada güncelliyoruz: aktif olan canlı stream alır,
@@ -479,8 +487,11 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
 
   return (
     <div
-      className={active ? 'terminal-view' : 'terminal-view inactive'}
+      className={`terminal-view${visible ? '' : ' inactive'}${splitPane ? ` split-pane split-pane-${splitPane} split-${splitDirection}` : ''}${active ? ' split-pane-active' : ''}`}
       style={{ padding: settings.terminalPadding }}
+      onMouseDown={() => {
+        if (visible && !active) useTerminalStore.getState().setActiveTab(tabId)
+      }}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >

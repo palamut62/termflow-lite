@@ -42,16 +42,35 @@
   background-color: var(--terminal-background);
   overflow-x: hidden;
   overflow-y: auto;
+  scrollbar-width: none;
 }
+
+.terminal-view.split-pane { z-index: 1; }
+.terminal-view.split-vertical.split-pane-first { right: auto; width: var(--split-percent); }
+.terminal-view.split-vertical.split-pane-second { left: var(--split-percent); width: calc(100% - var(--split-percent)); }
+.terminal-view.split-horizontal.split-pane-first { bottom: auto; height: var(--split-percent); }
+.terminal-view.split-horizontal.split-pane-second { top: var(--split-percent); height: calc(100% - var(--split-percent)); }
+.terminal-view.split-pane-active { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--focus-border) 55%, transparent); }
+
+.terminal-splitter { position: absolute; z-index: 5; background: var(--widget-border); transition: background 100ms; }
+.terminal-splitter:hover { background: var(--focus-border); }
+.terminal-splitter-vertical { top: 0; bottom: 0; left: calc(var(--split-percent) - 2px); width: 4px; cursor: col-resize; }
+.terminal-splitter-horizontal { left: 0; right: 0; top: calc(var(--split-percent) - 2px); height: 4px; cursor: row-resize; }
+
+.pane-tree-split { position: absolute; inset: 0; display: flex; min-width: 0; min-height: 0; }
+.pane-tree-vertical { flex-direction: row; }
+.pane-tree-horizontal { flex-direction: column; }
+.pane-leaf { position: absolute; inset: 0; background: var(--terminal-background); }
+.pane-leaf-active { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--focus-border) 55%, transparent); }
+.pane-tree-divider { z-index: 6; flex: 0 0 4px; background: var(--widget-border); transition: background 100ms; }
+.pane-tree-divider:hover { background: var(--focus-border); }
+.pane-tree-divider-vertical { width: 4px; cursor: col-resize; }
+.pane-tree-divider-horizontal { height: 4px; cursor: row-resize; }
 
 .terminal-host .xterm-viewport::-webkit-scrollbar {
-  width: 10px;
+  display: none;
+  width: 0;
   height: 0;
-}
-
-.terminal-host .xterm-viewport::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 5px;
 }
 
 /* ---- Terminal context menu (PRD §24) ---- */

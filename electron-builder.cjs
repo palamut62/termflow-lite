@@ -133,7 +133,8 @@ module.exports = {
     allowToChangeInstallationDirectory: true,
     installerIcon: 'resources/icon.ico',
     uninstallerIcon: 'resources/icon.ico',
-    installerHeaderIcon: 'resources/icon.ico'
+    installerHeaderIcon: 'resources/icon.ico',
+    include: 'build/installer.nsh'
   },
   linux: {
     icon: 'resources/icon.png',

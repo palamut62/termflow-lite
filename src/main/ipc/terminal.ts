@@ -1,7 +1,7 @@
 import { statSync } from 'fs'
 import { isAbsolute, normalize } from 'path'
 import { ipcMain } from 'electron'
-import type { RenderMode } from '../../shared/types'
+import type { AgentSessionRef, RenderMode } from '../../shared/types'
 import { IPC } from '../../shared/ipc'
 import type { TerminalManager } from '../terminal/TerminalManager'
 
@@ -26,16 +26,25 @@ function validCwd(value: unknown): string | undefined {
   return cwd
 }
 
+function validResumeSession(value: unknown): AgentSessionRef | undefined {
+  if (value === undefined || value === null) return undefined
+  if (typeof value !== 'object') throw new Error('invalid agent session')
+  const candidate = value as Partial<AgentSessionRef>
+  if (!['claude', 'codex', 'opencode'].includes(candidate.agent ?? '')) throw new Error('invalid agent session')
+  if (typeof candidate.id !== 'string' || !/^[a-zA-Z0-9_-]{1,160}$/.test(candidate.id)) throw new Error('invalid agent session id')
+  return { agent: candidate.agent as AgentSessionRef['agent'], id: candidate.id }
+}
+
 /**
  * Wire the PTY channels onto ipcMain. create/restart/buffer are invoke-based
  * (the renderer awaits a result); write/resize/kill/mode are fire-and-forget.
  */
 export function registerTerminalIpc(manager: TerminalManager): void {
-  ipcMain.handle(IPC.PTY_CREATE, (_event, tabId: unknown, profileId: unknown, cols: unknown, rows: unknown, cwd: unknown) => {
+  ipcMain.handle(IPC.PTY_CREATE, (_event, tabId: unknown, profileId: unknown, cols: unknown, rows: unknown, cwd: unknown, resumeSession: unknown) => {
     if (!validId(tabId) || !validId(profileId)) throw new Error('invalid tab id')
     const c = validSize(cols, 2) || 120
     const r = validSize(rows, 1) || 30
-    return manager.create(tabId, profileId, c, r, validCwd(cwd))
+    return manager.create(tabId, profileId, c, r, validCwd(cwd), validResumeSession(resumeSession))
   })
 
   ipcMain.on(IPC.PTY_WRITE, (_event, tabId: unknown, data: unknown) => {

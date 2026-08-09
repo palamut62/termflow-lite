@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Box, Clock3, Code2, GitBranch, Play, Search, Settings, TerminalSquare } from 'lucide-react'
-import type { ProjectTask } from '../../../shared/ipc'
+import type { ProjectInfo } from '../../../shared/ipc'
 import { resolveDefaultProfileId, useSettingsStore } from '../store/settingsStore'
 import { useCommandHistoryStore } from '../store/commandHistoryStore'
 import { useTaskPaletteStore } from '../store/taskPaletteStore'
@@ -29,17 +29,17 @@ export function TaskPalette(): React.JSX.Element {
   const active = useTerminalStore((state) => state.tabs.find((tab) => tab.id === state.activeTabId))
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState(0)
-  const [projectTasks, setProjectTasks] = useState<ProjectTask[]>([])
+  const [project, setProject] = useState<ProjectInfo | null>(null)
   const cwd = active?.cwd || active?.launchCwd || ''
 
   useEffect(() => {
     let current = true
     if (!cwd) {
-      setProjectTasks([])
+      setProject(null)
       return
     }
-    void window.termflow.tasks.discover(cwd).then((tasks) => {
-      if (current) setProjectTasks(tasks)
+    void window.termflow.project.detect(cwd).then((value) => {
+      if (current) setProject(value)
     })
     return () => { current = false }
   }, [cwd])
@@ -51,9 +51,10 @@ export function TaskPalette(): React.JSX.Element {
       { id: 'history', label: 'Terminal: Command history', detail: 'Open saved command history', icon: <Clock3 size={14} />, action: () => useCommandHistoryStore.getState().show() },
       { id: 'settings', label: 'Application: Settings', detail: 'Open TermFlow Lite settings', icon: <Settings size={14} />, action: () => settingsStore.openSettings() }
     ]
-    const detected = projectTasks.map((task) => ({ ...task, detail: task.command, icon: <Code2 size={14} /> }))
-    return [...detected, ...actions, ...COMMON_TASKS]
-  }, [projectTasks])
+    const detected = (project?.tasks ?? []).map((task) => ({ ...task, detail: task.command, icon: <Code2 size={14} /> }))
+    const detectedCommands = new Set(detected.map((item) => item.command))
+    return [...detected, ...actions, ...COMMON_TASKS.filter((item) => !item.command || !detectedCommands.has(item.command))]
+  }, [project])
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
     return items.filter((item) => !needle || `${item.label} ${item.detail}`.toLowerCase().includes(needle))
@@ -85,7 +86,7 @@ export function TaskPalette(): React.JSX.Element {
           {filtered.length === 0 && <div className="palette-empty">No matching tasks</div>}
           {filtered.map((item, index) => <button key={item.id} className={`palette-item${selected === index ? ' palette-item-selected' : ''}`} onMouseEnter={() => setSelected(index)} onClick={() => execute(item)}>{item.icon}<span><strong>{item.label}</strong><small>{item.detail}</small></span><Play size={12} /></button>)}
         </div>
-        <footer className="palette-hint"><span>↑↓ Navigate</span><span>Enter Run</span><span>Esc Close</span>{cwd && <span className="palette-cwd">{cwd}</span>}</footer>
+        <footer className="palette-hint"><span>↑↓ Navigate</span><span>Enter Run</span><span>Esc Close</span>{project && <span>{project.technologies.join(' · ')}</span>}{cwd && <span className="palette-cwd">{cwd}</span>}</footer>
       </section>
     </div>
   )

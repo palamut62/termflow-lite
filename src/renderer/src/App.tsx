@@ -10,6 +10,10 @@ import { CommandHistory } from './components/CommandHistory'
 import { useCommandHistoryStore } from './store/commandHistoryStore'
 import { TaskPalette } from './components/TaskPalette'
 import { useTaskPaletteStore } from './store/taskPaletteStore'
+import { AgentWorkPanel } from './components/AgentWorkPanel'
+import { AgentSessions } from './components/AgentSessions'
+import { useAgentSessionStore } from './store/agentSessionStore'
+import type { PaneNode } from './paneUtils'
 import { matchShortcut } from './shortcuts'
 
 // StrictMode double-mounts effects in dev — the boot sequence must run once.
@@ -23,8 +27,13 @@ export default function App(): React.JSX.Element {
   const tabs = useTerminalStore((s) => s.tabs)
   const activeTabId = useTerminalStore((s) => s.activeTabId)
   const pendingCloseTabId = useTerminalStore((s) => s.pendingCloseTabId)
+  const splitDirection = useTerminalStore((s) => s.splitDirection)
+  const splitTabIds = useTerminalStore((s) => s.splitTabIds)
+  const splitRatio = useTerminalStore((s) => s.splitRatio)
+  const paneTree = useTerminalStore((s) => s.paneTree)
   const historyOpen = useCommandHistoryStore((s) => s.open)
   const taskPaletteOpen = useTaskPaletteStore((s) => s.open)
+  const agentSessionsOpen = useAgentSessionStore((s) => s.open)
 
   // Boot: settings + shells yükle, sonra default profile ile ilk tab'ı aç.
   useEffect(() => {
@@ -35,9 +44,15 @@ export default function App(): React.JSX.Element {
       if (!st.loaded) await st.load()
       useSettingsStore.getState().applyTheme()
       const { settings, shells } = useSettingsStore.getState()
-      useTerminalStore.getState().addTab(resolveDefaultProfileId(settings, shells))
+      const launchCwd = await window.termflow.appLaunch.cwd()
+      useTerminalStore.getState().addTab(resolveDefaultProfileId(settings, shells), true, launchCwd ?? undefined)
     })()
   }, [])
+
+  useEffect(() => window.termflow.appLaunch.onOpenPath((cwd) => {
+    const { settings, shells } = useSettingsStore.getState()
+    useTerminalStore.getState().addTab(resolveDefaultProfileId(settings, shells), true, cwd)
+  }), [])
 
   // Klavye kısayolları (PRD §39): CAPTURE fazında — xterm'in textarea'sından
   // önce çalışır. Sadece eşleşen kısayollarda preventDefault; xterm'e giden
@@ -48,6 +63,20 @@ export default function App(): React.JSX.Element {
       // bağlamalar ayarları düzenlerken tab kapatabilir (KeyboardSettings
       // kayıt modu zaten document capture'da yakalayıp yutar).
       if (useSettingsStore.getState().settingsOpen) return
+      if (e.ctrlKey && !e.altKey && !e.metaKey && e.key === '\\') {
+        useTerminalStore.getState().splitActive(e.shiftKey ? 'horizontal' : 'vertical')
+        e.preventDefault()
+        e.stopPropagation()
+        return
+      }
+      if (e.ctrlKey && e.altKey && splitTabIds) {
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') useTerminalStore.getState().focusSplitPane('first')
+        else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') useTerminalStore.getState().focusSplitPane('second')
+        else return
+        e.preventDefault()
+        e.stopPropagation()
+        return
+      }
       if (e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey && e.key.toLowerCase() === 'p') {
         useTaskPaletteStore.getState().toggle()
         e.preventDefault()
@@ -62,6 +91,12 @@ export default function App(): React.JSX.Element {
       }
       if (e.key === 'Escape' && useCommandHistoryStore.getState().open) {
         useCommandHistoryStore.getState().hide()
+        e.preventDefault()
+        e.stopPropagation()
+        return
+      }
+      if (e.key === 'Escape' && useAgentSessionStore.getState().open) {
+        useAgentSessionStore.getState().hide()
         e.preventDefault()
         e.stopPropagation()
         return
@@ -119,7 +154,7 @@ export default function App(): React.JSX.Element {
     }
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
-  }, [])
+  }, [splitTabIds])
 
   // PTY stream listeners: tek global onData/onExit/onCwd kaydı, per-tab
   // handler'lara dağıtım (TerminalView kendi handler'ını kaydeder).
@@ -157,21 +192,60 @@ export default function App(): React.JSX.Element {
   return (
     <div className="app">
       <TabBar height={tabHeight} />
-      <div className="terminal-area">
+      <div className="terminal-area" style={{ '--split-percent': `${splitRatio * 100}%` } as React.CSSProperties}>
         {/* Tüm tab'lar mount kalır (mount = PTY create); aktif olmayanlar CSS ile
             gizlenir ama layout boyutunu korur, böylece arka plandaki process
             ölmez ve gizli terminal doğru cols/rows'a fit olmaya devam eder. */}
-        {tabs.map((t) => (
-          <TerminalView key={t.id} tabId={t.id} active={t.id === activeTabId} />
-        ))}
+        {paneTree
+          ? <PaneRenderer pane={paneTree} path={[]} activeTabId={activeTabId} />
+          : tabs.map((tab) => <TerminalView key={tab.id} tabId={tab.id} active={tab.id === activeTabId} />)}
       </div>
+      <AgentWorkPanel />
       <StatusBar />
       {historyOpen && <CommandHistory />}
+      {agentSessionsOpen && <AgentSessions />}
       {taskPaletteOpen && <TaskPalette />}
       {settingsOpen && <Settings />}
       {pendingCloseTabId && <CloseTabConfirm />}
     </div>
   )
+}
+
+function PaneRenderer({ pane, path, activeTabId }: { pane: PaneNode; path: number[]; activeTabId: string | null }): React.JSX.Element {
+  if (pane.type === 'leaf') {
+    return <div className={`pane-leaf${pane.terminalId === activeTabId ? ' pane-leaf-active' : ''}`}><TerminalView tabId={pane.terminalId} active={pane.terminalId === activeTabId} visible /></div>
+  }
+  const basis = (ratio: number): React.CSSProperties => ({ flex: `${ratio} 1 0`, minWidth: 0, minHeight: 0, position: 'relative', overflow: 'hidden' })
+  return <div className={`pane-tree-split pane-tree-${pane.dir}`}>
+    <div style={basis(pane.ratio)}><PaneRenderer pane={pane.a} path={[...path, 0]} activeTabId={activeTabId} /></div>
+    <PaneDivider direction={pane.dir} path={path} ratio={pane.ratio} />
+    <div style={basis(1 - pane.ratio)}><PaneRenderer pane={pane.b} path={[...path, 1]} activeTabId={activeTabId} /></div>
+  </div>
+}
+
+function PaneDivider({ direction, path, ratio }: { direction: 'vertical' | 'horizontal'; path: number[]; ratio: number }): React.JSX.Element {
+  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>): void => {
+    event.preventDefault()
+    const divider = event.currentTarget
+    const container = divider.parentElement
+    if (!container) return
+    divider.setPointerCapture(event.pointerId)
+    const onMove = (move: PointerEvent): void => {
+      const rect = container.getBoundingClientRect()
+      const ratio = direction === 'vertical'
+        ? (move.clientX - rect.left) / rect.width
+        : (move.clientY - rect.top) / rect.height
+      useTerminalStore.getState().setPaneRatio(path, ratio)
+    }
+    const onUp = (up: PointerEvent): void => {
+      try { divider.releasePointerCapture(up.pointerId) } catch { /* already released */ }
+      divider.removeEventListener('pointermove', onMove)
+      divider.removeEventListener('pointerup', onUp)
+    }
+    divider.addEventListener('pointermove', onMove)
+    divider.addEventListener('pointerup', onUp)
+  }
+  return <div className={`pane-tree-divider pane-tree-divider-${direction}`} onPointerDown={onPointerDown} role="separator" aria-label="Resize split terminals" aria-valuenow={Math.round(ratio * 100)} />
 }
 
 /**

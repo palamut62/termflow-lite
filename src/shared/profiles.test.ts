@@ -26,4 +26,9 @@ describe('mergeProfiles', () => {
       expect(p.color).toMatch(/^#[0-9a-f]{6}$/i)
     }
   })
+
+  it('keeps the Claude Opus default when a legacy override omits model', () => {
+    const merged = mergeProfiles([{ id: 'claude', name: 'Claude Custom', command: '', startupCommand: 'claude' }])
+    expect(merged.find((profile) => profile.id === 'claude')?.model).toBe('opus')
+  })
 })

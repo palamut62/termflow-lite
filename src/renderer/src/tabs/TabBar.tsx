@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import type { CSSProperties, DragEvent } from 'react'
-import { ChevronDown, Plus } from 'lucide-react'
+import { ChevronDown, Columns2, PanelTopClose, Plus, Rows2 } from 'lucide-react'
 import { resolveDefaultProfileId, useSettingsStore } from '../store/settingsStore'
 import { useTerminalStore } from '../store/terminalStore'
 import { NewTabMenu } from './NewTabMenu'
@@ -23,6 +23,7 @@ const MACOS_TRAFFIC_LIGHTS_WIDTH = 78
 export function TabBar({ height }: TabBarProps): React.JSX.Element {
   const tabs = useTerminalStore((s) => s.tabs)
   const activeTabId = useTerminalStore((s) => s.activeTabId)
+  const splitDirection = useTerminalStore((s) => s.splitDirection)
   const [menuOpen, setMenuOpen] = useState(false)
   const [pathLauncherOpen, setPathLauncherOpen] = useState(false)
   const caretRef = useRef<HTMLButtonElement>(null)
@@ -94,6 +95,9 @@ export function TabBar({ height }: TabBarProps): React.JSX.Element {
         ))}
       </div>
       <div className="new-tab-area">
+        <button className={`split-tab-btn${splitDirection === 'vertical' ? ' split-tab-btn-active' : ''}`} onClick={() => useTerminalStore.getState().splitActive('vertical')} title="Split terminal right" aria-label="Split terminal right"><Columns2 size={14} /></button>
+        <button className={`split-tab-btn${splitDirection === 'horizontal' ? ' split-tab-btn-active' : ''}`} onClick={() => useTerminalStore.getState().splitActive('horizontal')} title="Split terminal down" aria-label="Split terminal down"><Rows2 size={14} /></button>
+        {splitDirection && <button className="split-tab-btn" onClick={() => useTerminalStore.getState().closeSplit()} title="Close split view" aria-label="Close split view"><PanelTopClose size={14} /></button>}
         <button className="new-tab-btn" onClick={newTab} title="New Tab" aria-label="New tab">
           <Plus size={14} />
         </button>

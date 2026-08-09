@@ -1,10 +1,11 @@
 import {
   commandWithPermissions,
+  commandWithModel,
   defaultFullPermissionArgs,
   mergeProfiles,
   providerFromProfileId
 } from '../../shared/profiles'
-import type { AppSettings, CreateTerminalInput, ShellInfo, TerminalProfile } from '../../shared/types'
+import type { AgentSessionRef, AppSettings, CreateTerminalInput, ShellInfo, TerminalProfile } from '../../shared/types'
 
 export const DEFAULT_SHELL_PRIORITY: ShellInfo['id'][] = ['pwsh', 'powershell', 'cmd', 'gitbash', 'wsl', 'bash', 'sh']
 
@@ -46,6 +47,38 @@ export interface ProfileResolveOptions {
   cols: number
   rows: number
   cwd?: string
+  resumeSession?: AgentSessionRef
+}
+
+const LIGHT_THEME_IDS = new Set(['light-plus', 'light-modern', 'solarized-light', 'quiet-light'])
+
+function isLightBackground(color: string | undefined): boolean {
+  const match = color?.match(/^#([0-9a-f]{6})$/i)
+  if (!match) return false
+  const value = Number.parseInt(match[1], 16)
+  const r = (value >> 16) & 255
+  const g = (value >> 8) & 255
+  const b = value & 255
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) > 160
+}
+
+export function agentAppearanceEnv(settings: AppSettings, command: string | undefined): Record<string, string> {
+  const executable = command?.trim().split(/\s+/)[0]?.toLowerCase().replace(/\.cmd$|\.exe$/, '')
+  if (executable !== 'codex') return {}
+  const light = LIGHT_THEME_IDS.has(settings.themeId)
+    || (settings.themeId === 'custom' && isLightBackground(settings.customTheme?.background))
+  return light
+    ? { COLORFGBG: '0;15', TERM_PROGRAM_BACKGROUND: 'light', COLORTERM: 'truecolor' }
+    : { COLORFGBG: '15;0', TERM_PROGRAM_BACKGROUND: 'dark', COLORTERM: 'truecolor' }
+}
+
+export function commandWithResume(command: string | undefined, session: AgentSessionRef | undefined): string | undefined {
+  const base = command?.trim()
+  if (!base || !session) return base || undefined
+  if (session.agent === 'claude') return `${base} --resume ${session.id}`
+  if (session.agent === 'opencode') return `${base} --session ${session.id}`
+  const [executable, ...rest] = base.split(/\s+/)
+  return `${executable} resume ${session.id}${rest.length ? ` ${rest.join(' ')}` : ''}`
 }
 
 /**
@@ -77,39 +110,46 @@ export function profileToInput(
   const base = { cols: opts.cols, rows: opts.rows, cwd }
 
   if (provider) {
-    const env: Record<string, string> = {}
+    const env: Record<string, string> = { ...agentAppearanceEnv(settings, provider.command) }
     if (provider.modelEnv && provider.model) env[provider.modelEnv] = provider.model
     if (provider.baseUrlEnv && provider.baseUrl) env[provider.baseUrlEnv] = provider.baseUrl
     return {
       ...base,
       ...defaultShellInput(),
       env,
-      startupCommand: commandWithPermissions(provider.command, provider.fullPermissions, provider.fullPermissionArgs)
+      startupCommand: commandWithResume(
+        commandWithPermissions(provider.command, provider.fullPermissions, provider.fullPermissionArgs),
+        opts.resumeSession
+      )
     }
   }
 
   if (profile) {
-    const startupCommand = commandWithPermissions(
-      profile.startupCommand,
+    const startupCommand = commandWithResume(commandWithPermissions(
+      commandWithModel(profile.startupCommand, profile.model),
       profile.fullPermissions,
       profile.fullPermissionArgs
-    )
+    ), opts.resumeSession)
     // command boşsa profil, platformun varsayılan kabuğunda açılır ve
     // startupCommand ile başlatılır (CLI ajan profilleri).
     if (!profile.command.trim()) {
-      return { ...base, ...defaultShellInput(), args: profile.args, env: profile.env, startupCommand }
+      return { ...base, ...defaultShellInput(), args: profile.args, env: { ...agentAppearanceEnv(settings, profile.startupCommand), ...profile.env }, startupCommand }
     }
     return {
       ...base,
       kind: 'custom' as const,
       shell: profile.command,
       args: [
+        ...(opts.resumeSession?.agent === 'codex' ? ['resume', opts.resumeSession.id] : []),
         ...(profile.args ?? []),
+        ...(profile.model?.trim() ? ['--model', profile.model.trim()] : []),
         ...(profile.fullPermissions === false
           ? []
-          : (profile.fullPermissionArgs?.trim() || defaultFullPermissionArgs(profile.command)).split(/\s+/).filter(Boolean))
+          : (profile.fullPermissionArgs?.trim() || defaultFullPermissionArgs(profile.command)).split(/\s+/).filter(Boolean)),
+        ...(opts.resumeSession?.agent === 'claude' ? ['--resume', opts.resumeSession.id] : []),
+        ...(opts.resumeSession?.agent === 'opencode' ? ['--session', opts.resumeSession.id] : [])
       ],
-      env: profile.env,
+      env: { ...agentAppearanceEnv(settings, profile.command), ...profile.env },
       startupCommand
     }
   }

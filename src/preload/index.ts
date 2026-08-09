@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
-import { IPC, type GitStatus, type ProjectTask, type TitleBarOverlayPayload } from '../shared/ipc'
-import type { AppSettings, RenderMode, ShellInfo } from '../shared/types'
+import { IPC, type AgentSessionsQuery, type GitStatus, type ProjectInfo, type ProjectTask, type TitleBarOverlayPayload } from '../shared/ipc'
+import type { AgentSession, AgentSessionRef, AppSettings, RenderMode, ShellInfo } from '../shared/types'
 
 // Windows OS build number (e.g. 26200 for current Win11). xterm's windowsPty
 // option keys its reflow behaviour on this; fall back to a modern build when
@@ -36,8 +36,8 @@ const api = {
   },
   // ---- PTY ----
   pty: {
-    create: (tabId: string, profileId: string, cols: number, rows: number, cwd?: string): Promise<{ pid: number }> =>
-      ipcRenderer.invoke(IPC.PTY_CREATE, tabId, profileId, cols, rows, cwd),
+    create: (tabId: string, profileId: string, cols: number, rows: number, cwd?: string, resumeSession?: AgentSessionRef): Promise<{ pid: number }> =>
+      ipcRenderer.invoke(IPC.PTY_CREATE, tabId, profileId, cols, rows, cwd, resumeSession),
     write: (tabId: string, data: string): void => ipcRenderer.send(IPC.PTY_WRITE, tabId, data),
     resize: (tabId: string, cols: number, rows: number): void =>
       ipcRenderer.send(IPC.PTY_RESIZE, tabId, cols, rows),
@@ -79,6 +79,20 @@ const api = {
   },
   tasks: {
     discover: (cwd: string): Promise<ProjectTask[]> => ipcRenderer.invoke(IPC.TASKS_DISCOVER, cwd)
+  },
+  project: {
+    detect: (cwd: string): Promise<ProjectInfo | null> => ipcRenderer.invoke(IPC.PROJECT_DETECT, cwd)
+  },
+  agentSessions: {
+    list: (query: AgentSessionsQuery = {}): Promise<AgentSession[]> => ipcRenderer.invoke(IPC.AGENT_SESSIONS_LIST, query)
+  },
+  appLaunch: {
+    cwd: (): Promise<string | null> => ipcRenderer.invoke(IPC.APP_LAUNCH_CWD),
+    onOpenPath: (callback: (cwd: string) => void): (() => void) => {
+      const handler = (_event: unknown, cwd: string): void => callback(cwd)
+      ipcRenderer.on(IPC.APP_OPEN_PATH, handler)
+      return () => ipcRenderer.removeListener(IPC.APP_OPEN_PATH, handler)
+    }
   },
   // ---- Window ----
   window: {

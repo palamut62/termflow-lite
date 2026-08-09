@@ -22,6 +22,13 @@ export function commandWithPermissions(
   return args ? `${base} ${args}` : base
 }
 
+export function commandWithModel(command: string | undefined, model: string | undefined): string | undefined {
+  const base = command?.trim()
+  const selected = model?.trim()
+  if (!base || !selected) return base || undefined
+  return `${base} --model ${selected}`
+}
+
 export function providerFromProfileId(settings: AppSettings, profileId: string): ProviderProfile | undefined {
   if (!profileId.startsWith('provider:')) return undefined
   return settings.providerProfiles.find((provider) => provider.id === profileId.slice('provider:'.length))
@@ -40,7 +47,7 @@ export function providerFromProfileId(settings: AppSettings, profileId: string):
  * profili kazanır (mergeProfiles).
  */
 export const BUILTIN_PROFILES: readonly TerminalProfile[] = [
-  { id: 'claude', name: 'Claude Code', command: '', startupCommand: 'claude', color: '#d97757', fullPermissions: true, fullPermissionArgs: '--dangerously-skip-permissions' },
+  { id: 'claude', name: 'Claude Code', command: '', startupCommand: 'claude', model: 'opus', color: '#d97757', fullPermissions: true, fullPermissionArgs: '--dangerously-skip-permissions' },
   { id: 'codex', name: 'Codex', command: '', startupCommand: 'codex', color: '#10a37f', fullPermissions: true, fullPermissionArgs: '--dangerously-bypass-approvals-and-sandbox' },
   { id: 'opencode', name: 'OpenCode', command: '', startupCommand: 'opencode', color: '#3fb950', fullPermissions: true, fullPermissionArgs: '--auto' },
   { id: 'ollama-serve', name: 'Ollama Serve', command: '', startupCommand: 'ollama serve', color: '#b48ead', fullPermissions: true, fullPermissionArgs: '' }
@@ -53,7 +60,7 @@ export const BUILTIN_PROFILES: readonly TerminalProfile[] = [
  */
 export function mergeProfiles(userProfiles: readonly TerminalProfile[]): TerminalProfile[] {
   const byId = new Map(userProfiles.map((p) => [p.id, p]))
-  const merged = BUILTIN_PROFILES.map((b) => byId.get(b.id) ?? b)
+  const merged = BUILTIN_PROFILES.map((b) => ({ ...b, ...(byId.get(b.id) ?? {}) }))
   const builtinIds = new Set(BUILTIN_PROFILES.map((b) => b.id))
   return [...merged, ...userProfiles.filter((p) => !builtinIds.has(p.id))]
 }

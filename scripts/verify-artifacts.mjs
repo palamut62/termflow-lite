@@ -56,7 +56,7 @@ async function verifyAuthenticodeSignature(filePath) {
 }
 
 const pkg = JSON.parse(await readFile(resolve('package.json'), 'utf-8'))
-const base = `TermFlow-${pkg.version}-x64`
+const base = `TermFlow-Lite-${pkg.version}-x64`
 const artifacts = [
   { path: resolve('dist', `${base}.exe`), signature: Buffer.from('MZ') },
   { path: resolve('dist', `${base}.zip`), signature: Buffer.from('PK') }

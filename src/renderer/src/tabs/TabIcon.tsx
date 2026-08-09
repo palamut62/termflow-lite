@@ -1,4 +1,4 @@
-import { ChevronsRight, Shell, SquareTerminal, Terminal, TerminalSquare } from 'lucide-react'
+import { Box, ChevronsRight, GitBranch, Shell, SquareTerminal, Terminal, TerminalSquare } from 'lucide-react'
 import { mergeProfiles } from '../../../shared/profiles'
 import { useSettingsStore } from '../store/settingsStore'
 
@@ -25,9 +25,12 @@ export function TabIcon({ shellId }: TabIconProps): React.JSX.Element {
     return <span className="tab-icon tab-icon-text">{customIcon}</span>
   }
 
-  // Renkli profiller (CLI ajanları) küçük bir renk noktasıyla gösterilir.
-  if (profile?.color) {
-    return <span className="tab-icon menu-item-dot" style={{ background: profile.color }} aria-hidden="true" />
+  // Agent/provider boş command ile platformun varsayılan kabuğunda çalışır.
+  // İkon agent markasını değil gerçek host shell'i temsil eder.
+  if ((profile?.startupCommand && !profile.command.trim()) || shellId.startsWith('provider:')) {
+    return window.termflow.system.platform === 'win32'
+      ? <span className="tab-icon tab-icon-cmd"><TerminalSquare size={14} /></span>
+      : <span className="tab-icon tab-icon-bash"><Shell size={14} /></span>
   }
 
   switch (shell?.icon ?? shell?.kind) {
@@ -45,11 +48,21 @@ export function TabIcon({ shellId }: TabIconProps): React.JSX.Element {
         </span>
       )
     case 'wsl':
-    case 'gitbash':
-    case 'bash':
     case 'linux':
       return (
-        <span className="tab-icon">
+        <span className="tab-icon tab-icon-linux">
+          <Box size={14} />
+        </span>
+      )
+    case 'gitbash':
+      return (
+        <span className="tab-icon tab-icon-git">
+          <GitBranch size={14} />
+        </span>
+      )
+    case 'bash':
+      return (
+        <span className="tab-icon tab-icon-bash">
           <Shell size={14} />
         </span>
       )

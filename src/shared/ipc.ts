@@ -1,6 +1,6 @@
 // IPC channel names + payload types (TermFlow Lite)
 
-import type { AppSettings, RenderMode, ShellInfo } from './types'
+import type { AgentSession, AgentSessionRef, AppSettings, RenderMode, ShellInfo } from './types'
 
 export const IPC = {
   PTY_CREATE: 'pty:create', // (tabId, profileId, cols, rows, cwd?) -> { pid }
@@ -20,7 +20,11 @@ export const IPC = {
   WINDOW_TITLEBAR_OVERLAY: 'window:titlebar-overlay', // (TitleBarOverlayPayload) — Windows only
   DIALOG_OPEN_DIR: 'dialog:open-dir',
   GIT_STATUS: 'git:status',
-  TASKS_DISCOVER: 'tasks:discover'
+  TASKS_DISCOVER: 'tasks:discover',
+  PROJECT_DETECT: 'project:detect',
+  AGENT_SESSIONS_LIST: 'agent-sessions:list',
+  APP_LAUNCH_CWD: 'app:launch-cwd',
+  APP_OPEN_PATH: 'app:open-path'
 } as const
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC]
@@ -32,6 +36,13 @@ export interface PtyCreatePayload {
   cols: number
   rows: number
 }
+
+export interface AgentSessionsQuery {
+  agents?: AgentSessionRef['agent'][]
+  limit?: number
+}
+
+export type { AgentSession }
 
 export interface PtyWritePayload {
   tabId: string
@@ -76,7 +87,13 @@ export interface ProjectTask {
   id: string
   label: string
   command: string
-  source: 'package.json'
+  source: 'package.json' | 'python' | 'cargo' | 'go' | 'docker' | 'git'
+}
+
+export interface ProjectInfo {
+  root: string
+  technologies: string[]
+  tasks: ProjectTask[]
 }
 
 /** Windows Controls Overlay renkleri/yüksekliği (#rrggbb — PRD §68). */
