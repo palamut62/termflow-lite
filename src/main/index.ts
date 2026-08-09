@@ -16,7 +16,8 @@ import { registerTasksIpc } from './ipc/tasks'
 import { registerProjectIpc } from './ipc/project'
 import { registerAgentSessionsIpc } from './ipc/agentSessions'
 import { IPC } from '../shared/ipc'
-import { launchDirectory } from './launchPath'
+import { parseLaunchRequest } from './launchPath'
+import { syncExplorerContextMenu } from './explorerContextMenu'
 
 // Dev: project resources/. Packaged: extraResources under process.resourcesPath.
 const APP_ICON = app.isPackaged
@@ -35,7 +36,7 @@ let mainWindow: BrowserWindow | null = null
 let settingsStore: SettingsStore | null = null
 let manager: TerminalManager | null = null
 
-let initialLaunchCwd = launchDirectory(process.argv)
+let initialLaunchRequest = parseLaunchRequest(process.argv)
 
 function showMainWindow(): void {
   if (!mainWindow || mainWindow.isDestroyed()) createWindow()
@@ -52,9 +53,9 @@ if (!gotLock) {
   app.quit()
 } else {
   app.on('second-instance', (_event, argv) => {
-    const cwd = launchDirectory(argv)
+    const request = parseLaunchRequest(argv)
     showMainWindow()
-    if (cwd && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(IPC.APP_OPEN_PATH, cwd)
+    if (request && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(IPC.APP_OPEN_PATH, request)
   })
 }
 
@@ -142,11 +143,22 @@ app.whenReady().then(() => {
   manager = mgr
   // WSL distro enumeration makes discovery async — the renderer re-queries
   // via SHELLS_DISCOVER anyway, so the warm value is only a fallback.
-  void discoverShells().then((shells) => mgr.setShells(shells))
+  let currentShells: Awaited<ReturnType<typeof discoverShells>> = []
+  const refreshContextMenu = (): void => {
+    if (!app.isPackaged || !settingsStore) return
+    void syncExplorerContextMenu(process.execPath, settingsStore.get(), currentShells)
+      .catch((error) => console.warn('Explorer context menu sync failed:', error))
+  }
+  void discoverShells().then((shells) => {
+    currentShells = shells
+    mgr.setShells(shells)
+    refreshContextMenu()
+  })
 
   registerTerminalIpc(manager)
   registerSettingsIpc(settingsStore, mgr, () =>
-    mainWindow && !mainWindow.isDestroyed() ? mainWindow : null
+    mainWindow && !mainWindow.isDestroyed() ? mainWindow : null,
+    refreshContextMenu
   )
   registerShellIpc()
   registerClipboardIpc()
@@ -157,9 +169,9 @@ app.whenReady().then(() => {
   registerProjectIpc()
   registerAgentSessionsIpc()
   ipcMain.handle(IPC.APP_LAUNCH_CWD, () => {
-    const cwd = initialLaunchCwd
-    initialLaunchCwd = null
-    return cwd
+    const request = initialLaunchRequest
+    initialLaunchRequest = null
+    return request
   })
 
   createWindow()

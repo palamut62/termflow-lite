@@ -15,6 +15,7 @@ import { AgentSessions } from './components/AgentSessions'
 import { useAgentSessionStore } from './store/agentSessionStore'
 import type { PaneNode } from './paneUtils'
 import { matchShortcut } from './shortcuts'
+import type { AppLaunchRequest } from '../../shared/ipc'
 
 // StrictMode double-mounts effects in dev — the boot sequence must run once.
 let bootStarted = false
@@ -44,14 +45,14 @@ export default function App(): React.JSX.Element {
       if (!st.loaded) await st.load()
       useSettingsStore.getState().applyTheme()
       const { settings, shells } = useSettingsStore.getState()
-      const launchCwd = await window.termflow.appLaunch.cwd()
-      useTerminalStore.getState().addTab(resolveDefaultProfileId(settings, shells), true, launchCwd ?? undefined)
+      const request = await window.termflow.appLaunch.request()
+      useTerminalStore.getState().addTab(resolveLaunchProfile(request, settings, shells), true, request?.cwd)
     })()
   }, [])
 
-  useEffect(() => window.termflow.appLaunch.onOpenPath((cwd) => {
+  useEffect(() => window.termflow.appLaunch.onOpenPath((request) => {
     const { settings, shells } = useSettingsStore.getState()
-    useTerminalStore.getState().addTab(resolveDefaultProfileId(settings, shells), true, cwd)
+    useTerminalStore.getState().addTab(resolveLaunchProfile(request, settings, shells), true, request.cwd)
   }), [])
 
   // Klavye kısayolları (PRD §39): CAPTURE fazında — xterm'in textarea'sından
@@ -209,6 +210,15 @@ export default function App(): React.JSX.Element {
       {pendingCloseTabId && <CloseTabConfirm />}
     </div>
   )
+}
+
+function resolveLaunchProfile(request: AppLaunchRequest | null, settings: typeof DEFAULT_SETTINGS, shells: ReturnType<typeof useSettingsStore.getState>['shells']): string {
+  if (!request?.profileId) return resolveDefaultProfileId(settings, shells)
+  const available = shells.some((shell) => shell.id === request.profileId) ||
+    settings.profiles.some((profile) => profile.id === request.profileId) ||
+    settings.providerProfiles.some((provider) => `provider:${provider.id}` === request.profileId) ||
+    ['claude', 'codex', 'opencode', 'ollama-serve'].includes(request.profileId)
+  return available ? request.profileId : resolveDefaultProfileId(settings, shells)
 }
 
 function PaneRenderer({ pane, path, activeTabId }: { pane: PaneNode; path: number[]; activeTabId: string | null }): React.JSX.Element {

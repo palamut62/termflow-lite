@@ -29,6 +29,11 @@ export const IPC = {
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC]
 
+export interface AppLaunchRequest {
+  cwd: string
+  profileId?: string
+}
+
 // ---- Payload types ----
 export interface PtyCreatePayload {
   tabId: string

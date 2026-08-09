@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
-import { IPC, type AgentSessionsQuery, type GitStatus, type ProjectInfo, type ProjectTask, type TitleBarOverlayPayload } from '../shared/ipc'
+import { IPC, type AgentSessionsQuery, type AppLaunchRequest, type GitStatus, type ProjectInfo, type ProjectTask, type TitleBarOverlayPayload } from '../shared/ipc'
 import type { AgentSession, AgentSessionRef, AppSettings, RenderMode, ShellInfo } from '../shared/types'
 
 // Windows OS build number (e.g. 26200 for current Win11). xterm's windowsPty
@@ -87,9 +87,9 @@ const api = {
     list: (query: AgentSessionsQuery = {}): Promise<AgentSession[]> => ipcRenderer.invoke(IPC.AGENT_SESSIONS_LIST, query)
   },
   appLaunch: {
-    cwd: (): Promise<string | null> => ipcRenderer.invoke(IPC.APP_LAUNCH_CWD),
-    onOpenPath: (callback: (cwd: string) => void): (() => void) => {
-      const handler = (_event: unknown, cwd: string): void => callback(cwd)
+    request: (): Promise<AppLaunchRequest | null> => ipcRenderer.invoke(IPC.APP_LAUNCH_CWD),
+    onOpenPath: (callback: (request: AppLaunchRequest) => void): (() => void) => {
+      const handler = (_event: unknown, request: AppLaunchRequest): void => callback(request)
       ipcRenderer.on(IPC.APP_OPEN_PATH, handler)
       return () => ipcRenderer.removeListener(IPC.APP_OPEN_PATH, handler)
     }

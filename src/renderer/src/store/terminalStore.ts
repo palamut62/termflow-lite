@@ -36,6 +36,8 @@ function makeTab(profileId: string, cwd?: string, resumeSession?: AgentSessionRe
 
 interface TerminalState {
   tabs: TerminalTab[]
+  /** Path inherited by new shells/agents until the user explicitly chooses another path. */
+  workspaceCwd?: string
   activeTabId: string | null
   splitDirection: 'vertical' | 'horizontal' | null
   splitTabIds: string[] | null
@@ -71,6 +73,7 @@ interface TerminalState {
 
 export const useTerminalStore = create<TerminalState>()((set, get) => ({
   tabs: [],
+  workspaceCwd: undefined,
   activeTabId: null,
   splitDirection: null,
   splitTabIds: null,
@@ -78,9 +81,11 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
   paneTree: null,
 
   addTab(profileId, activate = true, cwd) {
-    const tab = makeTab(profileId, cwd)
+    const effectiveCwd = cwd || get().workspaceCwd
+    const tab = makeTab(profileId, effectiveCwd)
     set((s) => ({
       tabs: [...s.tabs, tab],
+      workspaceCwd: cwd || s.workspaceCwd,
       activeTabId: activate ? tab.id : s.activeTabId,
       paneTree: activate && s.paneTree && s.activeTabId ? splitPane(s.paneTree, s.activeTabId, tab.id, s.splitDirection ?? 'vertical') : s.paneTree,
       splitTabIds: activate && s.splitTabIds ? [...s.splitTabIds, tab.id] : s.splitTabIds
@@ -89,8 +94,9 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
   },
 
   resumeAgentSession(profileId, session, cwd) {
-    const tab = makeTab(profileId, cwd, session)
-    set((state) => ({ tabs: [...state.tabs, tab], activeTabId: tab.id }))
+    const effectiveCwd = cwd || get().workspaceCwd
+    const tab = makeTab(profileId, effectiveCwd, session)
+    set((state) => ({ tabs: [...state.tabs, tab], activeTabId: tab.id, workspaceCwd: cwd || state.workspaceCwd }))
     return tab.id
   },
 
@@ -131,7 +137,7 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
     if (next.length === 0) {
       // Uygulama hiç boş kalmasın: default profile ile yeni tab aç.
       const { settings, shells } = useSettingsStore.getState()
-      const tab = makeTab(resolveDefaultProfileId(settings, shells))
+      const tab = makeTab(resolveDefaultProfileId(settings, shells), get().workspaceCwd)
       set({ tabs: [tab], activeTabId: tab.id, splitDirection: null, splitTabIds: null, paneTree: null })
       return
     }
@@ -198,7 +204,7 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
     if (!state.activeTabId) return
     if (state.paneTree) {
       const { settings, shells } = useSettingsStore.getState()
-      const tab = makeTab(resolveDefaultProfileId(settings, shells))
+      const tab = makeTab(resolveDefaultProfileId(settings, shells), state.workspaceCwd)
       const paneTree = splitPane(state.paneTree, state.activeTabId, tab.id, direction)
       set({ tabs: [...state.tabs, tab], paneTree, splitDirection: direction, splitTabIds: paneTerminalIds(paneTree), activeTabId: tab.id })
       return
@@ -207,7 +213,7 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
     let tabs = state.tabs
     if (!second) {
       const { settings, shells } = useSettingsStore.getState()
-      second = makeTab(resolveDefaultProfileId(settings, shells))
+      second = makeTab(resolveDefaultProfileId(settings, shells), state.workspaceCwd)
       tabs = [...tabs, second]
     }
     const paneTree = buildTiledPane(tabs.map((tab) => tab.id), direction)!

@@ -2,16 +2,23 @@ import { mkdtemp, rm, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { launchDirectory } from './launchPath'
+import { parseLaunchRequest } from './launchPath'
 
 const cleanup: string[] = []
 afterEach(async () => Promise.all(cleanup.splice(0).map((path) => rm(path, { recursive: true, force: true }))))
 
-describe('launchDirectory', () => {
+describe('parseLaunchRequest', () => {
   it('accepts an existing absolute Explorer directory', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'termflow-launch-'))
     cleanup.push(dir)
-    expect(launchDirectory(['TermFlow Lite.exe', dir])).toBe(dir)
+    expect(parseLaunchRequest(['TermFlow Lite.exe', dir])).toEqual({ cwd: dir })
+  })
+
+  it('keeps the selected profile with the Explorer directory', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'termflow-launch-'))
+    cleanup.push(dir)
+    expect(parseLaunchRequest(['TermFlow Lite.exe', '--profile', 'provider:deepseek', dir]))
+      .toEqual({ cwd: dir, profileId: 'provider:deepseek' })
   })
 
   it('rejects files, switches and relative app arguments', async () => {
@@ -19,6 +26,6 @@ describe('launchDirectory', () => {
     cleanup.push(dir)
     const file = join(dir, 'file.txt')
     await writeFile(file, 'x')
-    expect(launchDirectory(['electron.exe', '.', '--flag', file])).toBeNull()
+    expect(parseLaunchRequest(['electron.exe', '.', '--flag', file])).toBeNull()
   })
 })

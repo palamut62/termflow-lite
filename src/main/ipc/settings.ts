@@ -10,13 +10,15 @@ import type { TerminalManager } from '../terminal/TerminalManager'
 export function registerSettingsIpc(
   store: SettingsStore,
   manager: TerminalManager,
-  getWindow: () => BrowserWindow | null
+  getWindow: () => BrowserWindow | null,
+  onSettingsChanged?: (settings: AppSettings) => void
 ): void {
   ipcMain.handle(IPC.SETTINGS_GET, () => store.get())
 
   ipcMain.handle(IPC.SETTINGS_SET, (_event, patch: Partial<AppSettings>) => {
     if (!patch || typeof patch !== 'object') return store.get()
     const next = store.update(patch)
+    onSettingsChanged?.(next)
     // Scrollback live: mevcut PTY'lerin ring buffer limitini hemen güncelle
     // (yeni session'lar zaten create() içinde settings.scrollback'i kullanır).
     if (typeof patch.scrollback === 'number' && Number.isFinite(patch.scrollback)) {
