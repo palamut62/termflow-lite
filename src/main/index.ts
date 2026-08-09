@@ -146,7 +146,7 @@ app.whenReady().then(() => {
   let currentShells: Awaited<ReturnType<typeof discoverShells>> = []
   const refreshContextMenu = (): void => {
     if (!app.isPackaged || !settingsStore) return
-    void syncExplorerContextMenu(process.execPath, settingsStore.get(), currentShells)
+    void syncExplorerContextMenu(process.execPath, process.resourcesPath, settingsStore.get(), currentShells)
       .catch((error) => console.warn('Explorer context menu sync failed:', error))
   }
   void discoverShells().then((shells) => {

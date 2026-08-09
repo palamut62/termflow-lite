@@ -6,5 +6,7 @@ describe('buildExplorerMenuEntries', () => {
   it('includes default, installed shells, command profiles and providers', () => {
     const entries = buildExplorerMenuEntries(DEFAULT_SETTINGS, [{ id: 'cmd', name: 'Command Prompt', kind: 'cmd', command: 'cmd.exe', args: [] }])
     expect(entries.map((entry) => entry.profileId)).toEqual(expect.arrayContaining([undefined, 'cmd', 'claude', 'codex', 'provider:deepseek']))
+    expect(entries.find((entry) => entry.profileId === 'claude')?.icon).toBe('claude')
+    expect(entries.find((entry) => entry.profileId === 'cmd')?.icon).toBe('cmd.exe')
   })
 })

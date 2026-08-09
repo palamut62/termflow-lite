@@ -118,7 +118,7 @@ module.exports = {
     {
       from: 'resources',
       to: 'resources',
-      filter: ['icon.ico', 'icon.png']
+      filter: ['icon.ico', 'icon.png', 'menu-icons/*.ico']
     }
   ],
   asarUnpack: ['**/node_modules/@lydell/node-pty*/**'],

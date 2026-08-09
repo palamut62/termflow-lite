@@ -1,5 +1,6 @@
 import { execFile } from 'child_process'
 import { promisify } from 'util'
+import { join } from 'path'
 import { mergeProfiles, providerProfileId } from '../shared/profiles'
 import type { AppSettings, ShellInfo } from '../shared/types'
 
@@ -15,13 +16,17 @@ export interface ExplorerMenuEntry {
   key: string
   label: string
   profileId?: string
+  icon?: string
 }
 
 export function buildExplorerMenuEntries(settings: AppSettings, shells: ShellInfo[]): ExplorerMenuEntry[] {
   const entries: ExplorerMenuEntry[] = [{ key: '000-default', label: 'Default Profile' }]
-  shells.forEach((item, index) => entries.push({ key: `1${String(index).padStart(2, '0')}-shell`, label: item.name, profileId: item.id }))
-  mergeProfiles(settings.profiles).forEach((item, index) => entries.push({ key: `2${String(index).padStart(2, '0')}-profile`, label: item.name, profileId: item.id }))
-  settings.providerProfiles.forEach((item, index) => entries.push({ key: `3${String(index).padStart(2, '0')}-provider`, label: item.name, profileId: providerProfileId(item.id) }))
+  shells.forEach((item, index) => entries.push({ key: `1${String(index).padStart(2, '0')}-shell`, label: item.name, profileId: item.id, icon: item.command }))
+  mergeProfiles(settings.profiles).forEach((item, index) => entries.push({
+    key: `2${String(index).padStart(2, '0')}-profile`, label: item.name, profileId: item.id,
+    icon: item.id === 'ollama-serve' ? 'ollama' : ['claude', 'codex', 'opencode'].includes(item.id) ? item.id : undefined
+  }))
+  settings.providerProfiles.forEach((item, index) => entries.push({ key: `3${String(index).padStart(2, '0')}-provider`, label: item.name, profileId: providerProfileId(item.id), icon: item.id.includes('deepseek') ? 'deepseek' : item.id.includes('openrouter') ? 'openrouter' : item.id.includes('ollama') ? 'ollama' : undefined }))
   return entries.filter((entry, index, all) => all.findIndex((item) => item.profileId === entry.profileId) === index)
 }
 
@@ -33,7 +38,7 @@ async function setValue(key: string, name: string | null, value: string): Promis
   await reg(['add', key, ...(name ? ['/v', name] : ['/ve']), '/t', 'REG_SZ', '/d', value, '/f'])
 }
 
-export async function syncExplorerContextMenu(exePath: string, settings: AppSettings, shells: ShellInfo[]): Promise<void> {
+export async function syncExplorerContextMenu(exePath: string, resourcesPath: string, settings: AppSettings, shells: ShellInfo[]): Promise<void> {
   if (process.platform !== 'win32') return
   const entries = buildExplorerMenuEntries(settings, shells)
   const existing = await execFileAsync('reg.exe', ['query', COMMAND_STORE], { windowsHide: true })
@@ -49,7 +54,10 @@ export async function syncExplorerContextMenu(exePath: string, settings: AppSett
     for (const entry of entries) {
       const key = `${parent}\\shell\\${entry.key}`
       await setValue(key, 'MUIVerb', entry.label)
-      await setValue(key, 'Icon', `${exePath},0`)
+      const bundledIcon = entry.icon && !entry.icon.includes('\\') && !entry.icon.includes('/')
+        ? join(resourcesPath, 'resources', 'menu-icons', `${entry.icon}.ico`)
+        : entry.icon
+      await setValue(key, 'Icon', bundledIcon || `${exePath},0`)
       const profileArg = entry.profileId ? ` --profile "${entry.profileId}"` : ''
       await setValue(`${key}\\command`, null, `"${exePath}"${profileArg} "%V"`)
     }
