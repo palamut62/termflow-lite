@@ -3,7 +3,7 @@
 //  - build/icon.ico (multi-size, used by electron-builder + the desktop shortcut)
 import sharp from 'sharp'
 import pngToIco from 'png-to-ico'
-import { readFileSync, writeFileSync, mkdirSync } from 'fs'
+import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 
@@ -53,5 +53,6 @@ for (const [name, [background, glyph]] of Object.entries(menuIcons)) {
     paths.push(out)
   }
   writeFileSync(join(menuDir, `${name}.ico`), await pngToIco(paths))
+  paths.forEach((path) => rmSync(path, { force: true }))
 }
 console.log('done')
