@@ -44,6 +44,7 @@ const api = {
     kill: (tabId: string): void => ipcRenderer.send(IPC.PTY_KILL, tabId),
     setMode: (tabId: string, mode: RenderMode): void => ipcRenderer.send(IPC.PTY_MODE, tabId, mode),
     restart: (tabId: string): Promise<{ pid: number } | null> => ipcRenderer.invoke(IPC.PTY_RESTART, tabId),
+    restartAt: (tabId: string, cwd: string): Promise<{ pid: number } | null> => ipcRenderer.invoke(IPC.PTY_RESTART_AT, tabId, cwd),
     buffer: (tabId: string): Promise<string> => ipcRenderer.invoke(IPC.PTY_BUFFER, tabId),
     onData: (cb: (payload: { ptyId: string; data: string }) => void): (() => void) => {
       const h = (_e: unknown, payload: { ptyId: string; data: string }): void => cb(payload)
@@ -103,7 +104,8 @@ const api = {
   },
   // ---- Clipboard ----
   clipboard: {
-    readText: (): Promise<string> => ipcRenderer.invoke(IPC.CLIPBOARD_READ)
+    readText: (): Promise<string> => ipcRenderer.invoke(IPC.CLIPBOARD_READ),
+    readPaste: (): Promise<{ kind: 'file' | 'text'; value: string }> => ipcRenderer.invoke(IPC.CLIPBOARD_READ_PASTE)
   }
 }
 

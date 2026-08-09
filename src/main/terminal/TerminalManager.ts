@@ -56,6 +56,10 @@ export class TerminalManager {
     return this.core.restart(id)
   }
 
+  restartAt(id: string, cwd: string): { pid: number } | null {
+    return this.core.restartAt(id, cwd)
+  }
+
   getBuffer(id: string): string {
     return this.core.getBuffer(id)
   }

@@ -220,4 +220,13 @@ describe('renameTab / moveTab / setTabCwd', () => {
     useTerminalStore.getState().setTabCwd(id, '/home/dev/project')
     expect(useTerminalStore.getState().tabs[0].cwd).toBe('/home/dev/project')
   })
+
+  it('changes only the selected tab working directory', () => {
+    const first = useTerminalStore.getState().addTab('powershell', true, 'C:\\first')
+    const second = useTerminalStore.getState().addTab('cmd', true, 'C:\\second')
+    useTerminalStore.getState().setTabWorkingDirectory(first, 'C:\\changed')
+    const tabs = useTerminalStore.getState().tabs
+    expect(tabs.find((tab) => tab.id === first)).toMatchObject({ cwd: 'C:\\changed', launchCwd: 'C:\\changed' })
+    expect(tabs.find((tab) => tab.id === second)).toMatchObject({ cwd: 'C:\\second', launchCwd: 'C:\\second' })
+  })
 })

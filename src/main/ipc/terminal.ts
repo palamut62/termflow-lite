@@ -74,6 +74,12 @@ export function registerTerminalIpc(manager: TerminalManager): void {
     return validId(tabId) ? manager.restart(tabId) : null
   })
 
+  ipcMain.handle(IPC.PTY_RESTART_AT, (_event, tabId: unknown, cwd: unknown) => {
+    if (!validId(tabId)) return null
+    const directory = validCwd(cwd)
+    return directory ? manager.restartAt(tabId, directory) : null
+  })
+
   ipcMain.handle(IPC.PTY_BUFFER, (_event, tabId: unknown) => {
     return validId(tabId) ? manager.getBuffer(tabId) : ''
   })

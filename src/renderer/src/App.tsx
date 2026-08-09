@@ -10,7 +10,6 @@ import { CommandHistory } from './components/CommandHistory'
 import { useCommandHistoryStore } from './store/commandHistoryStore'
 import { TaskPalette } from './components/TaskPalette'
 import { useTaskPaletteStore } from './store/taskPaletteStore'
-import { AgentWorkPanel } from './components/AgentWorkPanel'
 import { AgentSessions } from './components/AgentSessions'
 import { useAgentSessionStore } from './store/agentSessionStore'
 import type { PaneNode } from './paneUtils'
@@ -201,7 +200,6 @@ export default function App(): React.JSX.Element {
           ? <PaneRenderer pane={paneTree} path={[]} activeTabId={activeTabId} />
           : tabs.map((tab) => <TerminalView key={tab.id} tabId={tab.id} active={tab.id === activeTabId} />)}
       </div>
-      <AgentWorkPanel />
       <StatusBar />
       {historyOpen && <CommandHistory />}
       {agentSessionsOpen && <AgentSessions />}

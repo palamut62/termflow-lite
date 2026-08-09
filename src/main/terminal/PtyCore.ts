@@ -94,6 +94,7 @@ export class PtyCore {
       this.onData(managed, data)
     })
     proc.onExit(({ exitCode }) => {
+      if (this.terminals.get(id) !== managed) return
       managed.exited = true
       managed.exitCode = exitCode
       this.flush(managed, true)
@@ -223,6 +224,14 @@ export class PtyCore {
     const t = this.terminals.get(id)
     if (!t) return null
     const input = t.input
+    this.kill(id)
+    return this.create(id, input)
+  }
+
+  restartAt(id: string, cwd: string): { pid: number } | null {
+    const terminal = this.terminals.get(id)
+    if (!terminal) return null
+    const input = { ...terminal.input, cwd }
     this.kill(id)
     return this.create(id, input)
   }

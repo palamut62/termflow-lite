@@ -9,6 +9,7 @@ export const IPC = {
   PTY_KILL: 'pty:kill', // (tabId)
   PTY_MODE: 'pty:mode', // (tabId, mode)
   PTY_RESTART: 'pty:restart', // (tabId) -> { pid } | null
+  PTY_RESTART_AT: 'pty:restart-at', // (tabId, cwd) -> { pid } | null
   PTY_BUFFER: 'pty:buffer', // (tabId) -> string
   PTY_DATA: 'pty:data', // main -> renderer { ptyId, data }
   PTY_EXIT: 'pty:exit', // main -> renderer { ptyId, exitCode, durationMs }
@@ -17,6 +18,7 @@ export const IPC = {
   SETTINGS_GET: 'settings:get', // -> AppSettings
   SETTINGS_SET: 'settings:set', // (patch) -> AppSettings
   CLIPBOARD_READ: 'clipboard:read', // -> string (sandboxed renderer paste fallback)
+  CLIPBOARD_READ_PASTE: 'clipboard:read-paste', // -> copied file path or text
   WINDOW_TITLEBAR_OVERLAY: 'window:titlebar-overlay', // (TitleBarOverlayPayload) — Windows only
   DIALOG_OPEN_DIR: 'dialog:open-dir',
   GIT_STATUS: 'git:status',

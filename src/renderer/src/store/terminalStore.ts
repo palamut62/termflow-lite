@@ -63,6 +63,7 @@ interface TerminalState {
   /** Reorder (Faz 7'de sürükleme; store şimdi hazır). */
   moveTab(id: string, toIndex: number): void
   setTabCwd(id: string, cwd: string): void
+  setTabWorkingDirectory(id: string, cwd: string): void
   splitActive(direction: 'vertical' | 'horizontal'): void
   setSplitDirection(direction: 'vertical' | 'horizontal'): void
   closeSplit(): void
@@ -197,6 +198,10 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
 
   setTabCwd(id, cwd) {
     set((s) => ({ tabs: s.tabs.map((t) => (t.id === id ? { ...t, cwd } : t)) }))
+  },
+
+  setTabWorkingDirectory(id, cwd) {
+    set((s) => ({ tabs: s.tabs.map((t) => (t.id === id ? { ...t, cwd, launchCwd: cwd } : t)) }))
   },
 
   splitActive(direction) {

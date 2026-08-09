@@ -151,6 +151,44 @@ test('pastes into the terminal with Ctrl+V', async () => {
   await expect(terminal).toContainText('CTRL_V_OK', { timeout: 10000 })
 })
 
+test('pastes a copied Windows file as its full path', async () => {
+  const cwd = mkdtempSync(join(tmpdir(), 'termflow-clipboard-file-'))
+  cleanupDirectories.push(cwd)
+  const file = join(cwd, 'copied file.txt')
+  writeFileSync(file, 'clipboard path test')
+  await app.evaluate(({ clipboard }, filePath) => {
+    clipboard.writeBuffer('FileNameW', Buffer.from(`${filePath}\0`, 'utf16le'))
+  }, file)
+  const terminal = win.locator('.terminal-view').first()
+  await terminal.click()
+  await win.keyboard.type('Write-Output ')
+  await win.keyboard.press('Control+V')
+  await win.keyboard.press('Enter')
+  await expect(terminal).toContainText(file, { timeout: 10000 })
+})
+
+test('shows per-pane session details and changes only that pane directory', async () => {
+  const secondCwd = mkdtempSync(join(tmpdir(), 'termflow-pane-second-'))
+  const changedCwd = mkdtempSync(join(tmpdir(), 'termflow-pane-changed-'))
+  cleanupDirectories.push(secondCwd, changedCwd)
+
+  await win.click('.new-tab-caret')
+  await win.getByRole('menuitem', { name: 'Open at folder...' }).click()
+  await win.fill('#path-launch-cwd', secondCwd)
+  await win.getByRole('button', { name: 'Open', exact: true }).click()
+  await win.getByRole('button', { name: 'Split terminal right' }).click()
+  const panels = win.locator('.pane-leaf .agent-work-panel')
+  await expect(panels).toHaveCount(2)
+  await expect(panels.nth(1)).toContainText(secondCwd)
+
+  await panels.nth(0).locator('.agent-work-cwd').click()
+  const dialog = win.getByRole('dialog', { name: /Change working directory/ })
+  await dialog.getByLabel('Folder path').fill(changedCwd)
+  await dialog.getByRole('button', { name: 'Change and restart' }).click()
+  await expect(panels.nth(0)).toContainText(changedCwd)
+  await expect(panels.nth(1)).toContainText(secondCwd)
+})
+
 test('shows configured providers in the new tab menu', async () => {
   await win.click('.new-tab-caret')
   await expect(win.getByRole('menu').getByText('Providers', { exact: true })).toBeVisible()
@@ -300,7 +338,7 @@ test('smart status bar shows git branch and changed files for the active folder'
   await win.fill('#path-launch-cwd', cwd)
   await win.getByRole('button', { name: 'Open', exact: true }).click()
   await expect(win.locator('.status-git')).toContainText('status-test (1)', { timeout: 10000 })
-  await expect(win.locator('.status-process')).toContainText('Running')
+  await expect(win.locator('.terminal-view:not(.inactive) .status-process')).toContainText('Running')
 })
 
 test('captures, searches and reruns command history', async () => {

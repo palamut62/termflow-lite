@@ -11,6 +11,7 @@ import { resolveTheme } from '../themes/themes'
 import { formatDroppedPaths } from './dropPaths'
 import { TerminalContextMenu } from './TerminalContextMenu'
 import { TerminalSearch } from './TerminalSearch'
+import { AgentWorkPanel } from '../components/AgentWorkPanel'
 
 interface Props {
   tabId: string
@@ -47,8 +48,9 @@ function copySelection(term: Terminal): void {
 
 /** Panoyu okuyup xterm'e yapıştır — tek yol preload IPC (sandbox uyumlu). */
 function pasteFromClipboard(term: Terminal): void {
-  void window.termflow.clipboard.readText().then((text) => {
-    if (text) term.paste(text)
+  void window.termflow.clipboard.readPaste().then(({ kind, value }) => {
+    if (!value) return
+    term.paste(kind === 'file' ? `"${value.replace(/"/g, '\\"')}"` : value)
   })
 }
 
@@ -428,6 +430,22 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
     })
   }
 
+  const handleChangeCwd = async (cwd: string): Promise<boolean> => {
+    try {
+      const result = await window.termflow.pty.restartAt(tabId, cwd)
+      if (!result) return false
+      setExited(null)
+      termRef.current?.reset()
+      useTerminalStore.getState().setTabWorkingDirectory(tabId, cwd)
+      useTerminalStore.getState().setTabActivity(tabId, 'running')
+      window.termflow.pty.resize(tabId, lastSizeRef.current.cols, lastSizeRef.current.rows)
+      termRef.current?.focus()
+      return true
+    } catch {
+      return false
+    }
+  }
+
   const handleCloseTab = (): void => {
     useTerminalStore.getState().requestCloseTab(tabId)
   }
@@ -496,6 +514,7 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
       onDrop={handleDrop}
     >
       <div ref={hostRef} className="terminal-host" />
+      <AgentWorkPanel tabId={tabId} onChangeCwd={handleChangeCwd} />
       {uiSearchTabId === tabId && (
         <TerminalSearch
           tabId={tabId}
