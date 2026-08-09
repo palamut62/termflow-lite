@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Bot, CircleDot, Folder, GitBranch, ShieldCheck, TerminalSquare } from 'lucide-react'
+import { Bot, CircleDot, Clock3, Command, Folder, GitBranch, ShieldCheck, TerminalSquare } from 'lucide-react'
 import type { GitStatus } from '../../../shared/ipc'
 import { mergeProfiles, providerFromProfileId } from '../../../shared/profiles'
 import { useSettingsStore } from '../store/settingsStore'
 import { useTerminalStore } from '../store/terminalStore'
+import { useCommandHistoryStore } from '../store/commandHistoryStore'
+import { useTaskPaletteStore } from '../store/taskPaletteStore'
 
 export function StatusBar(): React.JSX.Element {
   const tabs = useTerminalStore((s) => s.tabs)
@@ -17,6 +19,15 @@ export function StatusBar(): React.JSX.Element {
   const fullPermissions = provider
     ? provider.fullPermissions !== false
     : !!profile?.startupCommand && profile.fullPermissions !== false
+  const activityLabel = active?.activity === 'waiting'
+    ? 'Waiting'
+    : active?.activity === 'unread'
+      ? 'New output'
+      : active?.activity === 'completed'
+        ? 'Completed'
+        : active?.activity === 'error'
+          ? 'Error'
+          : 'Running'
 
   useEffect(() => {
     let current = true
@@ -40,9 +51,11 @@ export function StatusBar(): React.JSX.Element {
   return (
     <footer className="status-bar" aria-label="Terminal status">
       <span className="status-item"><TerminalSquare size={12} />{active?.title ?? 'Terminal'}</span>
-      <span className={`status-item status-process${active?.running ? ' status-process-running' : ''}`} title={active?.running ? 'Process running' : 'Process stopped'}><CircleDot size={12} />{active?.running ? 'Running' : 'Stopped'}</span>
+      <span className={`status-item status-process status-activity-${active?.activity ?? 'completed'}`} title={`Process activity: ${activityLabel}`}><CircleDot size={12} />{activityLabel}</span>
       {provider && <span className="status-item" title={`Active provider model: ${provider.model}`}><Bot size={12} />{provider.model}</span>}
       {fullPermissions && <span className="status-item status-full" title="This command profile launches with full permissions"><ShieldCheck size={12} />FULL</span>}
+      <button className="status-action" onClick={() => useCommandHistoryStore.getState().show()} title="Command history (Ctrl+Shift+H)"><Clock3 size={12} />History</button>
+      <button className="status-action" onClick={() => useTaskPaletteStore.getState().show()} title="Command palette (Ctrl+Shift+P)"><Command size={12} />Commands</button>
       <span className="status-spacer" />
       {git && <span className="status-item status-git" title={`${git.changedFiles} changed file${git.changedFiles === 1 ? '' : 's'}`}><GitBranch size={12} />{git.branch}{git.changedFiles > 0 ? ` (${git.changedFiles})` : ''}</span>}
       <span className="status-item status-cwd" title={cwd}><Folder size={12} />{cwd || 'Ready'}</span>

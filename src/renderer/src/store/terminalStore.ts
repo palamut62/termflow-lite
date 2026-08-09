@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { nanoid } from 'nanoid'
 import type { SearchAddon } from '@xterm/addon-search'
-import type { TerminalTab } from '../../../shared/types'
+import type { TabActivity, TerminalTab } from '../../../shared/types'
 import { mergeProfiles, providerFromProfileId } from '../../../shared/profiles'
 import { resolveDefaultProfileId, useSettingsStore } from './settingsStore'
 
@@ -30,7 +30,7 @@ function tabTitleFor(profileId: string): string {
 }
 
 function makeTab(profileId: string, cwd?: string): TerminalTab {
-  return { id: nanoid(10), title: tabTitleFor(profileId), profileId, running: true, cwd, launchCwd: cwd }
+  return { id: nanoid(10), title: tabTitleFor(profileId), profileId, running: true, activity: 'running', cwd, launchCwd: cwd }
 }
 
 interface TerminalState {
@@ -51,6 +51,7 @@ interface TerminalState {
   setActiveTab(id: string): void
   renameTab(id: string, title: string): void
   setTabRunning(id: string, running: boolean): void
+  setTabActivity(id: string, activity: TabActivity): void
   /** Reorder (Faz 7'de sürükleme; store şimdi hazır). */
   moveTab(id: string, toIndex: number): void
   setTabCwd(id: string, cwd: string): void
@@ -117,7 +118,10 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
 
   setActiveTab(id) {
     if (!get().tabs.some((t) => t.id === id)) return
-    set({ activeTabId: id })
+    set((s) => ({
+      activeTabId: id,
+      tabs: s.tabs.map((tab) => tab.id === id && tab.activity === 'unread' ? { ...tab, activity: 'running' } : tab)
+    }))
   },
 
   renameTab(id, title) {
@@ -125,7 +129,15 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
   },
 
   setTabRunning(id, running) {
-    set((s) => ({ tabs: s.tabs.map((t) => (t.id === id ? { ...t, running } : t)) }))
+    set((s) => ({ tabs: s.tabs.map((t) => (t.id === id ? { ...t, running, activity: running ? 'running' : 'completed' } : t)) }))
+  },
+
+  setTabActivity(id, activity) {
+    set((s) => ({
+      tabs: s.tabs.map((tab) => tab.id === id && tab.activity !== activity
+        ? { ...tab, activity, running: activity !== 'completed' && activity !== 'error' }
+        : tab)
+    }))
   },
 
   moveTab(id, toIndex) {

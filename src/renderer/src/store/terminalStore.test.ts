@@ -158,6 +158,17 @@ describe('closeTab', () => {
 })
 
 describe('renameTab / moveTab / setTabCwd', () => {
+  it('tracks process activity and clears unread output on selection', () => {
+    const first = useTerminalStore.getState().addTab('bash')
+    useTerminalStore.getState().addTab('sh')
+    useTerminalStore.getState().setTabActivity(first, 'unread')
+    expect(useTerminalStore.getState().tabs[0].activity).toBe('unread')
+    useTerminalStore.getState().setActiveTab(first)
+    expect(useTerminalStore.getState().tabs[0].activity).toBe('running')
+    useTerminalStore.getState().setTabActivity(first, 'error')
+    expect(useTerminalStore.getState().tabs[0]).toMatchObject({ activity: 'error', running: false })
+  })
+
   it('renames a tab in place', () => {
     const id = useTerminalStore.getState().addTab('bash')
     useTerminalStore.getState().renameTab(id, 'My Shell')

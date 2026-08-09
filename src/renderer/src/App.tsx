@@ -6,6 +6,10 @@ import { TabBar } from './tabs/TabBar'
 import { TerminalView } from './terminal/TerminalView'
 import { Settings } from './settings/Settings'
 import { StatusBar } from './components/StatusBar'
+import { CommandHistory } from './components/CommandHistory'
+import { useCommandHistoryStore } from './store/commandHistoryStore'
+import { TaskPalette } from './components/TaskPalette'
+import { useTaskPaletteStore } from './store/taskPaletteStore'
 import { matchShortcut } from './shortcuts'
 
 // StrictMode double-mounts effects in dev — the boot sequence must run once.
@@ -19,6 +23,8 @@ export default function App(): React.JSX.Element {
   const tabs = useTerminalStore((s) => s.tabs)
   const activeTabId = useTerminalStore((s) => s.activeTabId)
   const pendingCloseTabId = useTerminalStore((s) => s.pendingCloseTabId)
+  const historyOpen = useCommandHistoryStore((s) => s.open)
+  const taskPaletteOpen = useTaskPaletteStore((s) => s.open)
 
   // Boot: settings + shells yükle, sonra default profile ile ilk tab'ı aç.
   useEffect(() => {
@@ -42,6 +48,24 @@ export default function App(): React.JSX.Element {
       // bağlamalar ayarları düzenlerken tab kapatabilir (KeyboardSettings
       // kayıt modu zaten document capture'da yakalayıp yutar).
       if (useSettingsStore.getState().settingsOpen) return
+      if (e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey && e.key.toLowerCase() === 'p') {
+        useTaskPaletteStore.getState().toggle()
+        e.preventDefault()
+        e.stopPropagation()
+        return
+      }
+      if (e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey && e.key.toLowerCase() === 'h') {
+        useCommandHistoryStore.getState().toggle()
+        e.preventDefault()
+        e.stopPropagation()
+        return
+      }
+      if (e.key === 'Escape' && useCommandHistoryStore.getState().open) {
+        useCommandHistoryStore.getState().hide()
+        e.preventDefault()
+        e.stopPropagation()
+        return
+      }
       const action = matchShortcut(e, useSettingsStore.getState().settings.shortcuts)
       if (!action) return
 
@@ -142,6 +166,8 @@ export default function App(): React.JSX.Element {
         ))}
       </div>
       <StatusBar />
+      {historyOpen && <CommandHistory />}
+      {taskPaletteOpen && <TaskPalette />}
       {settingsOpen && <Settings />}
       {pendingCloseTabId && <CloseTabConfirm />}
     </div>

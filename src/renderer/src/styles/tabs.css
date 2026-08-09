@@ -262,11 +262,16 @@
   opacity: 0.28;
 }
 
-.tab-process-running {
+.tab-activity-running {
   background: var(--accent-color);
   opacity: 0.9;
   animation: tab-process-pulse 1.6s ease-in-out infinite;
 }
+
+.tab-activity-waiting { background: var(--term-yellow); opacity: 1; animation: tab-process-pulse 1.15s ease-in-out infinite; }
+.tab-activity-unread { background: var(--term-blue); opacity: 1; box-shadow: 0 0 0 2px color-mix(in srgb, var(--term-blue) 20%, transparent); }
+.tab-activity-completed { background: var(--tab-inactive-foreground); opacity: 0.5; }
+.tab-activity-error { background: var(--term-red); opacity: 1; }
 
 @keyframes tab-process-pulse {
   0%, 100% { transform: scale(0.72); opacity: 0.45; }
@@ -274,7 +279,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tab-process-running { animation: none; }
+  .tab-activity-running,
+  .tab-activity-waiting { animation: none; }
 }
 
 .new-tab-menu::-webkit-scrollbar {

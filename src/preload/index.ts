@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
-import { IPC, type GitStatus, type TitleBarOverlayPayload } from '../shared/ipc'
+import { IPC, type GitStatus, type ProjectTask, type TitleBarOverlayPayload } from '../shared/ipc'
 import type { AppSettings, RenderMode, ShellInfo } from '../shared/types'
 
 // Windows OS build number (e.g. 26200 for current Win11). xterm's windowsPty
@@ -76,6 +76,9 @@ const api = {
   },
   git: {
     status: (cwd: string): Promise<GitStatus | null> => ipcRenderer.invoke(IPC.GIT_STATUS, cwd)
+  },
+  tasks: {
+    discover: (cwd: string): Promise<ProjectTask[]> => ipcRenderer.invoke(IPC.TASKS_DISCOVER, cwd)
   },
   // ---- Window ----
   window: {

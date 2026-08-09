@@ -1,6 +1,7 @@
 // Shared data models between main and renderer (TermFlow Lite, PRD §14)
 
 export type ShellKind = 'powershell' | 'pwsh' | 'cmd' | 'wsl' | 'gitbash' | 'custom'
+export type TabActivity = 'running' | 'waiting' | 'unread' | 'completed' | 'error'
 
 export interface TerminalTab {
   id: string
@@ -8,6 +9,7 @@ export interface TerminalTab {
   profileId: string
   /** True while the tab's PTY process is alive. */
   running: boolean
+  activity: TabActivity
   cwd?: string
   /** Immutable working directory override used only for the initial spawn. */
   launchCwd?: string

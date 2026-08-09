@@ -8,13 +8,16 @@ TermFlow Lite opens straight into a terminal — no welcome screens, no setup wi
 
 - **Fast startup** - opens directly into your default shell profile; no welcome screen or onboarding
 - **Tabs** - create, close, and switch between tabs with `Ctrl+Shift+T/W` and `Ctrl+Tab`
+- **Tab activity** - live process state at a glance: running, waiting for input, background output, completed, or failed
 - **Cross-platform** - Windows (10/11 x64) and Linux (x64) support
 - **8 themes** - Dark, Light, Dracula, Nord, Tokyo Night, Catppuccin Mocha, Gruvbox, plus a Custom theme editor for your own palette
 - **Shell profiles** - PowerShell, CMD, WSL, and Git Bash out of the box, plus fully custom profiles
 - **CLI agents and providers** - launch Claude Code, Codex, OpenCode, Ollama, DeepSeek, OpenRouter, or your own provider profile
 - **Open at folder** - choose any shell, agent, custom profile, or provider and start it directly in a selected path
 - **Controlled full permissions** - command and provider profiles default to full access; permission mode and CLI-specific flags remain editable in Settings
-- **Simple status bar** - see the active profile, full-access state, current directory, and tab count without visual clutter
+- **Smart status bar** - see process activity, provider model, Git branch and changes, full-access state, current directory, and tab count without visual clutter
+- **Command history** - search commands across folders and profiles, rerun them in the active terminal, or clear saved history with `Ctrl+Shift+H`
+- **Task and command palette** - discover `package.json` scripts and run project, Git, npm, or Docker tasks with `Ctrl+Shift+P`
 - **Keyboard shortcuts** - every action is bound to a key; rebind them in Settings
 - **Terminal search** - find anything in the current buffer with `Ctrl+Shift+F`
 - **Right-click menu & copy-paste** - context menu with copy/paste (or configure right-click to paste directly)
@@ -39,6 +42,8 @@ Defaults (rebindable in Settings > Keyboard):
 | `Ctrl+Shift+W` | Close tab |
 | `Ctrl+Tab` | Next tab |
 | `Ctrl+Shift+Tab` | Previous tab |
+| `Ctrl+Shift+H` | Command history |
+| `Ctrl+Shift+P` | Task and command palette |
 | `Ctrl+Shift+F` | Search terminal |
 | `Ctrl+,` | Open settings |
 | `Ctrl+=` / `Ctrl+-` | Increase / decrease font size |

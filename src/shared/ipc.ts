@@ -19,7 +19,8 @@ export const IPC = {
   CLIPBOARD_READ: 'clipboard:read', // -> string (sandboxed renderer paste fallback)
   WINDOW_TITLEBAR_OVERLAY: 'window:titlebar-overlay', // (TitleBarOverlayPayload) — Windows only
   DIALOG_OPEN_DIR: 'dialog:open-dir',
-  GIT_STATUS: 'git:status'
+  GIT_STATUS: 'git:status',
+  TASKS_DISCOVER: 'tasks:discover'
 } as const
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC]
@@ -69,6 +70,13 @@ export interface SettingsPatch extends Partial<AppSettings> {}
 export interface GitStatus {
   branch: string
   changedFiles: number
+}
+
+export interface ProjectTask {
+  id: string
+  label: string
+  command: string
+  source: 'package.json'
 }
 
 /** Windows Controls Overlay renkleri/yüksekliği (#rrggbb — PRD §68). */

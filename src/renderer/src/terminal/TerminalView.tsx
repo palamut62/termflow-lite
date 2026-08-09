@@ -6,6 +6,7 @@ import { SearchAddon } from '@xterm/addon-search'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { resolveDefaultProfileId, useSettingsStore } from '../store/settingsStore'
 import { dataHandlers, exitHandlers, searchAddons, useTerminalStore } from '../store/terminalStore'
+import { useCommandHistoryStore } from '../store/commandHistoryStore'
 import { resolveTheme } from '../themes/themes'
 import { formatDroppedPaths } from './dropPaths'
 import { TerminalContextMenu } from './TerminalContextMenu'
@@ -120,12 +121,22 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
     let disposed = false
     let ready = false
     const queue: string[] = []
+    let recentOutput = ''
+    let inputBuffer = ''
+    let capturingCommand = false
     lastSizeRef.current = { cols: term.cols, rows: term.rows }
 
     // Data stream: buffer rehydration + live chunks (queue pattern — race yok).
     const onDataHandler = (data: string): void => {
       if (ready) term.write(data)
       else queue.push(data)
+      recentOutput = (recentOutput + data).replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '').slice(-256)
+      const activity = !activeRef.current
+        ? 'unread'
+        : /(?:[A-Za-z]:\\[^\r\n]*>|[$#>❯])\s*$/.test(recentOutput)
+          ? 'waiting'
+          : 'running'
+      useTerminalStore.getState().setTabActivity(tabId, activity)
     }
     dataHandlers.set(tabId, onDataHandler)
 
@@ -133,7 +144,7 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
       // Sarımsı mesaj terminal içine, butonlar overlay'de (PRD §74).
       term.write(`\r\n\x1b[33mProcess exited with code ${exitCode}\x1b[0m\r\n`)
       setExited({ exitCode, durationMs })
-      useTerminalStore.getState().setTabRunning(tabId, false)
+      useTerminalStore.getState().setTabActivity(tabId, exitCode === 0 ? 'completed' : 'error')
     }
     exitHandlers.set(tabId, onExitHandler)
 
@@ -235,6 +246,36 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
     // Forward input to the PTY only while this tab is the active one.
     const dataSub = term.onData((data) => {
       if (!activeRef.current) return
+      const tab = useTerminalStore.getState().tabs.find((item) => item.id === tabId)
+      const cursorLine = term.buffer.active.getLine(term.buffer.active.cursorY)?.translateToString(true) ?? ''
+      const sensitivePrompt = /(?:password|passphrase|token|secret|api[_ -]?key)[^\r\n]*:\s*$/i.test(cursorLine)
+      if (!capturingCommand && !sensitivePrompt && !data.startsWith('\x1b')) capturingCommand = true
+      if (capturingCommand) {
+        if (data === '\x03' || data.startsWith('\x1b')) {
+          inputBuffer = ''
+          capturingCommand = false
+        }
+        for (const char of capturingCommand ? data : '') {
+          if (char === '\r' || char === '\n') {
+            const command = inputBuffer.trim()
+            if (command && tab) {
+              useCommandHistoryStore.getState().add({
+                command,
+                cwd: tab.cwd || tab.launchCwd || '',
+                profileId: tab.profileId,
+                profileName: tab.title
+              })
+            }
+            inputBuffer = ''
+            capturingCommand = false
+          } else if (char === '\x7f' || char === '\b') {
+            inputBuffer = inputBuffer.slice(0, -1)
+          } else if (char >= ' ' && char !== '\x7f') {
+            inputBuffer += char
+          }
+        }
+      }
+      useTerminalStore.getState().setTabActivity(tabId, 'running')
       window.termflow.pty.write(tabId, data)
     })
 
@@ -269,6 +310,7 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
     // PRD: bell — ayar açıkken kısa görsel flash (ek dependency yok).
     let bellTimer: ReturnType<typeof setTimeout> | null = null
     const bellSub = term.onBell(() => {
+      useTerminalStore.getState().setTabActivity(tabId, activeRef.current ? 'waiting' : 'unread')
       if (!useSettingsStore.getState().settings.bell) return
       host.classList.remove('bell-flash')
       // reflow: aynı sınıfın animasyonu üst üste gelen bell'lerde de yeniden başlasın
@@ -372,7 +414,7 @@ export function TerminalView({ tabId, active }: Props): React.JSX.Element {
     const term = termRef.current
     void window.termflow.pty.restart(tabId).then((res) => {
       if (!res) return
-      useTerminalStore.getState().setTabRunning(tabId, true)
+      useTerminalStore.getState().setTabActivity(tabId, 'running')
       term?.reset() // clear the view; fresh output streams through the handlers
       window.termflow.pty.resize(tabId, lastSizeRef.current.cols, lastSizeRef.current.rows)
     })

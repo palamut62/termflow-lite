@@ -12,6 +12,7 @@ import { registerClipboardIpc } from './ipc/clipboard'
 import { registerWindowIpc } from './ipc/window'
 import { registerDialogIpc } from './ipc/dialog'
 import { registerGitIpc } from './ipc/git'
+import { registerTasksIpc } from './ipc/tasks'
 
 // Dev: project resources/. Packaged: extraResources under process.resourcesPath.
 const APP_ICON = app.isPackaged
@@ -144,6 +145,7 @@ app.whenReady().then(() => {
   registerWindowIpc(() => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null))
   registerDialogIpc(() => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null))
   registerGitIpc()
+  registerTasksIpc()
 
   createWindow()
 

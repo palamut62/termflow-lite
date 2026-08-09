@@ -175,9 +175,28 @@ test('shows the simple status bar', async () => {
 
 test('shows an animated indicator while a tab process is running', async () => {
   const indicator = win.locator('.tab-active .tab-process-indicator')
-  await expect(indicator).toHaveClass(/tab-process-running/)
+  await expect(indicator).toHaveClass(/tab-activity-(running|waiting)/)
   const animationName = await indicator.evaluate((element) => getComputedStyle(element).animationName)
   expect(animationName).toBe('tab-process-pulse')
+})
+
+test('marks background output as unread and clears it when selected', async () => {
+  const firstTab = win.locator('.tab').first()
+  await win.locator('.terminal-view').first().click()
+  await win.keyboard.type(`node -e "setTimeout(()=>console.log('BACKGROUND_OUTPUT'),500)"`)
+  await win.keyboard.press('Enter')
+  await win.click('.new-tab-btn')
+  await expect(firstTab.locator('.tab-process-indicator')).toHaveClass(/tab-activity-unread/, { timeout: 10000 })
+  await firstTab.click()
+  await expect(firstTab.locator('.tab-process-indicator')).toHaveClass(/tab-activity-running/)
+})
+
+test('marks a failed terminal process as error', async () => {
+  const terminal = win.locator('.terminal-view').first()
+  await terminal.click()
+  await win.keyboard.type('exit 7')
+  await win.keyboard.press('Enter')
+  await expect(win.locator('.tab').first().locator('.tab-process-indicator')).toHaveClass(/tab-activity-error/, { timeout: 10000 })
 })
 
 test('smart status bar shows git branch and changed files for the active folder', async () => {
@@ -191,6 +210,39 @@ test('smart status bar shows git branch and changed files for the active folder'
   await win.getByRole('button', { name: 'Open', exact: true }).click()
   await expect(win.locator('.status-git')).toContainText('status-test (1)', { timeout: 10000 })
   await expect(win.locator('.status-process')).toContainText('Running')
+})
+
+test('captures, searches and reruns command history', async () => {
+  const terminal = win.locator('.terminal-view').first()
+  await terminal.click()
+  await win.waitForTimeout(400)
+  await win.keyboard.type('echo HISTORY_MARKER')
+  await win.keyboard.press('Enter')
+  await expect(terminal).toContainText('HISTORY_MARKER')
+  await win.keyboard.press('Control+Shift+H')
+  const history = win.getByRole('complementary', { name: 'Command history' })
+  await expect(history).toBeVisible()
+  await expect(history.getByText('echo HISTORY_MARKER', { exact: true })).toBeVisible()
+  await history.getByPlaceholder('Search commands, folders...').fill('HISTORY_MARKER')
+  await history.getByTitle('Run in active terminal').click()
+  await expect(history).toBeHidden()
+  await expect(terminal).toContainText('HISTORY_MARKER')
+})
+
+test('discovers and runs package scripts from the command palette', async () => {
+  const cwd = mkdtempSync(join(tmpdir(), 'termflow-lite-palette-'))
+  cleanupDirectories.push(cwd)
+  writeFileSync(join(cwd, 'package.json'), JSON.stringify({ scripts: { 'palette-test': `node -e "console.log('PALETTE_TASK_OK')"` } }))
+  await win.click('.new-tab-caret')
+  await win.getByRole('menuitem', { name: 'Open at folder...' }).click()
+  await win.fill('#path-launch-cwd', cwd)
+  await win.getByRole('button', { name: 'Open', exact: true }).click()
+  await win.keyboard.press('Control+Shift+P')
+  const palette = win.getByRole('dialog', { name: 'Command palette' })
+  await expect(palette).toBeVisible()
+  await palette.getByPlaceholder('Type a task or command...').fill('palette-test')
+  await palette.getByText('npm: palette-test', { exact: true }).click()
+  await expect(win.locator('.terminal-view').last()).toContainText('PALETTE_TASK_OK', { timeout: 15000 })
 })
 
 test('choosing a theme changes --terminal-background', async () => {
