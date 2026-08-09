@@ -3,7 +3,7 @@ import type { ElectronApplication, Page } from '@playwright/test'
 import { execFileSync } from 'child_process'
 import { mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
-import { join } from 'path'
+import { join, resolve } from 'path'
 
 /**
  * E2E suite (PRD §75) against the production build. `npm run test:e2e` builds
@@ -15,6 +15,7 @@ import { join } from 'path'
 let app: ElectronApplication
 let win: Page
 let cleanupDirectories: string[] = []
+let e2eUserData = ''
 
 const contextMenuCases = [
   ['powershell', 'PowerShell'], ['cmd', 'Command Prompt'], ['gitbash', 'Git Bash'], ['wsl-ubuntu', 'Ubuntu'],
@@ -24,6 +25,8 @@ const contextMenuCases = [
 
 test.beforeEach(async ({}, testInfo) => {
   cleanupDirectories = []
+  e2eUserData = mkdtempSync(join(tmpdir(), 'termflow-e2e-user-data-'))
+  cleanupDirectories.push(e2eUserData)
   const contextCase = contextMenuCases.find(([id]) => testInfo.title === `Explorer menu opens ${id}`)
   const args = ['.', '--no-sandbox']
   if (contextCase) {
@@ -33,7 +36,7 @@ test.beforeEach(async ({}, testInfo) => {
   }
   app = await electron.launch({
     args,
-    env: { ...process.env, TERMFLOW_E2E: '1' }
+    env: { ...process.env, TERMFLOW_E2E: '1', TERMFLOW_E2E_USER_DATA: e2eUserData }
   })
   win = await app.firstWindow()
   await win.waitForSelector('.tab')
@@ -62,6 +65,25 @@ for (const [profileId, title] of contextMenuCases) {
     }
   })
 }
+
+test('existing app opens each Explorer request in a new requested-profile tab', async () => {
+  const cwd = mkdtempSync(join(tmpdir(), 'termflow-second-instance-'))
+  cleanupDirectories.push(cwd)
+  const launch = async (profileId: string): Promise<void> => {
+    await electron.launch({
+      args: [resolve('.'), '--no-sandbox', '--profile', profileId.replace('provider:', 'provider--'), cwd],
+      env: { ...process.env, TERMFLOW_E2E: '1', TERMFLOW_E2E_USER_DATA: e2eUserData }
+    }).then((secondApp) => secondApp.close()).catch(() => undefined)
+  }
+
+  await launch('provider:deepseek')
+  await expect(win.locator('.tab-title')).toHaveCount(2)
+  await expect(win.locator('.tab-title').last()).toHaveText('DeepSeek')
+  await launch('claude')
+  await expect(win.locator('.tab-title')).toHaveCount(3)
+  await expect(win.locator('.tab-title').last()).toHaveText('Claude Code')
+  await expect(win.locator('.terminal-view').last()).toContainText(/Claude Code|Accessing workspace/, { timeout: 30_000 })
+})
 
 test('new tab button adds an active second tab', async () => {
   await win.click('.new-tab-btn')

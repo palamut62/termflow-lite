@@ -29,7 +29,7 @@ const APP_ICON = app.isPackaged
 // settings.json. Must run before any userData use — including the
 // single-instance lock below.
 if (process.env.TERMFLOW_E2E === '1') {
-  app.setPath('userData', join(app.getPath('temp'), `termflow-lite-e2e-${process.pid}`))
+  app.setPath('userData', process.env.TERMFLOW_E2E_USER_DATA || join(app.getPath('temp'), `termflow-lite-e2e-${process.pid}`))
 }
 
 let mainWindow: BrowserWindow | null = null
@@ -37,6 +37,15 @@ let settingsStore: SettingsStore | null = null
 let manager: TerminalManager | null = null
 
 let initialLaunchRequest = parseLaunchRequest(process.argv)
+const pendingLaunchRequests: NonNullable<ReturnType<typeof parseLaunchRequest>>[] = []
+let launchListenerReady = false
+
+function flushLaunchRequests(): void {
+  if (!launchListenerReady || !mainWindow || mainWindow.isDestroyed()) return
+  while (pendingLaunchRequests.length > 0) {
+    mainWindow.webContents.send(IPC.APP_OPEN_PATH, pendingLaunchRequests.shift())
+  }
+}
 
 function showMainWindow(): void {
   if (!mainWindow || mainWindow.isDestroyed()) createWindow()
@@ -48,14 +57,23 @@ function showMainWindow(): void {
 
 // Single-instance: focus the existing window instead of spawning a second
 // process that would fight over the userData/cache locks.
-const gotLock = app.requestSingleInstanceLock()
+const gotLock = app.requestSingleInstanceLock({ launchRequest: initialLaunchRequest })
 if (!gotLock) {
   app.quit()
 } else {
-  app.on('second-instance', (_event, argv) => {
-    const request = parseLaunchRequest(argv)
+  app.on('second-instance', (_event, argv, _workingDirectory, additionalData) => {
+    const forwarded = (additionalData as { launchRequest?: unknown } | undefined)?.launchRequest
+    const launchData = forwarded && typeof forwarded === 'object' ? forwarded as { cwd?: unknown; profileId?: unknown } : null
+    const request = launchData && typeof launchData.cwd === 'string'
+      ? parseLaunchRequest([
+          process.execPath,
+          ...(typeof launchData.profileId === 'string' ? ['--profile', launchData.profileId] : []),
+          launchData.cwd
+        ])
+      : parseLaunchRequest(argv)
     showMainWindow()
-    if (request && mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(IPC.APP_OPEN_PATH, request)
+    if (request) pendingLaunchRequests.push(request)
+    flushLaunchRequests()
   })
 }
 
@@ -96,6 +114,7 @@ function createWindow(): void {
 
   mainWindow.once('ready-to-show', reveal)
   mainWindow.webContents.once('did-finish-load', reveal)
+  mainWindow.webContents.on('did-start-loading', () => { launchListenerReady = false })
   setTimeout(reveal, 3000)
 
   mainWindow.on('closed', () => {
@@ -172,6 +191,10 @@ app.whenReady().then(() => {
     const request = initialLaunchRequest
     initialLaunchRequest = null
     return request
+  })
+  ipcMain.on(IPC.APP_LAUNCH_READY, () => {
+    launchListenerReady = true
+    flushLaunchRequests()
   })
 
   createWindow()

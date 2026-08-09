@@ -6,8 +6,9 @@ const PROFILE_ID = /^[a-zA-Z0-9:_-]{1,160}$/
 
 /** Parse the directory and optional profile selected in Explorer's context menu. */
 export function parseLaunchRequest(argv: string[]): AppLaunchRequest | null {
-  const profileIndex = argv.indexOf('--profile')
-  const candidate = profileIndex >= 0 ? argv[profileIndex + 1] : undefined
+  const profileIndex = argv.lastIndexOf('--profile')
+  const inlineProfile = [...argv].reverse().find((value) => value.startsWith('--profile='))?.slice('--profile='.length)
+  const candidate = inlineProfile || (profileIndex >= 0 ? argv[profileIndex + 1] : undefined)
   const profileId = candidate && PROFILE_ID.test(candidate)
     ? candidate.startsWith('provider--') ? `provider:${candidate.slice('provider--'.length)}` : candidate
     : undefined

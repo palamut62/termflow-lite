@@ -91,6 +91,7 @@ const api = {
     onOpenPath: (callback: (request: AppLaunchRequest) => void): (() => void) => {
       const handler = (_event: unknown, request: AppLaunchRequest): void => callback(request)
       ipcRenderer.on(IPC.APP_OPEN_PATH, handler)
+      ipcRenderer.send(IPC.APP_LAUNCH_READY)
       return () => ipcRenderer.removeListener(IPC.APP_OPEN_PATH, handler)
     }
   },

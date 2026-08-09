@@ -28,6 +28,13 @@ describe('parseLaunchRequest', () => {
       .toEqual({ cwd: dir, profileId: 'provider:deepseek' })
   })
 
+  it('uses the last profile when Electron prepends its own profile switch', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'termflow-launch-'))
+    cleanup.push(dir)
+    expect(parseLaunchRequest(['electron.exe', '--profile', 'chromium', '--profile', 'claude', dir]))
+      .toEqual({ cwd: dir, profileId: 'claude' })
+  })
+
   it('rejects files, switches and relative app arguments', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'termflow-launch-'))
     cleanup.push(dir)

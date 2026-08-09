@@ -24,6 +24,7 @@ export const IPC = {
   PROJECT_DETECT: 'project:detect',
   AGENT_SESSIONS_LIST: 'agent-sessions:list',
   APP_LAUNCH_CWD: 'app:launch-cwd',
+  APP_LAUNCH_READY: 'app:launch-ready',
   APP_OPEN_PATH: 'app:open-path'
 } as const
 
