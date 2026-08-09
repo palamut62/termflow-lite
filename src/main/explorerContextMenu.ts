@@ -10,7 +10,6 @@ const PARENT_KEYS = [
   'HKCU\\Software\\Classes\\Drive\\Background\\shell\\TermFlowLite'
 ]
 const COMMAND_STORE = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\CommandStore\\shell'
-const COMMAND_PREFIX = 'TermFlowLite.'
 
 export interface ExplorerMenuEntry {
   key: string
@@ -37,24 +36,22 @@ async function setValue(key: string, name: string | null, value: string): Promis
 export async function syncExplorerContextMenu(exePath: string, settings: AppSettings, shells: ShellInfo[]): Promise<void> {
   if (process.platform !== 'win32') return
   const entries = buildExplorerMenuEntries(settings, shells)
-  const commandNames = entries.map((entry) => `${COMMAND_PREFIX}${entry.key}`)
   const existing = await execFileAsync('reg.exe', ['query', COMMAND_STORE], { windowsHide: true })
     .then(({ stdout }) => stdout.split(/\r?\n/).map((line) => line.trim()).filter((line) => /\\TermFlowLite\.[^\\]+$/i.test(line)))
     .catch(() => [])
   for (const key of existing) await reg(['delete', key, '/f']).catch(() => undefined)
 
-  for (const entry of entries) {
-    const key = `${COMMAND_STORE}\\${COMMAND_PREFIX}${entry.key}`
-    await setValue(key, 'MUIVerb', entry.label)
-    await setValue(key, 'Icon', `${exePath},0`)
-    const profileArg = entry.profileId ? ` --profile "${entry.profileId}"` : ''
-    await setValue(`${key}\\command`, null, `"${exePath}"${profileArg} "%V"`)
-  }
-
   for (const parent of PARENT_KEYS) {
     await reg(['delete', parent, '/f']).catch(() => undefined)
     await setValue(parent, 'MUIVerb', 'Open in TermFlow Lite')
     await setValue(parent, 'Icon', `${exePath},0`)
-    await setValue(parent, 'SubCommands', commandNames.join(';'))
+    await setValue(parent, 'SubCommands', '')
+    for (const entry of entries) {
+      const key = `${parent}\\shell\\${entry.key}`
+      await setValue(key, 'MUIVerb', entry.label)
+      await setValue(key, 'Icon', `${exePath},0`)
+      const profileArg = entry.profileId ? ` --profile "${entry.profileId}"` : ''
+      await setValue(`${key}\\command`, null, `"${exePath}"${profileArg} "%V"`)
+    }
   }
 }
