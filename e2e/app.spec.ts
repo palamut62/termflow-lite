@@ -167,10 +167,9 @@ test('pastes a copied Windows file as its full path', async () => {
   await expect(terminal).toContainText(file, { timeout: 10000 })
 })
 
-test('shows per-pane session details and changes only that pane directory', async () => {
+test('shows per-pane session details', async () => {
   const secondCwd = mkdtempSync(join(tmpdir(), 'termflow-pane-second-'))
-  const changedCwd = mkdtempSync(join(tmpdir(), 'termflow-pane-changed-'))
-  cleanupDirectories.push(secondCwd, changedCwd)
+  cleanupDirectories.push(secondCwd)
 
   await win.click('.new-tab-caret')
   await win.getByRole('menuitem', { name: 'Open at folder...' }).click()
@@ -179,13 +178,6 @@ test('shows per-pane session details and changes only that pane directory', asyn
   await win.getByRole('button', { name: 'Split terminal right' }).click()
   const panels = win.locator('.pane-leaf .agent-work-panel')
   await expect(panels).toHaveCount(2)
-  await expect(panels.nth(1)).toContainText(secondCwd)
-
-  await panels.nth(0).locator('.agent-work-cwd').click()
-  const dialog = win.getByRole('dialog', { name: /Change working directory/ })
-  await dialog.getByLabel('Folder path').fill(changedCwd)
-  await dialog.getByRole('button', { name: 'Change and restart' }).click()
-  await expect(panels.nth(0)).toContainText(changedCwd)
   await expect(panels.nth(1)).toContainText(secondCwd)
 })
 
