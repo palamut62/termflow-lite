@@ -105,10 +105,6 @@ body {
 .agent-work-cwd span { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
 .agent-work-cwd:hover { background:color-mix(in srgb,currentColor 12%,transparent);color:var(--accent-color); }
 
-.cwd-editor-backdrop{position:fixed;inset:0;z-index:220;display:grid;place-items:center;padding:20px;background:rgba(0,0,0,.58)}
-.cwd-editor{width:min(520px,calc(100vw - 32px));padding:22px;background:var(--menu-background);color:var(--menu-foreground);border:1px solid var(--widget-border);border-radius:8px;box-shadow:0 18px 60px rgba(0,0,0,.5)}
-.cwd-editor h3{font-size:16px;margin:0 0 6px}.cwd-editor p{margin:0 0 18px;color:var(--tab-inactive-foreground);font-size:12px}.cwd-editor label{display:block;margin-bottom:6px;font-size:11px;font-weight:600}.cwd-editor .settings-input{width:100%}
-.cwd-editor-error{display:block;margin-top:8px;color:var(--term-red);font-size:11px}.cwd-editor-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
 
 @media (max-width: 760px) {
   .agent-work-panel { gap: 8px; }
