@@ -69,6 +69,33 @@ export interface ProviderProfile {
   fullPermissionArgs?: string
 }
 
+/**
+ * Kayıtlı SSH bağlantısı. Kendi SSH istemcimiz YOK: sistemdeki OpenSSH `ssh`
+ * binary'si PTY içinde spawn edilir (known_hosts, ~/.ssh/config, host key
+ * doğrulaması OpenSSH'ta kalır). PAROLA ASLA SAKLANMAZ — kimlik doğrulama
+ * anahtar / ssh-agent / ~/.ssh/config üzerinden yapılır.
+ */
+export interface SshConnection {
+  id: string
+  name: string
+  host: string
+  user?: string
+  port?: number          // boş = 22
+  /** Özel anahtar dosyası yolu (-i). Boş = ssh-agent / ~/.ssh/config. */
+  identityFile?: string
+  /** ProxyJump (-J) hedefi, ör. 'user@bastion'. */
+  jumpHost?: string
+  /** Bağlanır bağlanmaz uzak kabukta çalıştırılacak komut. */
+  remoteCommand?: string
+  /** Bağlantı sonrası cd edilecek uzak dizin. */
+  remoteCwd?: string
+  /** -A: agent forwarding. Varsayılan kapalı (güvenlik). */
+  forwardAgent?: boolean
+  /** Ek ham ssh argümanları (boşlukla ayrılmış). */
+  extraArgs?: string
+  color?: string
+}
+
 export interface CreateTerminalInput {
   kind: ShellKind
   shell?: string
@@ -176,6 +203,10 @@ export interface AppSettings {
   cursorStyle: 'block' | 'bar' | 'underline'
   cursorBlink: boolean
   scrollback: number
+  /** WebGL renderer: 'auto'/'on' dener, 'off' DOM renderer'da kalır. */
+  gpuAcceleration: 'auto' | 'on' | 'off'
+  /** Sixel + iTerm2 satır içi görsel protokolü. */
+  imageSupport: boolean
   terminalPadding: number
   /** 0-100, 100 = opak */
   opacity: number
@@ -195,11 +226,52 @@ export interface AppSettings {
   shortcuts: Record<string, string>
   profiles: TerminalProfile[]
   providerProfiles: ProviderProfile[]
+  /** Kayıtlı SSH bağlantıları (parola içermez). */
+  sshConnections: SshConnection[]
   lastActiveProfileId?: string
   /** Son kullanılan çalışma dizini (PRD §38: startupDirectory 'last'). */
   lastCwd?: string
   windowWidth: number
   windowHeight: number
+  /** Açık sekmeler + split düzeni yeniden açılışta geri yüklenir (userData/session.json). */
+  restoreSession: boolean
+  /** Quake (açılır) mod: global kısayolla ekranın üstünden inen pencere. */
+  quakeMode: boolean
+  /** Electron accelerator formatında global kısayol (ör. 'F12'). */
+  quakeHotkey: string
+  /** Odak kaybında pencereyi gizle. */
+  quakeHideOnBlur: boolean
+  /** Quake penceresinin çalışma alanına oranı (%). */
+  quakeHeightPercent: number
+  /** Açılışta sessizce güncelleme kontrolü yap (yalnızca kurulu sürümde). */
+  autoCheckUpdates: boolean
+}
+
+/**
+ * Otomatik güncelleme durumu (electron-updater). Main tarafından üretilir,
+ * IPC.UPDATE_STATUS ile renderer'a push edilir.
+ */
+export interface UpdateStatus {
+  state: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error'
+  version?: string
+  releaseNotes?: string
+  percent?: number
+  error?: string
+}
+
+/**
+ * Oturum geri yükleme için ayarlardan AYRI tutulan kalıcı durum
+ * (userData/session.json). Yalnızca serileştirilebilir alanlar; ajan
+ * konuşma referansı (resumeSession) bilinçli olarak yazılmaz.
+ */
+export interface PersistedSession {
+  version: 1
+  tabs: { id: string; title: string; profileId: string; cwd?: string }[]
+  activeTabId: string | null
+  paneTree: unknown | null
+  splitDirection: 'vertical' | 'horizontal' | null
+  splitRatio: number
+  workspaceCwd?: string
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -216,6 +288,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   cursorStyle: 'block',
   cursorBlink: true,
   scrollback: 10000,
+  gpuAcceleration: 'auto',
+  imageSupport: true,
   terminalPadding: 8,
   opacity: 100,
   blur: false,
@@ -238,7 +312,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
     'ctrl+,': 'settings',
     'ctrl+=': 'font-increase',
     'ctrl+-': 'font-decrease',
-    'ctrl+0': 'font-reset'
+    'ctrl+0': 'font-reset',
+    'ctrl+alt+b': 'toggle-broadcast'
   },
   profiles: [],
   providerProfiles: [
@@ -284,6 +359,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
       fullPermissionArgs: ''
     }
   ],
+  sshConnections: [],
   windowWidth: 1100,
-  windowHeight: 700
+  windowHeight: 700,
+  restoreSession: true,
+  quakeMode: false,
+  quakeHotkey: 'F12',
+  quakeHideOnBlur: true,
+  quakeHeightPercent: 50,
+  autoCheckUpdates: true
 }

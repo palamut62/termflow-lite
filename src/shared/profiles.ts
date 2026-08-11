@@ -1,6 +1,8 @@
-import type { AppSettings, ProviderProfile, TerminalProfile } from './types'
+import type { AppSettings, ProviderProfile, SshConnection, TerminalProfile } from './types'
 
 export const providerProfileId = (id: string): string => `provider:${id}`
+
+export const sshProfileId = (id: string): string => `ssh:${id}`
 
 export function defaultFullPermissionArgs(command: string): string {
   const executable = command.trim().split(/\s+/)[0]?.toLowerCase().replace(/\.cmd$|\.exe$/, '')
@@ -32,6 +34,12 @@ export function commandWithModel(command: string | undefined, model: string | un
 export function providerFromProfileId(settings: AppSettings, profileId: string): ProviderProfile | undefined {
   if (!profileId.startsWith('provider:')) return undefined
   return settings.providerProfiles.find((provider) => provider.id === profileId.slice('provider:'.length))
+}
+
+/** `ssh:<connectionId>` profil id'sini kayıtlı SSH bağlantısına çözer. */
+export function sshFromProfileId(settings: AppSettings, profileId: string): SshConnection | undefined {
+  if (!profileId.startsWith('ssh:')) return undefined
+  return (settings.sshConnections ?? []).find((conn) => conn.id === profileId.slice('ssh:'.length))
 }
 
 /**

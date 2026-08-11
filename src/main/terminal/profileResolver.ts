@@ -1,10 +1,14 @@
+import { existsSync } from 'fs'
+import { join } from 'path'
 import {
   commandWithPermissions,
   commandWithModel,
   defaultFullPermissionArgs,
   mergeProfiles,
-  providerFromProfileId
+  providerFromProfileId,
+  sshFromProfileId
 } from '../../shared/profiles'
+import { buildSshArgs } from '../../shared/sshArgs'
 import type { AgentSessionRef, AppSettings, CreateTerminalInput, ShellInfo, TerminalProfile } from '../../shared/types'
 
 export const DEFAULT_SHELL_PRIORITY: ShellInfo['id'][] = ['pwsh', 'powershell', 'cmd', 'gitbash', 'wsl', 'bash', 'sh']
@@ -16,7 +20,12 @@ export const DEFAULT_SHELL_PRIORITY: ShellInfo['id'][] = ['pwsh', 'powershell', 
  */
 export function resolveProfileId(profileId: string, settings: AppSettings, shells: ShellInfo[]): string {
   const customIds = new Set(effectiveProfiles(settings).map((p) => p.id))
-  if (shells.some((s) => s.id === profileId) || customIds.has(profileId) || providerFromProfileId(settings, profileId)) return profileId
+  if (
+    shells.some((s) => s.id === profileId)
+    || customIds.has(profileId)
+    || providerFromProfileId(settings, profileId)
+    || sshFromProfileId(settings, profileId)
+  ) return profileId
   for (const id of DEFAULT_SHELL_PRIORITY) {
     if (shells.some((s) => s.id === id)) return id
   }
@@ -36,6 +45,18 @@ export function effectiveProfiles(settings: AppSettings): TerminalProfile[] {
 function defaultShellInput(): Pick<CreateTerminalInput, 'kind' | 'shell'> {
   if (process.platform === 'win32') return { kind: 'cmd' }
   return { kind: 'custom', shell: process.env.SHELL || '/bin/bash' }
+}
+
+/**
+ * Sistemdeki OpenSSH istemcisi. Windows'ta önce inbox OpenSSH yolu denenir,
+ * bulunamazsa PATH'teki `ssh`. (Kendi SSH istemcimiz yok — host key doğrulaması,
+ * known_hosts ve ~/.ssh/config bilinçli olarak OpenSSH'a bırakılır.)
+ */
+export function sshBinary(): string {
+  if (process.platform !== 'win32') return 'ssh'
+  const winDir = process.env.SystemRoot || 'C:\\Windows'
+  const inbox = join(winDir, 'System32', 'OpenSSH', 'ssh.exe')
+  return existsSync(inbox) ? inbox : 'ssh'
 }
 
 /** Home directory, cross-platform (Windows fallbacks included). */
@@ -97,6 +118,7 @@ export function profileToInput(
   const shell = shells.find((s) => s.id === profileId)
   const profile = effectiveProfiles(settings).find((p) => p.id === profileId)
   const provider = providerFromProfileId(settings, profileId)
+  const ssh = sshFromProfileId(settings, profileId)
 
   // Startup directory (PRD §34, §38): profil cwd'si > settings.startupDirectory
   // ('custom' dizini, 'last' = son kullanılan dizin, yoksa home).
@@ -108,6 +130,12 @@ export function profileToInput(
         : homeDirectory()
   const cwd = opts.cwd ?? profile?.cwd ?? startupCwd
   const base = { cols: opts.cols, rows: opts.rows, cwd }
+
+  // SSH: yerel cwd önemsizdir (uzak dizin remoteCwd ile ayarlanır), ama PTY'nin
+  // geçerli bir yerel dizinde açılması gerekir — base.cwd aynen kullanılır.
+  if (ssh) {
+    return { ...base, kind: 'custom' as const, shell: sshBinary(), args: buildSshArgs(ssh) }
+  }
 
   if (provider) {
     const env: Record<string, string> = { ...agentAppearanceEnv(settings, provider.command) }

@@ -6,6 +6,21 @@ export function paneTerminalIds(pane: PaneNode): string[] {
   return pane.type === 'leaf' ? [pane.terminalId] : [...paneTerminalIds(pane.a), ...paneTerminalIds(pane.b)]
 }
 
+/**
+ * Kalıcı oturumdan gelen ağacın şeklini ve id'lerini doğrular: her leaf gerçek
+ * bir sekmeye işaret etmeli. Bozuk dosyaya karşı savunma — tutmazsa ağaç
+ * tamamen reddedilir (paneTree null).
+ */
+export function isValidPaneTree(pane: unknown, ids: Set<string>): pane is PaneNode {
+  if (!pane || typeof pane !== 'object') return false
+  const node = pane as { type?: unknown; terminalId?: unknown; dir?: unknown; ratio?: unknown; a?: unknown; b?: unknown }
+  if (node.type === 'leaf') return typeof node.terminalId === 'string' && ids.has(node.terminalId)
+  if (node.type !== 'split') return false
+  if (node.dir !== 'vertical' && node.dir !== 'horizontal') return false
+  if (typeof node.ratio !== 'number' || !Number.isFinite(node.ratio)) return false
+  return isValidPaneTree(node.a, ids) && isValidPaneTree(node.b, ids)
+}
+
 export function buildTiledPane(ids: string[], dir: 'vertical' | 'horizontal'): PaneNode | null {
   if (ids.length === 0) return null
   if (ids.length === 1) return { type: 'leaf', terminalId: ids[0] }

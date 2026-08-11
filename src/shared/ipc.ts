@@ -1,6 +1,6 @@
 // IPC channel names + payload types (TermFlow Lite)
 
-import type { AgentSession, AgentSessionRef, AppSettings, RenderMode, ShellInfo } from './types'
+import type { AgentSession, AgentSessionRef, AppSettings, RenderMode, ShellInfo, UpdateStatus } from './types'
 
 export const IPC = {
   PTY_CREATE: 'pty:create', // (tabId, profileId, cols, rows, cwd?) -> { pid }
@@ -17,10 +17,18 @@ export const IPC = {
   SHELLS_DISCOVER: 'shells:discover', // -> ShellInfo[]
   SETTINGS_GET: 'settings:get', // -> AppSettings
   SETTINGS_SET: 'settings:set', // (patch) -> AppSettings
+  SESSION_GET: 'session:get', // -> PersistedSession | null
+  SESSION_SAVE: 'session:save', // (PersistedSession) — fire-and-forget, main debounces
+  SESSION_CLEAR: 'session:clear', // ()
   CLIPBOARD_READ: 'clipboard:read', // -> string (sandboxed renderer paste fallback)
   CLIPBOARD_READ_PASTE: 'clipboard:read-paste', // -> copied file path or text
   WINDOW_TITLEBAR_OVERLAY: 'window:titlebar-overlay', // (TitleBarOverlayPayload) — Windows only
   DIALOG_OPEN_DIR: 'dialog:open-dir',
+  DIALOG_OPEN_FILE: 'dialog:open-file', // -> seçilen dosya yolu | null
+  UPDATE_CHECK: 'update:check', // -> UpdateStatus
+  UPDATE_DOWNLOAD: 'update:download', // () — ilerleme UPDATE_STATUS ile akar
+  UPDATE_INSTALL: 'update:install', // () — uygulamayı kapatıp kurar
+  UPDATE_STATUS: 'update:status', // main -> renderer UpdateStatus
   GIT_STATUS: 'git:status',
   TASKS_DISCOVER: 'tasks:discover',
   PROJECT_DETECT: 'project:detect',
@@ -111,4 +119,4 @@ export interface TitleBarOverlayPayload {
   height?: number
 }
 
-export type { ShellInfo }
+export type { ShellInfo, UpdateStatus }

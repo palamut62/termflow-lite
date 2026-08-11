@@ -1,10 +1,10 @@
 import { create } from 'zustand'
 import { nanoid } from 'nanoid'
 import type { SearchAddon } from '@xterm/addon-search'
-import type { AgentSessionRef, TabActivity, TerminalTab } from '../../../shared/types'
-import { mergeProfiles, providerFromProfileId } from '../../../shared/profiles'
+import type { AgentSessionRef, PersistedSession, TabActivity, TerminalTab } from '../../../shared/types'
+import { mergeProfiles, providerFromProfileId, sshFromProfileId } from '../../../shared/profiles'
 import { resolveDefaultProfileId, useSettingsStore } from './settingsStore'
-import { buildTiledPane, closePane, paneTerminalIds, setPaneRatio, splitPane, type PaneNode } from '../paneUtils'
+import { buildTiledPane, closePane, isValidPaneTree, paneTerminalIds, setPaneRatio, splitPane, type PaneNode } from '../paneUtils'
 
 /**
  * Global per-tab stream listeners. App registers exactly ONE preload onData /
@@ -27,7 +27,18 @@ function tabTitleFor(profileId: string): string {
   const profile = mergeProfiles(st.settings.profiles).find((p) => p.id === profileId)
   const shell = st.shells.find((s) => s.id === profileId)
   const provider = providerFromProfileId(st.settings, profileId)
-  return profile?.name ?? provider?.name ?? shell?.name ?? 'Terminal'
+  const ssh = sshFromProfileId(st.settings, profileId)
+  return profile?.name ?? provider?.name ?? ssh?.name ?? shell?.name ?? 'Terminal'
+}
+
+/**
+ * Bir insan girdisinin yazılacağı PTY id'leri. Broadcast kapalıyken ya da
+ * split yokken yalnızca kendi terminaline yazılır; açıkken split'teki TÜM
+ * panellere. (Protokol yanıtları — ESC ile başlayanlar — bu yoldan geçmez.)
+ */
+export function broadcastTargetIds(tabId: string, splitTabIds: string[] | null, broadcast: boolean): string[] {
+  if (!broadcast || !splitTabIds || splitTabIds.length < 2) return [tabId]
+  return splitTabIds.includes(tabId) ? [...splitTabIds] : [tabId]
 }
 
 function makeTab(profileId: string, cwd?: string, resumeSession?: AgentSessionRef): TerminalTab {
@@ -43,8 +54,13 @@ interface TerminalState {
   splitTabIds: string[] | null
   splitRatio: number
   paneTree: PaneNode | null
+  /** Girdi tüm split panellerine yazılsın mı (oturum içi, kalıcı DEĞİL). */
+  broadcastInput: boolean
+  toggleBroadcastInput(): void
   /** id nanoid(10); title = profile adı. activate=false ile arka planda açar (sonraki fazlar). */
   addTab(profileId: string, activate?: boolean, cwd?: string): string
+  /** Kayıtlı oturumu (sekmeler + pane düzeni) geri yükler; bozuk ağaç reddedilir. */
+  hydrateSession(session: PersistedSession): boolean
   resumeAgentSession(profileId: string, session: AgentSessionRef, cwd?: string): string
   /** Onay bekleyen sekme (uygulama içi modal); null = onay istenmiyor. */
   pendingCloseTabId: string | null
@@ -80,6 +96,41 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
   splitTabIds: null,
   splitRatio: 0.5,
   paneTree: null,
+  broadcastInput: false,
+
+  toggleBroadcastInput() {
+    set((s) => ({ broadcastInput: !s.broadcastInput }))
+  },
+
+  hydrateSession(session) {
+    if (!session || !Array.isArray(session.tabs) || session.tabs.length === 0) return false
+    // Process'ler yeniden başlatılır: cwd, PTY'nin o klasörde açılması için
+    // launchCwd olarak da verilir.
+    const tabs: TerminalTab[] = session.tabs.map((tab) => ({
+      id: tab.id,
+      title: tab.title || tabTitleFor(tab.profileId),
+      profileId: tab.profileId,
+      running: true,
+      activity: 'running',
+      startedAt: Date.now(),
+      cwd: tab.cwd,
+      launchCwd: tab.cwd
+    }))
+    const ids = new Set(tabs.map((tab) => tab.id))
+    // Bozuk dosyaya karşı savunma: ağaçtaki her id gerçekten bir sekme olmalı.
+    const paneTree = isValidPaneTree(session.paneTree, ids) ? session.paneTree : null
+    const splitTabIds = paneTree ? paneTerminalIds(paneTree) : null
+    set({
+      tabs,
+      activeTabId: session.activeTabId && ids.has(session.activeTabId) ? session.activeTabId : tabs[0].id,
+      workspaceCwd: session.workspaceCwd,
+      paneTree,
+      splitTabIds,
+      splitDirection: paneTree ? session.splitDirection : null,
+      splitRatio: Number.isFinite(session.splitRatio) ? Math.max(0.15, Math.min(0.85, session.splitRatio)) : 0.5
+    })
+    return true
+  },
 
   addTab(profileId, activate = true, cwd) {
     const effectiveCwd = cwd || get().workspaceCwd

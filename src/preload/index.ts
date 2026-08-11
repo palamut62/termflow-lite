@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { IPC, type AgentSessionsQuery, type AppLaunchRequest, type GitStatus, type ProjectInfo, type ProjectTask, type TitleBarOverlayPayload } from '../shared/ipc'
-import type { AgentSession, AgentSessionRef, AppSettings, RenderMode, ShellInfo } from '../shared/types'
+import type { AgentSession, AgentSessionRef, AppSettings, PersistedSession, RenderMode, ShellInfo, UpdateStatus } from '../shared/types'
 
 // Windows OS build number (e.g. 26200 for current Win11). xterm's windowsPty
 // option keys its reflow behaviour on this; fall back to a modern build when
@@ -72,8 +72,26 @@ const api = {
     get: (): Promise<AppSettings> => ipcRenderer.invoke(IPC.SETTINGS_GET),
     set: (patch: Partial<AppSettings>): Promise<AppSettings> => ipcRenderer.invoke(IPC.SETTINGS_SET, patch)
   },
+  // ---- Session (tab + split layout restore) ----
+  session: {
+    get: (): Promise<PersistedSession | null> => ipcRenderer.invoke(IPC.SESSION_GET),
+    save: (session: PersistedSession): void => ipcRenderer.send(IPC.SESSION_SAVE, session),
+    clear: (): void => ipcRenderer.send(IPC.SESSION_CLEAR)
+  },
   dialog: {
-    openDir: (): Promise<string | null> => ipcRenderer.invoke(IPC.DIALOG_OPEN_DIR)
+    openDir: (): Promise<string | null> => ipcRenderer.invoke(IPC.DIALOG_OPEN_DIR),
+    openFile: (): Promise<string | null> => ipcRenderer.invoke(IPC.DIALOG_OPEN_FILE)
+  },
+  // ---- Auto update ----
+  updater: {
+    check: (): Promise<UpdateStatus> => ipcRenderer.invoke(IPC.UPDATE_CHECK),
+    download: (): Promise<void> => ipcRenderer.invoke(IPC.UPDATE_DOWNLOAD),
+    install: (): Promise<void> => ipcRenderer.invoke(IPC.UPDATE_INSTALL),
+    onStatus: (cb: (status: UpdateStatus) => void): (() => void) => {
+      const h = (_e: unknown, status: UpdateStatus): void => cb(status)
+      ipcRenderer.on(IPC.UPDATE_STATUS, h)
+      return () => ipcRenderer.removeListener(IPC.UPDATE_STATUS, h)
+    }
   },
   git: {
     status: (cwd: string): Promise<GitStatus | null> => ipcRenderer.invoke(IPC.GIT_STATUS, cwd)

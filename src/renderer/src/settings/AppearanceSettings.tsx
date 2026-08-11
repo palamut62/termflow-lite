@@ -208,8 +208,36 @@ export function AppearanceSettings(): React.JSX.Element {
         <Field label="Letter Spacing" hint="px; terminal ve UI metinlerine uygulanır">
           <NumberInput value={settings.letterSpacing} min={-1} max={10} onChange={(v) => void update({ letterSpacing: v })} />
         </Field>
-        <Field label="Ligatures" hint="yalnızca uygulama arayüzü metinlerini etkiler; terminal çıktısı ligature kullanmaz">
+        <Field
+          label="Ligatures"
+          hint="Uygulama arayüzü ve terminal çıktısı; ligature'lı bir font gerekir (Fira Code, Cascadia Code, JetBrains Mono)."
+        >
           <Toggle checked={settings.fontLigatures} onChange={(v) => void update({ fontLigatures: v })} label="Ligatures" />
+        </Field>
+      </section>
+
+      <section>
+        <div className="settings-section-title">Rendering</div>
+        <Field
+          label="GPU acceleration"
+          hint="WebGL renderer; hızlı akan çıktıda belirgin hızlanma. Sorun olursa Off yapın."
+        >
+          <Select
+            value={settings.gpuAcceleration}
+            options={[
+              { value: 'auto', label: 'Auto' },
+              { value: 'on', label: 'On' },
+              { value: 'off', label: 'Off' }
+            ]}
+            onChange={(v) => void update({ gpuAcceleration: v as 'auto' | 'on' | 'off' })}
+          />
+        </Field>
+        <Field label="Inline images" hint="Sixel ve iTerm2 satır içi görsel protokolü">
+          <Toggle
+            checked={settings.imageSupport}
+            onChange={(v) => void update({ imageSupport: v })}
+            label="Inline images"
+          />
         </Field>
       </section>
 

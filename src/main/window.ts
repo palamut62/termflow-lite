@@ -1,3 +1,4 @@
+import { screen } from 'electron'
 import type { BrowserWindow, BrowserWindowConstructorOptions } from 'electron'
 import type { TitleBarOverlayPayload } from '../shared/ipc'
 import type { AppSettings } from '../shared/types'
@@ -71,4 +72,43 @@ export function applyWindowAppearance(
   if (process.platform === 'win32') {
     win.setBackgroundMaterial(settings.blur ? 'acrylic' : 'none')
   }
+}
+
+/** Quake penceresi ekranın tamamını kaplamasın, görünmez de kalmasın. */
+const MIN_QUAKE_PERCENT = 20
+const MAX_QUAKE_PERCENT = 100
+
+export function clampQuakePercent(percent: number): number {
+  if (!Number.isFinite(percent)) return 50
+  return Math.round(Math.min(MAX_QUAKE_PERCENT, Math.max(MIN_QUAKE_PERCENT, percent)))
+}
+
+/**
+ * Quake (açılır) yerleşimi: pencereyi primary display'in çalışma alanının
+ * ÜSTÜNE yapıştırır ve yüksekliği yüzdeye göre ayarlar (PRD §30 üslubunda —
+ * konum/boyut settings'e yazılmaz, quake ölçüsü kalıcı olmamalı).
+ */
+export function applyQuakeBounds(
+  win: BrowserWindow,
+  settings: Pick<AppSettings, 'quakeHeightPercent'>
+): void {
+  const { workArea } = screen.getPrimaryDisplay()
+  const height = Math.max(200, Math.round((workArea.height * clampQuakePercent(settings.quakeHeightPercent)) / 100))
+  win.setBounds({ x: workArea.x, y: workArea.y, width: workArea.width, height })
+}
+
+/** Quake kapatılınca normal pencere ölçüsüne dön ve ekranda ortala. */
+export function restoreNormalBounds(
+  win: BrowserWindow,
+  settings: Pick<AppSettings, 'windowWidth' | 'windowHeight'>
+): void {
+  const { workArea } = screen.getPrimaryDisplay()
+  const width = Math.min(workArea.width, Math.max(640, settings.windowWidth))
+  const height = Math.min(workArea.height, Math.max(400, settings.windowHeight))
+  win.setBounds({
+    x: workArea.x + Math.round((workArea.width - width) / 2),
+    y: workArea.y + Math.round((workArea.height - height) / 2),
+    width,
+    height
+  })
 }

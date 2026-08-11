@@ -103,6 +103,14 @@ function resolveLinuxArtifactName() {
 module.exports = {
   appId: 'com.palamut62.termflowlite',
   productName: 'TermFlow Lite',
+  // GitHub Releases hem dağıtım hem de electron-updater'ın kaynağıdır. Bu blok
+  // sayesinde NSIS (`latest.yml`) ve AppImage (`latest-linux.yml`) hedefleri
+  // güncelleme metadata'sı üretir; bu dosyalar release'e YÜKLENMELİDİR
+  // (bkz. .github/workflows/release.yml).
+  //
+  // NOT: `.deb` (ve Windows portable zip) otomatik güncellemeyi DESTEKLEMEZ —
+  // updater o paketlerde devre dışıdır (src/main/updater.ts, APPIMAGE kontrolü)
+  // ve kullanıcı elle günceller.
   publish: {
     provider: 'github',
     owner: 'palamut62',

@@ -610,10 +610,35 @@
   opacity: 0.85;
 }
 
+.about-update {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.about-update-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.about-update-status {
+  font-size: 12px;
+  opacity: 0.8;
+  line-height: 1.5;
+}
+
 .settings-inline {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+.settings-error {
+  margin: 4px 0 10px;
+  color: var(--terminal-red, #f14c4c);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .settings-note {

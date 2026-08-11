@@ -1,5 +1,5 @@
 import { resolveDefaultProfileId, useSettingsStore } from '../store/settingsStore'
-import { Field, Select, TextInput, Toggle } from './Settings'
+import { Field, NumberInput, Select, TextInput, Toggle } from './Settings'
 
 const SCROLLBACK_OPTIONS = [
   { value: '1000', label: '1,000 lines' },
@@ -87,6 +87,48 @@ export function TerminalSettings(): React.JSX.Element {
         </Field>
         <Field label="Confirm Before Close">
           <Toggle checked={settings.confirmBeforeClose} onChange={(v) => void update({ confirmBeforeClose: v })} label="Confirm before close" />
+        </Field>
+        <Field
+          label="Restore Session on Startup"
+          hint="Açık sekmeler ve split düzeni yeniden açılışta geri yüklenir; process'ler yeniden başlatılır."
+        >
+          <Toggle
+            checked={settings.restoreSession}
+            onChange={(v) => void update({ restoreSession: v })}
+            label="Restore session on startup"
+          />
+        </Field>
+      </section>
+
+      <section>
+        <div className="settings-section-title">Quake Mode</div>
+        <Field label="Quake Mode" hint="Global kısayolla ekranın üstünden açılıp kapanan pencere.">
+          <Toggle checked={settings.quakeMode} onChange={(v) => void update({ quakeMode: v })} label="Quake mode" />
+        </Field>
+        <Field label="Hotkey" hint="Electron accelerator formatı (ör. F12, Ctrl+`)">
+          <TextInput
+            placeholder="F12"
+            value={settings.quakeHotkey}
+            disabled={!settings.quakeMode}
+            onChange={(e) => void update({ quakeHotkey: e.target.value })}
+          />
+        </Field>
+        <Field label="Hide on Blur">
+          <Toggle
+            checked={settings.quakeHideOnBlur}
+            onChange={(v) => void update({ quakeHideOnBlur: v })}
+            label="Hide on blur"
+            disabled={!settings.quakeMode}
+          />
+        </Field>
+        <Field label="Height" hint="çalışma alanının yüzdesi">
+          <NumberInput
+            value={settings.quakeHeightPercent}
+            min={20}
+            max={100}
+            step={5}
+            onChange={(v) => void update({ quakeHeightPercent: v })}
+          />
         </Field>
       </section>
     </>

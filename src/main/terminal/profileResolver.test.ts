@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_SETTINGS, type AppSettings, type ShellInfo } from '../../shared/types'
-import { agentAppearanceEnv, commandWithResume, profileToInput, resolveProfileId } from './profileResolver'
+import { agentAppearanceEnv, commandWithResume, profileToInput, resolveProfileId, sshBinary } from './profileResolver'
+
+const SSH_SETTINGS = {
+  sshConnections: [
+    { id: 'srv1', name: 'Prod', host: 'prod.example.com', user: 'deploy', port: 2222, remoteCwd: '/srv/app' }
+  ]
+}
 
 const SHELLS: ShellInfo[] = [
   { id: 'bash', name: 'Bash', kind: 'custom', command: '/bin/bash', args: [] },
@@ -49,6 +55,14 @@ describe('resolveProfileId', () => {
 
   it('returns "custom" when no shell is available at all', () => {
     expect(resolveProfileId('anything', settings(), [])).toBe('custom')
+  })
+
+  it('kayıtlı bir ssh bağlantısının profil id\'sini korur', () => {
+    expect(resolveProfileId('ssh:srv1', settings(SSH_SETTINGS), SHELLS)).toBe('ssh:srv1')
+  })
+
+  it('bilinmeyen ssh id\'si varsayılan kabuğa düşer', () => {
+    expect(resolveProfileId('ssh:yok', settings(SSH_SETTINGS), SHELLS)).toBe('powershell')
   })
 })
 
@@ -133,6 +147,16 @@ describe('profileToInput', () => {
       ANTHROPIC_MODEL: 'deepseek-v4-pro',
       ANTHROPIC_BASE_URL: 'https://api.deepseek.com/anthropic'
     })
+  })
+
+  it('maps an ssh profile to the system ssh binary and its arguments', () => {
+    const input = profileToInput('ssh:srv1', settings(SSH_SETTINGS), SHELLS, { cols: 80, rows: 24, cwd: '/local/work' })
+    expect(input.kind).toBe('custom')
+    expect(input.shell).toBe(sshBinary())
+    expect(input.args).toEqual(['-p', '2222', 'deploy@prod.example.com', "cd '/srv/app' && exec $SHELL -l"])
+    // SSH sekmesinde cwd yereldir ve PTY'nin açıldığı dizindir.
+    expect(input.cwd).toBe('/local/work')
+    expect(input.startupCommand).toBeUndefined()
   })
 
   it('honors standard permissions when a command profile disables full access', () => {

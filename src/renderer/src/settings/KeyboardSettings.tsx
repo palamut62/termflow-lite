@@ -17,7 +17,8 @@ const ACTIONS: ActionDef[] = [
   { id: 'settings', label: 'Settings' },
   { id: 'font-increase', label: 'Increase Font Size' },
   { id: 'font-decrease', label: 'Decrease Font Size' },
-  { id: 'font-reset', label: 'Reset Font Size' }
+  { id: 'font-reset', label: 'Reset Font Size' },
+  { id: 'toggle-broadcast', label: 'Toggle Broadcast Input' }
 ]
 
 /** 'ctrl+shift+t' → 'Ctrl+Shift+T' görüntü formatı. */

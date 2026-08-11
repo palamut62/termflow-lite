@@ -36,6 +36,7 @@ export class SettingsStore {
     merged.providerProfiles = Array.isArray(settings.providerProfiles)
       ? settings.providerProfiles
       : structuredClone(DEFAULT_SETTINGS.providerProfiles)
+    merged.sshConnections = Array.isArray(settings.sshConnections) ? settings.sshConnections : []
     return merged
   }
 

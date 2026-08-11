@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_SETTINGS, type ShellInfo } from '../../../shared/types'
 import { useSettingsStore } from './settingsStore'
-import { useTerminalStore } from './terminalStore'
+import { broadcastTargetIds, useTerminalStore } from './terminalStore'
 
 /**
  * Renderer store tests run in the plain node vitest environment — the
@@ -28,7 +28,7 @@ beforeEach(() => {
     settings: { ...DEFAULT_SETTINGS, confirmBeforeClose: true },
     shells: SHELLS
   })
-  useTerminalStore.setState({ tabs: [], activeTabId: null, pendingCloseTabId: null, splitDirection: null, splitTabIds: null, splitRatio: 0.5, paneTree: null })
+  useTerminalStore.setState({ tabs: [], activeTabId: null, pendingCloseTabId: null, splitDirection: null, splitTabIds: null, splitRatio: 0.5, paneTree: null, broadcastInput: false, workspaceCwd: undefined })
 })
 
 afterEach(() => {
@@ -163,6 +163,75 @@ describe('closeTab', () => {
     expect(useTerminalStore.getState().tabs).toHaveLength(1)
     expect(killMock).not.toHaveBeenCalled()
     expect(useTerminalStore.getState().activeTabId).toBe(t1)
+  })
+})
+
+describe('broadcastTargetIds', () => {
+  it('writes only to its own terminal when broadcast is off', () => {
+    expect(broadcastTargetIds('a', ['a', 'b'], false)).toEqual(['a'])
+  })
+
+  it('writes only to its own terminal when there is no split', () => {
+    expect(broadcastTargetIds('a', null, true)).toEqual(['a'])
+    expect(broadcastTargetIds('a', ['a'], true)).toEqual(['a'])
+  })
+
+  it('writes to every split pane when broadcast is on', () => {
+    expect(broadcastTargetIds('a', ['a', 'b', 'c'], true)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('ignores panes the tab does not belong to', () => {
+    expect(broadcastTargetIds('z', ['a', 'b'], true)).toEqual(['z'])
+  })
+
+  it('toggleBroadcastInput flips the session-only flag', () => {
+    useTerminalStore.getState().toggleBroadcastInput()
+    expect(useTerminalStore.getState().broadcastInput).toBe(true)
+    useTerminalStore.getState().toggleBroadcastInput()
+    expect(useTerminalStore.getState().broadcastInput).toBe(false)
+  })
+})
+
+describe('hydrateSession', () => {
+  const session = {
+    version: 1 as const,
+    tabs: [
+      { id: 'a', title: 'Bash', profileId: 'bash', cwd: '/work' },
+      { id: 'b', title: 'Shell', profileId: 'sh' }
+    ],
+    activeTabId: 'b',
+    paneTree: { type: 'split', dir: 'vertical', ratio: 0.5, a: { type: 'leaf', terminalId: 'a' }, b: { type: 'leaf', terminalId: 'b' } },
+    splitDirection: 'vertical' as const,
+    splitRatio: 0.5
+  }
+
+  it('restores tabs, active tab and the pane layout', () => {
+    expect(useTerminalStore.getState().hydrateSession(session)).toBe(true)
+    const st = useTerminalStore.getState()
+    expect(st.tabs.map((t) => t.id)).toEqual(['a', 'b'])
+    expect(st.activeTabId).toBe('b')
+    expect(st.splitTabIds).toEqual(['a', 'b'])
+    expect(st.splitDirection).toBe('vertical')
+    // cwd, PTY'nin o klasörde açılması için launchCwd olarak da verilir
+    expect(st.tabs[0]).toMatchObject({ cwd: '/work', launchCwd: '/work' })
+  })
+
+  it('rejects a paneTree that references unknown terminals', () => {
+    const ok = useTerminalStore.getState().hydrateSession({
+      ...session,
+      paneTree: { type: 'split', dir: 'vertical', ratio: 0.5, a: { type: 'leaf', terminalId: 'a' }, b: { type: 'leaf', terminalId: 'ghost' } }
+    })
+    expect(ok).toBe(true)
+    const st = useTerminalStore.getState()
+    expect(st.paneTree).toBeNull()
+    expect(st.splitTabIds).toBeNull()
+    expect(st.splitDirection).toBeNull()
+    expect(st.tabs).toHaveLength(2)
+  })
+
+  it('refuses an empty session', () => {
+    expect(useTerminalStore.getState().hydrateSession({ ...session, tabs: [] })).toBe(false)
+    expect(useTerminalStore.getState().tabs).toEqual([])
   })
 })
 

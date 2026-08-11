@@ -37,6 +37,7 @@ jobs:
           files: |
             dist/*.exe
             dist/*.zip
+            dist/latest.yml
 
   release-linux:
     name: Release (Linux)
@@ -66,3 +67,4 @@ jobs:
           files: |
             dist/*.AppImage
             dist/*.deb
+            dist/latest-linux.yml

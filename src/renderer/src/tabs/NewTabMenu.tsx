@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { FolderOpen, Settings as SettingsIcon } from 'lucide-react'
-import { mergeProfiles, providerProfileId } from '../../../shared/profiles'
+import { mergeProfiles, providerProfileId, sshProfileId } from '../../../shared/profiles'
+import { sshTarget } from '../../../shared/sshArgs'
 import { resolveDefaultProfileId, useSettingsStore } from '../store/settingsStore'
 import { useTerminalStore } from '../store/terminalStore'
 import { TabIcon } from './TabIcon'
@@ -31,6 +32,7 @@ export function NewTabMenu({ anchor, onClose, onOpenAtPath }: NewTabMenuProps): 
   // Yerleşik CLI ajan profilleri + kullanıcı profilleri (tek liste).
   const profiles = mergeProfiles(userProfiles)
   const providers = useSettingsStore((s) => s.settings.providerProfiles)
+  const sshConnections = useSettingsStore((s) => s.settings.sshConnections) ?? []
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
 
   // Measure after paint: sağ kenarlar çakışacak şekilde hizala, taşarsa clamp'le.
@@ -135,6 +137,24 @@ export function NewTabMenu({ anchor, onClose, onOpenAtPath }: NewTabMenuProps): 
             <button className="menu-item" role="menuitem" key={provider.id} onClick={() => openTab(providerProfileId(provider.id))}>
               <span className="menu-item-dot" style={{ background: provider.color || '#6467f2' }} />
               <span className="menu-item-label">{provider.name}</span>
+            </button>
+          ))}
+        </>
+      )}
+      {sshConnections.length > 0 && (
+        <>
+          <div className="menu-divider" />
+          <div className="menu-section">SSH</div>
+          {sshConnections.map((conn) => (
+            <button
+              className="menu-item"
+              role="menuitem"
+              key={conn.id}
+              onClick={() => openTab(sshProfileId(conn.id))}
+              title={sshTarget(conn)}
+            >
+              <TabIcon shellId={sshProfileId(conn.id)} />
+              <span className="menu-item-label">{conn.name}</span>
             </button>
           ))}
         </>

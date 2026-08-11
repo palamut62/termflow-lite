@@ -4,8 +4,11 @@ import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { SearchAddon } from '@xterm/addon-search'
 import { Unicode11Addon } from '@xterm/addon-unicode11'
+import { WebglAddon } from '@xterm/addon-webgl'
+import { ImageAddon } from '@xterm/addon-image'
+import { ligatureJoiner } from './ligatures'
 import { resolveDefaultProfileId, useSettingsStore } from '../store/settingsStore'
-import { dataHandlers, exitHandlers, searchAddons, useTerminalStore } from '../store/terminalStore'
+import { broadcastTargetIds, dataHandlers, exitHandlers, searchAddons, useTerminalStore } from '../store/terminalStore'
 import { useCommandHistoryStore } from '../store/commandHistoryStore'
 import { resolveTheme } from '../themes/themes'
 import { formatDroppedPaths } from './dropPaths'
@@ -66,6 +69,11 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
   const hostRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<Terminal | null>(null)
   const fitRef = useRef<FitAddon | null>(null)
+  // Canlı yüklenip atılabilen addon'lar/joiner: ayar değişimi terminali
+  // yeniden yaratmasın diye ref'te tutulur.
+  const webglRef = useRef<WebglAddon | null>(null)
+  const imageRef = useRef<ImageAddon | null>(null)
+  const joinerRef = useRef<number | null>(null)
   const activeRef = useRef(active)
   // Single resize channel, populated by the main effect. Other effects call
   // through this ref so every resize goes through the same atomic path.
@@ -84,6 +92,58 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
   useEffect(() => {
     activeRef.current = active
   }, [active])
+
+  /**
+   * WebGL renderer: 'off' hiç denemez. Yükleme başarısızsa (context yok, sürücü
+   * sorunu) sessizce DOM renderer'da kalınır; context kaybında addon dispose
+   * edilir ve xterm kendiliğinden DOM renderer'a döner.
+   */
+  const syncWebgl = (term: Terminal, mode: 'auto' | 'on' | 'off'): void => {
+    if (mode === 'off') {
+      webglRef.current?.dispose()
+      webglRef.current = null
+      return
+    }
+    if (webglRef.current) return
+    try {
+      const addon = new WebglAddon()
+      addon.onContextLoss(() => {
+        addon.dispose()
+        if (webglRef.current === addon) webglRef.current = null
+      })
+      term.loadAddon(addon)
+      webglRef.current = addon
+    } catch {
+      webglRef.current = null
+    }
+  }
+
+  /** Sixel / iTerm2 satır içi görseller. */
+  const syncImage = (term: Terminal, enabled: boolean): void => {
+    if (!enabled) {
+      imageRef.current?.dispose()
+      imageRef.current = null
+      return
+    }
+    if (imageRef.current) return
+    try {
+      const addon = new ImageAddon()
+      term.loadAddon(addon)
+      imageRef.current = addon
+    } catch {
+      imageRef.current = null
+    }
+  }
+
+  /** Ligature'lar xterm'in character joiner API'siyle çizilir (bkz. ligatures.ts). */
+  const syncLigatures = (term: Terminal, enabled: boolean): void => {
+    if (enabled) {
+      if (joinerRef.current === null) joinerRef.current = term.registerCharacterJoiner(ligatureJoiner)
+    } else if (joinerRef.current !== null) {
+      term.deregisterCharacterJoiner(joinerRef.current)
+      joinerRef.current = null
+    }
+  }
 
   // ---- Terminal init + PTY create (mount == create) ----
   useEffect(() => {
@@ -121,6 +181,10 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
     term.loadAddon(new Unicode11Addon())
     term.unicode.activeVersion = '11'
     term.open(host)
+    // WebGL/image addon'ları yalnızca open() sonrası yüklenebilir.
+    syncWebgl(term, settings.gpuAcceleration)
+    syncImage(term, settings.imageSupport)
+    syncLigatures(term, settings.fontLigatures)
     termRef.current = term
     fitRef.current = fit
 
@@ -246,7 +310,14 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
         }
       }
       useTerminalStore.getState().setTabActivity(tabId, 'running')
-      window.termflow.pty.write(tabId, data)
+      // Broadcast: yalnızca insan girdisi (ESC ile başlamayan) split'teki tüm
+      // panellere gider; protokol yanıtları hep kendi PTY'sinde kalır. Komut
+      // geçmişine kayıt yukarıda yalnızca bir kez (aktif tab) düşer.
+      const { splitTabIds, broadcastInput } = useTerminalStore.getState()
+      const targets = data.startsWith('\x1b')
+        ? [tabId]
+        : broadcastTargetIds(tabId, splitTabIds, broadcastInput && activeRef.current)
+      for (const target of targets) window.termflow.pty.write(target, data)
     })
 
     // A brand-new tab's flexbox box is frequently still zero-sized in this
@@ -365,6 +436,11 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
       // çağırdığı için ayrıca bir mod değişikliğine gerek yok. createdPtys'ten
       // silmiyoruz: tab id'leri benzersiz, ve StrictMode'un unmount/remount
       // döngüsünde PTY'nin yeniden spawn edilmesini de böylece engelliyoruz.
+      webglRef.current?.dispose()
+      webglRef.current = null
+      imageRef.current?.dispose()
+      imageRef.current = null
+      joinerRef.current = null
       term.dispose()
       termRef.current = null
       fitRef.current = null
@@ -418,6 +494,28 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
     settings.themeId,
     settings.customTheme
   ])
+
+  // GPU / inline image / ligature ayarları terminali yeniden yaratmadan,
+  // yalnızca ilgili addon'ı yükleyip atarak uygulanır.
+  useEffect(() => {
+    const term = termRef.current
+    if (term) syncWebgl(term, settings.gpuAcceleration)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.gpuAcceleration])
+
+  useEffect(() => {
+    const term = termRef.current
+    if (term) syncImage(term, settings.imageSupport)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.imageSupport])
+
+  useEffect(() => {
+    const term = termRef.current
+    if (!term) return
+    syncLigatures(term, settings.fontLigatures)
+    term.refresh(0, term.rows - 1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.fontLigatures])
 
   const handleRestart = (): void => {
     setExited(null)

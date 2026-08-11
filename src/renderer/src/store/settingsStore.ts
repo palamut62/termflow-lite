@@ -95,8 +95,9 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
       symbolColor: normalizeHex(surface.foreground, '#cccccc'),
       height: Math.max(1, s.tabHeight - TAB_BAR_BORDER)
     })
-    // Letter-spacing + ligatures yalnızca UI metinlerine uygulanır — xterm
-    // canvas renderer'ı bu CSS özelliklerini desteklemez (PRD §28).
+    // Buradaki CSS değişkenleri yalnızca UI metinleri içindir; terminalde
+    // letter-spacing xterm option'ı, ligature'lar ise character joiner ile
+    // uygulanır (terminal/ligatures.ts).
     const style = document.documentElement.style
     style.setProperty('--ui-letter-spacing', `${s.letterSpacing}px`)
     style.setProperty('--ui-font-ligatures', s.fontLigatures ? 'contextual' : 'none')

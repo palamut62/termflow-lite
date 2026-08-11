@@ -1,4 +1,4 @@
-import { Box, ChevronsRight, GitBranch, Shell, SquareTerminal, Terminal, TerminalSquare } from 'lucide-react'
+import { Box, ChevronsRight, GitBranch, Server, Shell, SquareTerminal, Terminal, TerminalSquare } from 'lucide-react'
 import { mergeProfiles } from '../../../shared/profiles'
 import { useSettingsStore } from '../store/settingsStore'
 
@@ -18,6 +18,15 @@ export function TabIcon({ shellId }: TabIconProps): React.JSX.Element {
   const shell = useSettingsStore((s) => s.shells.find((sh) => sh.id === shellId))
   const userProfiles = useSettingsStore((s) => s.settings.profiles)
   const profile = mergeProfiles(userProfiles).find((p) => p.id === shellId)
+
+  // Uzak oturum: yerel kabuk değil, bir SSH bağlantısı.
+  if (shellId.startsWith('ssh:')) {
+    return (
+      <span className="tab-icon tab-icon-ssh">
+        <Server size={14} />
+      </span>
+    )
+  }
 
   // Custom profile with an explicit emoji/short icon: render as text.
   const customIcon = profile?.icon

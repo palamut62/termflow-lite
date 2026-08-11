@@ -1,7 +1,7 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, globalShortcut, ipcMain, shell } from 'electron'
 import { join } from 'path'
-import { DEFAULT_SETTINGS } from '../shared/types'
-import { applyWindowAppearance, titleBarOptions } from './window'
+import { DEFAULT_SETTINGS, type AppSettings } from '../shared/types'
+import { applyQuakeBounds, applyWindowAppearance, restoreNormalBounds, titleBarOptions } from './window'
 import { TerminalManager } from './terminal/TerminalManager'
 import { discoverShells, warmPathCache } from './terminal/ShellDiscovery'
 import { SettingsStore } from './storage/SettingsStore'
@@ -15,6 +15,10 @@ import { registerGitIpc } from './ipc/git'
 import { registerTasksIpc } from './ipc/tasks'
 import { registerProjectIpc } from './ipc/project'
 import { registerAgentSessionsIpc } from './ipc/agentSessions'
+import { registerSessionIpc } from './ipc/session'
+import { registerUpdaterIpc } from './ipc/updater'
+import { initUpdater, maybeAutoCheck } from './updater'
+import { SessionStore } from './storage/SessionStore'
 import { IPC } from '../shared/ipc'
 import { parseLaunchRequest } from './launchPath'
 import { syncExplorerContextMenu } from './explorerContextMenu'
@@ -34,7 +38,61 @@ if (process.env.TERMFLOW_E2E === '1') {
 
 let mainWindow: BrowserWindow | null = null
 let settingsStore: SettingsStore | null = null
+let sessionStore: SessionStore | null = null
 let manager: TerminalManager | null = null
+
+// ---- Quake (açılır) mod durumu ----
+/** Kayıtlı global kısayol; null = quake kapalı veya kayıt başarısız. */
+let quakeShortcut: string | null = null
+/** Pencere şu an quake yerleşiminde mi (resize persist'i bunu atlar). */
+let quakeActive = false
+
+function toggleQuakeWindow(): void {
+  if (!settingsStore) return
+  if (!mainWindow || mainWindow.isDestroyed()) createWindow()
+  if (!mainWindow) return
+  const settings = settingsStore.get()
+  if (mainWindow.isVisible() && mainWindow.isFocused()) {
+    mainWindow.hide()
+    return
+  }
+  quakeActive = true
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  applyQuakeBounds(mainWindow, settings)
+  mainWindow.show()
+  mainWindow.focus()
+}
+
+/**
+ * Quake ayarları canlı uygulanır: kısayol yeniden kaydedilir, mod kapanınca
+ * pencere normal ölçüsüne döner. Kısayol başka bir uygulamada kayıtlıysa
+ * (register false döner) yalnızca loglanır — uygulama çalışmaya devam eder.
+ */
+function applyQuakeConfig(settings: AppSettings): void {
+  if (quakeShortcut) {
+    globalShortcut.unregister(quakeShortcut)
+    quakeShortcut = null
+  }
+  if (!settings.quakeMode) {
+    if (quakeActive && mainWindow && !mainWindow.isDestroyed()) {
+      restoreNormalBounds(mainWindow, settings)
+      if (!mainWindow.isVisible()) mainWindow.show()
+    }
+    quakeActive = false
+    return
+  }
+  const hotkey = (settings.quakeHotkey || DEFAULT_SETTINGS.quakeHotkey).trim()
+  try {
+    if (globalShortcut.register(hotkey, toggleQuakeWindow)) quakeShortcut = hotkey
+    else console.warn(`[quake] global shortcut already in use: ${hotkey}`)
+  } catch (err) {
+    console.warn(`[quake] could not register global shortcut ${hotkey}:`, err)
+  }
+  if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible()) {
+    quakeActive = true
+    applyQuakeBounds(mainWindow, settings)
+  }
+}
 
 let initialLaunchRequest = parseLaunchRequest(process.argv)
 const pendingLaunchRequests: NonNullable<ReturnType<typeof parseLaunchRequest>>[] = []
@@ -121,12 +179,26 @@ function createWindow(): void {
     mainWindow = null
   })
 
+  // Quake: odak kaybında gizle. Ayarlar penceresi/dialog açıkken sinir bozucu
+  // olmasın diye yalnızca uygulamanın HİÇBİR penceresi odakta değilken gizlenir.
+  mainWindow.on('blur', () => {
+    if (!quakeActive || !settingsStore) return
+    if (!settingsStore.get().quakeMode || !settingsStore.get().quakeHideOnBlur) return
+    setTimeout(() => {
+      if (!mainWindow || mainWindow.isDestroyed()) return
+      if (mainWindow.isFocused() || BrowserWindow.getFocusedWindow()) return
+      mainWindow.hide()
+    }, 0)
+  })
+
   // Persist the window size so the next launch restores it. Tek sahip main
   // process'tir (renderer boyut yazmaz). Maximize/fullscreen ölçüsü kalıcı
   // olmasın diye o durumlarda yazma atlanır.
   mainWindow.on('resize', () => {
     if (!settingsStore || !mainWindow || mainWindow.isDestroyed()) return
     if (mainWindow.isMaximized() || mainWindow.isFullScreen()) return
+    // Quake yerleşimi geçicidir; normal pencere ölçüsünü ezmemeli.
+    if (quakeActive) return
     const [width, height] = mainWindow.getSize()
     settingsStore.update({ windowWidth: width, windowHeight: height })
   })
@@ -158,6 +230,7 @@ app.whenReady().then(() => {
   warmPathCache()
 
   settingsStore = new SettingsStore(join(app.getPath('userData'), 'settings.json'))
+  sessionStore = new SessionStore(join(app.getPath('userData'), 'session.json'))
   const mgr = new TerminalManager(() => mainWindow, () => (settingsStore ? settingsStore.get() : DEFAULT_SETTINGS))
   manager = mgr
   // WSL distro enumeration makes discovery async — the renderer re-queries
@@ -174,10 +247,16 @@ app.whenReady().then(() => {
     refreshContextMenu()
   })
 
+  // Ayar değişince main tarafında uygulanacaklar: explorer menüsü + quake.
+  const onSettingsChanged = (settings: AppSettings): void => {
+    refreshContextMenu()
+    applyQuakeConfig(settings)
+  }
+
   registerTerminalIpc(manager)
   registerSettingsIpc(settingsStore, mgr, () =>
     mainWindow && !mainWindow.isDestroyed() ? mainWindow : null,
-    refreshContextMenu
+    onSettingsChanged
   )
   registerShellIpc()
   registerClipboardIpc()
@@ -187,6 +266,12 @@ app.whenReady().then(() => {
   registerTasksIpc()
   registerProjectIpc()
   registerAgentSessionsIpc()
+  registerSessionIpc(sessionStore)
+  registerUpdaterIpc()
+  initUpdater(
+    () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null),
+    () => (settingsStore ? settingsStore.get() : DEFAULT_SETTINGS)
+  )
   ipcMain.handle(IPC.APP_LAUNCH_CWD, () => {
     const request = initialLaunchRequest
     initialLaunchRequest = null
@@ -198,6 +283,15 @@ app.whenReady().then(() => {
   })
 
   createWindow()
+  applyQuakeConfig(settingsStore.get())
+
+  // Sessiz güncelleme kontrolü: pencere yüklendikten ~10 sn SONRA, bir kez.
+  // Açılış hızını etkilememesi için kritik yolun dışında tutulur.
+  if (app.isPackaged && settingsStore.get().autoCheckUpdates && mainWindow) {
+    mainWindow.webContents.once('did-finish-load', () => {
+      setTimeout(() => maybeAutoCheck(), 10_000)
+    })
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -210,5 +304,10 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   settingsStore?.flush() // write any debounced settings mutations
+  sessionStore?.flush() // write the debounced tab/split layout
   manager?.shutdown() // kill every live PTY
+})
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll()
 })

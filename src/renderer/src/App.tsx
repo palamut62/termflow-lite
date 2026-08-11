@@ -45,9 +45,33 @@ export default function App(): React.JSX.Element {
       useSettingsStore.getState().applyTheme()
       const { settings, shells } = useSettingsStore.getState()
       const request = await window.termflow.appLaunch.request()
-      useTerminalStore.getState().addTab(resolveLaunchProfile(request, settings, shells), true, request?.cwd)
+      // Oturum geri yükleme: kayıt varsa ilk tab'ı açmak yerine sekmeler +
+      // pane düzeni geri gelir. Komut satırından gelen launch request her
+      // zaman öncelikli — restore'dan SONRA ek sekme olarak açılır.
+      let restored = false
+      if (settings.restoreSession) {
+        const session = await window.termflow.session.get()
+        if (session) restored = useTerminalStore.getState().hydrateSession(session)
+      }
+      if (!restored || request) {
+        useTerminalStore.getState().addTab(resolveLaunchProfile(request, settings, shells), true, request?.cwd)
+      }
     })()
   }, [])
+
+  // Sekme/split düzenini kalıcı hale getir (main zaten debounce ediyor).
+  useEffect(() => useTerminalStore.subscribe((state) => {
+    if (!useSettingsStore.getState().settings.restoreSession) return
+    window.termflow.session.save({
+      version: 1,
+      tabs: state.tabs.map((tab) => ({ id: tab.id, title: tab.title, profileId: tab.profileId, cwd: tab.cwd || tab.launchCwd })),
+      activeTabId: state.activeTabId,
+      paneTree: state.paneTree,
+      splitDirection: state.splitDirection,
+      splitRatio: state.splitRatio,
+      workspaceCwd: state.workspaceCwd
+    })
+  }), [])
 
   useEffect(() => window.termflow.appLaunch.onOpenPath((request) => {
     const { settings, shells } = useSettingsStore.getState()
@@ -143,6 +167,9 @@ export default function App(): React.JSX.Element {
           if (id) useSettingsStore.getState().openSearch(id)
           break
         }
+        case 'toggle-broadcast':
+          termStore.toggleBroadcastInput()
+          break
         case 'settings':
           useSettingsStore.getState().openSettings()
           break
