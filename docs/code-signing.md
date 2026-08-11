@@ -15,7 +15,35 @@ unsigned artifacts, with a clear warning in the build log:
 No credential ever lives in the repository. Everything below is supplied through
 environment variables / GitHub Actions secrets.
 
-## Option A — Azure Trusted Signing (recommended)
+## Option A — SignPath Foundation (recommended for this project)
+
+TermFlow Lite is a public MIT-licensed project and uses the SignPath Foundation open
+source application path. The public policy, team roles, privacy statement and build
+controls are documented in [code-signing-policy.md](code-signing-policy.md).
+
+After SignPath approves the project:
+
+1. Install the SignPath GitHub App for `palamut62/termflow-lite`.
+2. Configure the project, release signing policy and artifact configuration in SignPath.
+   The artifact configuration must sign the Windows installer and the executable nested
+   inside the portable ZIP uploaded by `.github/workflows/release.yml`.
+3. Create a SignPath CI user with submitter permission and store its token as the
+   `SIGNPATH_API_TOKEN` GitHub Actions secret.
+4. Add these GitHub Actions repository variables:
+
+| Variable | Value from SignPath |
+| --- | --- |
+| `SIGNPATH_ORGANIZATION_ID` | Organization ID |
+| `SIGNPATH_PROJECT_SLUG` | Project slug |
+| `SIGNPATH_SIGNING_POLICY_SLUG` | Release signing policy slug |
+| `SIGNPATH_ARTIFACT_CONFIGURATION_SLUG` | Windows artifact configuration slug |
+
+The release workflow deliberately fails instead of publishing unsigned Windows files
+when any SignPath value is absent. It uploads the unsigned artifact to GitHub Actions,
+submits that artifact ID to SignPath, downloads the signed result, verifies the installer
+with `Get-AuthenticodeSignature`, and only then publishes it to GitHub Releases.
+
+## Option B — Azure Artifact Signing
 
 Azure Trusted Signing is a Microsoft-hosted signing service. It costs a monthly
 subscription fee instead of a several-hundred-dollar EV token, and certificates issued
@@ -88,7 +116,7 @@ Signing on Windows additionally requires the .NET 8 runtime and the
 `Microsoft.Windows.SDK.BuildTools` / `Trusted Signing` client, which electron-builder
 downloads automatically on first use.
 
-## Option B — Traditional certificate file (OV/EV `.pfx`)
+## Option C — Traditional certificate file (OV/EV `.pfx`)
 
 If you already own a code signing certificate, set these instead:
 
