@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Bot, Braces, Clock3, Command, GitBranch, Radio, Server } from 'lucide-react'
+import { Bookmark, Bot, Braces, Clock3, Command, GitBranch, Radio, Server } from 'lucide-react'
 import type { GitStatus, ProjectInfo } from '../../../shared/ipc'
 import { sshFromProfileId } from '../../../shared/profiles'
 import { sshTarget } from '../../../shared/sshArgs'
@@ -8,6 +8,7 @@ import { useTerminalStore } from '../store/terminalStore'
 import { useCommandHistoryStore } from '../store/commandHistoryStore'
 import { useAgentSessionStore } from '../store/agentSessionStore'
 import { useTaskPaletteStore } from '../store/taskPaletteStore'
+import { useSavedCommandStore } from '../store/savedCommandStore'
 
 export function StatusBar(): React.JSX.Element {
   const tabs = useTerminalStore((s) => s.tabs)
@@ -53,6 +54,7 @@ export function StatusBar(): React.JSX.Element {
   return (
     <footer className="status-bar" aria-label="Terminal status">
       <button className="status-action" onClick={() => useCommandHistoryStore.getState().show()} title="Command history (Ctrl+Shift+H)"><Clock3 size={12} />History</button>
+      <button className="status-action" onClick={() => useSavedCommandStore.getState().show()} title="Saved commands"><Bookmark size={12} />Saved</button>
       <button className="status-action" onClick={() => useAgentSessionStore.getState().show()} title="Saved agent sessions"><Bot size={12} />Sessions</button>
       <button className="status-action" onClick={() => useTaskPaletteStore.getState().show()} title="Command palette (Ctrl+Shift+P)"><Command size={12} />Commands</button>
       <span className="status-spacer" />

@@ -15,6 +15,8 @@ import { useAgentSessionStore } from './store/agentSessionStore'
 import type { PaneNode } from './paneUtils'
 import { matchShortcut } from './shortcuts'
 import type { AppLaunchRequest } from '../../shared/ipc'
+import { SavedCommands } from './components/SavedCommands'
+import { useSavedCommandStore } from './store/savedCommandStore'
 
 // StrictMode double-mounts effects in dev — the boot sequence must run once.
 let bootStarted = false
@@ -34,6 +36,7 @@ export default function App(): React.JSX.Element {
   const historyOpen = useCommandHistoryStore((s) => s.open)
   const taskPaletteOpen = useTaskPaletteStore((s) => s.open)
   const agentSessionsOpen = useAgentSessionStore((s) => s.open)
+  const savedCommandsOpen = useSavedCommandStore((s) => s.open)
 
   // Boot: settings + shells yükle, sonra default profile ile ilk tab'ı aç.
   useEffect(() => {
@@ -115,6 +118,12 @@ export default function App(): React.JSX.Element {
       }
       if (e.key === 'Escape' && useCommandHistoryStore.getState().open) {
         useCommandHistoryStore.getState().hide()
+        e.preventDefault()
+        e.stopPropagation()
+        return
+      }
+      if (e.key === 'Escape' && useSavedCommandStore.getState().open) {
+        useSavedCommandStore.getState().hide()
         e.preventDefault()
         e.stopPropagation()
         return
@@ -229,6 +238,7 @@ export default function App(): React.JSX.Element {
       </div>
       <StatusBar />
       {historyOpen && <CommandHistory />}
+      {savedCommandsOpen && <SavedCommands />}
       {agentSessionsOpen && <AgentSessions />}
       {taskPaletteOpen && <TaskPalette />}
       {settingsOpen && <Settings />}

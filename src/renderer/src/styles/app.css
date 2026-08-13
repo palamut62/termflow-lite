@@ -243,6 +243,24 @@ body {
 .history-footer { justify-content: flex-end; border-top: 1px solid var(--widget-border); border-bottom: 0; }
 .history-footer button { padding: 4px 8px; color: inherit; background: var(--button-secondary-background); border: 1px solid var(--widget-border); cursor: pointer; }
 
+.saved-command-form { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--widget-border); }
+.saved-command-form input { min-width: 0; height: 30px; padding: 0 8px; color: var(--input-foreground); background: var(--input-background); border: 1px solid var(--input-border); outline: none; }
+.saved-command-input-row { display: flex; gap: 6px; }
+.saved-command-input-row input { flex: 1; }
+.saved-command-input-row button { display: flex; align-items: center; gap: 5px; padding: 0 9px; color: var(--button-foreground); background: var(--button-background); border: 0; cursor: pointer; }
+.saved-command-input-row button:disabled { cursor: default; opacity: .45; }
+.saved-command-search { flex-shrink: 0; margin: 10px 12px; }
+.saved-command-entry { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--widget-border); }
+.saved-command-entry:hover { background: var(--menu-selection-background); }
+.saved-command-copy { min-width: 0; }
+.saved-command-copy strong, .saved-command-copy code { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.saved-command-copy strong { margin-bottom: 4px; font-size: 12px; font-weight: 500; }
+.saved-command-copy code { color: var(--tab-inactive-foreground); font-size: 11px; user-select: text; }
+.saved-command-actions { display: flex; gap: 3px; }
+.saved-command-actions button { display: grid; place-items: center; width: 28px; height: 28px; color: inherit; background: transparent; border: 1px solid transparent; cursor: pointer; }
+.saved-command-actions button:first-child { color: var(--button-foreground); background: var(--button-background); }
+.saved-command-actions button:hover { border-color: var(--widget-border); }
+
 .palette-backdrop {
   position: fixed;
   inset: 0;

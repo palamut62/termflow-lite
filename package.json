@@ -1,7 +1,7 @@
 {
   "name": "termflow-lite",
   "productName": "TermFlow Lite",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "A minimal, fast and customizable terminal for developers.",
   "main": "./out/main/index.js",
   "author": "Umut Çelik (palamut62)",
