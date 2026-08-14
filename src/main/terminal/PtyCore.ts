@@ -1,5 +1,6 @@
 import * as pty from '@lydell/node-pty'
 import type { CreateTerminalInput, PtyEvent, RenderMode } from '../../shared/types'
+import { TerminalSecretRedactor } from '../../shared/secretRedaction'
 import { resolveShell } from './ShellDiscovery'
 
 const ACTIVE_INTERVAL_MS = 16 // PRD §11.6 IPC batching for the focused terminal
@@ -31,6 +32,8 @@ interface ManagedPty {
   /** Last size actually pushed to ConPTY — used to skip no-op rewraps. */
   cols: number
   rows: number
+  /** API keys pasted into this PTY; retained only to mask echoed UI output. */
+  secretRedactor: TerminalSecretRedactor
 }
 
 /**
@@ -88,7 +91,8 @@ export class PtyCore {
       createdAt: Date.now(),
       cwd: resolved.cwd,
       cols,
-      rows
+      rows,
+      secretRedactor: new TerminalSecretRedactor()
     }
     this.terminals.set(id, managed)
 
@@ -149,9 +153,10 @@ export class PtyCore {
   }
 
   private onData(managed: ManagedPty, data: string): void {
+    const safeData = managed.secretRedactor.redact(data)
     // Ring buffer (single-pass newline count, also cap chunk count). PRD §11.8
-    managed.buffer.push(data)
-    managed.bufferLines += this.countNewlines(data)
+    managed.buffer.push(safeData)
+    managed.bufferLines += this.countNewlines(safeData)
     while (managed.buffer.length > 1 && (managed.bufferLines > this.maxLines || managed.buffer.length > this.maxLines)) {
       const removed = managed.buffer.shift()!
       managed.bufferLines -= this.countNewlines(removed)
@@ -189,7 +194,7 @@ export class PtyCore {
 
     if (managed.mode === 'buffer') return // no streaming while offscreen/minimized
 
-    managed.pending += data
+    managed.pending += safeData
     if (!managed.flushTimer) {
       const interval = managed.mode === 'active' ? ACTIVE_INTERVAL_MS : this.passiveIntervalMs
       managed.flushTimer = setTimeout(() => this.flush(managed), interval)
@@ -218,7 +223,10 @@ export class PtyCore {
 
   write(id: string, data: string): void {
     const t = this.terminals.get(id)
-    if (t && !t.exited) t.proc.write(data)
+    if (t && !t.exited) {
+      t.secretRedactor.registerInput(data)
+      t.proc.write(data)
+    }
   }
 
   resize(id: string, cols: number, rows: number): void {

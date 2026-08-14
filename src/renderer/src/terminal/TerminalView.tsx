@@ -15,6 +15,7 @@ import { formatDroppedPaths } from './dropPaths'
 import { TerminalContextMenu } from './TerminalContextMenu'
 import { TerminalSearch } from './TerminalSearch'
 import { AgentWorkPanel } from '../components/AgentWorkPanel'
+import { redactApiKeys } from '../../../shared/secretRedaction'
 
 interface Props {
   tabId: string
@@ -295,7 +296,7 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
             const command = inputBuffer.trim()
             if (command && tab) {
               useCommandHistoryStore.getState().add({
-                command,
+                command: redactApiKeys(command),
                 cwd: tab.cwd || tab.launchCwd || '',
                 profileId: tab.profileId,
                 profileName: tab.title

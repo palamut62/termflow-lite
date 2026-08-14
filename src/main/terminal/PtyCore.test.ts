@@ -113,6 +113,26 @@ describe('PtyCore lifecycle', () => {
     }
   })
 
+  it('passes an API key to the PTY but masks its echo and scrollback copy', () => {
+    vi.useFakeTimers()
+    try {
+      const events: unknown[] = []
+      const core = new PtyCore((event) => events.push(event))
+      const key = `sk-proj-${'A1'.repeat(16)}`
+      core.create('t1', input)
+      core.write('t1', key)
+      registry[0].emitData(`PS> ${key}`)
+      vi.advanceTimersByTime(20)
+
+      expect(registry[0].writes).toEqual([key])
+      expect(core.getBuffer('t1')).toBe('PS> ************')
+      const data = events.find((event) => (event as { kind: string }).kind === 'data') as { data: string }
+      expect(data.data).toBe('PS> ************')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('tracks OSC 7 cwd changes and skips no-op resizes', () => {
     const events: unknown[] = []
     const core = new PtyCore((event) => events.push(event))
