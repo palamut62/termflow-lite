@@ -58,6 +58,35 @@ describe('PtyCore lifecycle', () => {
     expect(events.some((event) => (event as { kind: string }).kind === 'exit')).toBe(true)
   })
 
+  it('runs a saved command after the shell starts', () => {
+    vi.useFakeTimers()
+    try {
+      const core = new PtyCore(() => undefined)
+      core.create('t1', { ...input, launchCommand: 'claude update' })
+      expect(registry[0].writes).toEqual([])
+      vi.advanceTimersByTime(400)
+      expect(registry[0].writes).toEqual(['claude update\r'])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('starts an agent before sending the saved prompt', () => {
+    vi.useFakeTimers()
+    try {
+      const core = new PtyCore(() => undefined)
+      core.create('t1', { ...input, startupCommand: 'claude', launchCommand: 'review this repo' })
+      vi.advanceTimersByTime(400)
+      expect(registry[0].writes).toEqual(['claude\r'])
+      vi.advanceTimersByTime(2499)
+      expect(registry[0].writes).toEqual(['claude\r'])
+      vi.advanceTimersByTime(1)
+      expect(registry[0].writes).toEqual(['claude\r', 'review this repo\r'])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('keeps a bounded scrollback buffer', () => {
     const core = new PtyCore(() => undefined)
     core.setScrollback(2)

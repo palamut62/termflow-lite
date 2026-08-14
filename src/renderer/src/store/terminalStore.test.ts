@@ -67,6 +67,12 @@ describe('addTab', () => {
     expect(useTerminalStore.getState().tabs[0].title).toBe('Claude Code')
   })
 
+  it('keeps a saved command on the new tab for one-time launch', () => {
+    const id = useTerminalStore.getState().addTab('bash', true, undefined, 'npm run dev')
+    const tab = useTerminalStore.getState().tabs.find((item) => item.id === id)
+    expect(tab?.launchCommand).toBe('npm run dev')
+  })
+
   it('opens a resumed agent session with its id and original directory', () => {
     const id = useTerminalStore.getState().resumeAgentSession('codex', { agent: 'codex', id: 'session-42' }, 'C:\\repo')
     const tab = useTerminalStore.getState().tabs[0]

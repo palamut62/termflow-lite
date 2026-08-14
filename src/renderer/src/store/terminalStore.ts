@@ -41,8 +41,8 @@ export function broadcastTargetIds(tabId: string, splitTabIds: string[] | null, 
   return splitTabIds.includes(tabId) ? [...splitTabIds] : [tabId]
 }
 
-function makeTab(profileId: string, cwd?: string, resumeSession?: AgentSessionRef): TerminalTab {
-  return { id: nanoid(10), title: tabTitleFor(profileId), profileId, running: true, activity: 'running', startedAt: Date.now(), cwd, launchCwd: cwd, resumeSession }
+function makeTab(profileId: string, cwd?: string, resumeSession?: AgentSessionRef, launchCommand?: string): TerminalTab {
+  return { id: nanoid(10), title: tabTitleFor(profileId), profileId, running: true, activity: 'running', startedAt: Date.now(), cwd, launchCwd: cwd, resumeSession, launchCommand }
 }
 
 interface TerminalState {
@@ -58,7 +58,7 @@ interface TerminalState {
   broadcastInput: boolean
   toggleBroadcastInput(): void
   /** id nanoid(10); title = profile adı. activate=false ile arka planda açar (sonraki fazlar). */
-  addTab(profileId: string, activate?: boolean, cwd?: string): string
+  addTab(profileId: string, activate?: boolean, cwd?: string, launchCommand?: string): string
   /** Kayıtlı oturumu (sekmeler + pane düzeni) geri yükler; bozuk ağaç reddedilir. */
   hydrateSession(session: PersistedSession): boolean
   resumeAgentSession(profileId: string, session: AgentSessionRef, cwd?: string): string
@@ -132,9 +132,9 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
     return true
   },
 
-  addTab(profileId, activate = true, cwd) {
+  addTab(profileId, activate = true, cwd, launchCommand) {
     const effectiveCwd = cwd || get().workspaceCwd
-    const tab = makeTab(profileId, effectiveCwd)
+    const tab = makeTab(profileId, effectiveCwd, undefined, launchCommand)
     set((s) => ({
       tabs: [...s.tabs, tab],
       workspaceCwd: cwd || s.workspaceCwd,

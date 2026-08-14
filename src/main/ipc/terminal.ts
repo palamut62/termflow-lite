@@ -35,16 +35,22 @@ function validResumeSession(value: unknown): AgentSessionRef | undefined {
   return { agent: candidate.agent as AgentSessionRef['agent'], id: candidate.id }
 }
 
+function validLaunchCommand(value: unknown): string | undefined {
+  if (value === undefined || value === null || value === '') return undefined
+  if (typeof value !== 'string' || value.length > 8192 || value.includes('\0')) throw new Error('invalid launch command')
+  return value.trim() || undefined
+}
+
 /**
  * Wire the PTY channels onto ipcMain. create/restart/buffer are invoke-based
  * (the renderer awaits a result); write/resize/kill/mode are fire-and-forget.
  */
 export function registerTerminalIpc(manager: TerminalManager): void {
-  ipcMain.handle(IPC.PTY_CREATE, (_event, tabId: unknown, profileId: unknown, cols: unknown, rows: unknown, cwd: unknown, resumeSession: unknown) => {
+  ipcMain.handle(IPC.PTY_CREATE, (_event, tabId: unknown, profileId: unknown, cols: unknown, rows: unknown, cwd: unknown, resumeSession: unknown, launchCommand: unknown) => {
     if (!validId(tabId) || !validId(profileId)) throw new Error('invalid tab id')
     const c = validSize(cols, 2) || 120
     const r = validSize(rows, 1) || 30
-    return manager.create(tabId, profileId, c, r, validCwd(cwd), validResumeSession(resumeSession))
+    return manager.create(tabId, profileId, c, r, validCwd(cwd), validResumeSession(resumeSession), validLaunchCommand(launchCommand))
   })
 
   ipcMain.on(IPC.PTY_WRITE, (_event, tabId: unknown, data: unknown) => {

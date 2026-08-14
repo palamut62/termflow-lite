@@ -85,6 +85,7 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
   const profileId = useTerminalStore((s) => s.tabs.find((t) => t.id === tabId)?.profileId)
   const resumeSession = useTerminalStore((s) => s.tabs.find((t) => t.id === tabId)?.resumeSession)
   const launchCwd = useTerminalStore((s) => s.tabs.find((t) => t.id === tabId)?.launchCwd)
+  const launchCommand = useTerminalStore((s) => s.tabs.find((t) => t.id === tabId)?.launchCommand)
   const settings = useSettingsStore((s) => s.settings)
   const uiSearchTabId = useSettingsStore((s) => s.uiSearchTabId)
   const [menu, setMenu] = useState<ContextMenuState | null>(null)
@@ -255,7 +256,7 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
       }
       createdPtys.add(tabId)
       void window.termflow.pty
-        .create(tabId, profileId, lastSizeRef.current.cols, lastSizeRef.current.rows, launchCwd, resumeSession)
+        .create(tabId, profileId, lastSizeRef.current.cols, lastSizeRef.current.rows, launchCwd, resumeSession, launchCommand)
         .then(() => {
           if (disposed) return
           // Re-assert the current cell size so a size change that landed while
@@ -446,7 +447,7 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
       fitRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tabId, profileId, launchCwd, resumeSession])
+  }, [tabId, profileId, launchCwd, resumeSession, launchCommand])
 
   // Focus + re-measure when this tab becomes active. Tüm tab'lar mount kaldığı
   // için render modunu da burada güncelliyoruz: aktif olan canlı stream alır,

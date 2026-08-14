@@ -28,6 +28,8 @@ export interface TerminalTab {
   launchCwd?: string
   /** Existing CLI conversation to resume when this tab's PTY starts. */
   resumeSession?: AgentSessionRef
+  /** New terminal açıldığında yalnızca bir kez çalıştırılan kayıtlı komut. */
+  launchCommand?: string
 }
 
 export interface TerminalProfile {
@@ -106,6 +108,8 @@ export interface CreateTerminalInput {
   rows?: number
   /** PTY spawn edildikten kısa süre sonra kabuğa yazılacak komut. */
   startupCommand?: string
+  /** Shell/profile hazırlandıktan sonra yalnızca bir kez yazılacak komut. */
+  launchCommand?: string
 }
 
 /**

@@ -6,6 +6,8 @@ const ACTIVE_INTERVAL_MS = 16 // PRD §11.6 IPC batching for the focused termina
 const DEFAULT_SCROLLBACK_LINES = 10000 // PRD §10.9.1
 /** Kabuk prompt'u hazır olsun diye startupCommand'dan önce beklenen süre. */
 const STARTUP_COMMAND_DELAY_MS = 400
+/** Agent profili başladıktan sonra kayıtlı girdinin prompt'a gönderilmesi için bekleme. */
+const LAUNCH_COMMAND_AFTER_STARTUP_DELAY_MS = 2500
 
 // OSC 7 "current working directory" escape sequence, emitted by most modern
 // shells on every prompt redraw: ESC ] 7 ; file://<host>/<path> BEL|ST
@@ -104,15 +106,36 @@ export class PtyCore {
     // Profil startupCommand'ı: kabuğun ilk prompt'u çizilsin diye kısa bir
     // gecikmeyle yazılır. `input` saklandığı için restart sonrası da çalışır.
     const startupCommand = input.startupCommand?.trim()
-    if (startupCommand) {
+    const launchCommand = input.launchCommand?.trim()
+    if (startupCommand || launchCommand) {
       managed.startupTimer = setTimeout(() => {
         managed.startupTimer = null
         if (managed.exited) return
         try {
-          managed.proc.write(`${startupCommand}\r`)
+          if (startupCommand) managed.proc.write(`${startupCommand}\r`)
         } catch {
           /* pty may have exited in the meantime */
         }
+        if (!launchCommand) return
+        if (!startupCommand) {
+          try {
+            managed.proc.write(`${launchCommand}\r`)
+            managed.input.launchCommand = undefined
+          } catch {
+            /* pty may have exited in the meantime */
+          }
+          return
+        }
+        managed.startupTimer = setTimeout(() => {
+          managed.startupTimer = null
+          if (managed.exited) return
+          try {
+            managed.proc.write(`${launchCommand}\r`)
+            managed.input.launchCommand = undefined
+          } catch {
+            /* pty may have exited in the meantime */
+          }
+        }, LAUNCH_COMMAND_AFTER_STARTUP_DELAY_MS)
       }, STARTUP_COMMAND_DELAY_MS)
     }
 
