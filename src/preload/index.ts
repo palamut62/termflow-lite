@@ -19,6 +19,7 @@ const api = {
   // ---- System ----
   system: {
     osBuildNumber: osBuildNumber(),
+    openExternal: (url: string): Promise<boolean> => ipcRenderer.invoke(IPC.SYSTEM_OPEN_EXTERNAL, url),
     // Blur (acrylic) yalnızca Windows'ta desteklenir — UI buna göre uyarlanır.
     platform: process.platform as NodeJS.Platform,
     /**

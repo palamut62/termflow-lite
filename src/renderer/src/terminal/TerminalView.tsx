@@ -176,7 +176,9 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
     })
     const fit = new FitAddon()
     term.loadAddon(fit)
-    term.loadAddon(new WebLinksAddon()) // URLs open in the default browser
+    term.loadAddon(new WebLinksAddon((_event, url) => {
+      void window.termflow.system.openExternal(url)
+    }))
     const searchAddon = new SearchAddon()
     term.loadAddon(searchAddon)
     searchAddons.set(tabId, searchAddon) // TerminalSearch lookup (Faz 7)

@@ -277,6 +277,17 @@ app.whenReady().then(() => {
     initialLaunchRequest = null
     return request
   })
+  ipcMain.handle(IPC.SYSTEM_OPEN_EXTERNAL, async (_event, value: unknown): Promise<boolean> => {
+    if (typeof value !== 'string' || value.length > 8192) return false
+    try {
+      const url = new URL(value)
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') return false
+      await shell.openExternal(url.toString())
+      return true
+    } catch {
+      return false
+    }
+  })
   ipcMain.on(IPC.APP_LAUNCH_READY, () => {
     launchListenerReady = true
     flushLaunchRequests()

@@ -35,7 +35,8 @@ export const IPC = {
   AGENT_SESSIONS_LIST: 'agent-sessions:list',
   APP_LAUNCH_CWD: 'app:launch-cwd',
   APP_LAUNCH_READY: 'app:launch-ready',
-  APP_OPEN_PATH: 'app:open-path'
+  APP_OPEN_PATH: 'app:open-path',
+  SYSTEM_OPEN_EXTERNAL: 'system:open-external'
 } as const
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC]
