@@ -45,6 +45,14 @@ function makeTab(profileId: string, cwd?: string, resumeSession?: AgentSessionRe
   return { id: nanoid(10), title: tabTitleFor(profileId), profileId, running: true, activity: 'running', startedAt: Date.now(), cwd, launchCwd: cwd, resumeSession, launchCommand }
 }
 
+/** Fresh shells and agents share one configured startup directory. */
+export function resolveStartupCwd(): string | undefined {
+  const settings = useSettingsStore.getState().settings
+  if (settings.startupDirectory === 'custom') return settings.customStartupDirectory.trim() || undefined
+  if (settings.startupDirectory === 'last') return settings.lastCwd?.trim() || undefined
+  return undefined
+}
+
 interface TerminalState {
   tabs: TerminalTab[]
   /** Path inherited by new shells/agents until the user explicitly chooses another path. */
@@ -60,7 +68,7 @@ interface TerminalState {
   /** id nanoid(10); title = profile adı. activate=false ile arka planda açar (sonraki fazlar). */
   addTab(profileId: string, activate?: boolean, cwd?: string, launchCommand?: string): string
   /** Kayıtlı oturumu (sekmeler + pane düzeni) geri yükler; bozuk ağaç reddedilir. */
-  hydrateSession(session: PersistedSession): boolean
+  hydrateSession(session: PersistedSession, startupCwd?: string, overrideCwd?: boolean): boolean
   resumeAgentSession(profileId: string, session: AgentSessionRef, cwd?: string): string
   /** Onay bekleyen sekme (uygulama içi modal); null = onay istenmiyor. */
   pendingCloseTabId: string | null
@@ -102,7 +110,7 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
     set((s) => ({ broadcastInput: !s.broadcastInput }))
   },
 
-  hydrateSession(session) {
+  hydrateSession(session, startupCwd, overrideCwd = false) {
     if (!session || !Array.isArray(session.tabs) || session.tabs.length === 0) return false
     // Process'ler yeniden başlatılır: cwd, PTY'nin o klasörde açılması için
     // launchCwd olarak da verilir.
@@ -113,8 +121,8 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
       running: true,
       activity: 'running',
       startedAt: Date.now(),
-      cwd: tab.cwd,
-      launchCwd: tab.cwd
+      cwd: overrideCwd ? startupCwd : startupCwd || tab.cwd,
+      launchCwd: overrideCwd ? startupCwd : startupCwd || tab.cwd
     }))
     const ids = new Set(tabs.map((tab) => tab.id))
     // Bozuk dosyaya karşı savunma: ağaçtaki her id gerçekten bir sekme olmalı.
@@ -123,7 +131,7 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
     set({
       tabs,
       activeTabId: session.activeTabId && ids.has(session.activeTabId) ? session.activeTabId : tabs[0].id,
-      workspaceCwd: session.workspaceCwd,
+      workspaceCwd: overrideCwd ? startupCwd : startupCwd || session.workspaceCwd,
       paneTree,
       splitTabIds,
       splitDirection: paneTree ? session.splitDirection : null,
@@ -133,7 +141,7 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
   },
 
   addTab(profileId, activate = true, cwd, launchCommand) {
-    const effectiveCwd = cwd || get().workspaceCwd
+    const effectiveCwd = cwd || get().workspaceCwd || resolveStartupCwd()
     const tab = makeTab(profileId, effectiveCwd, undefined, launchCommand)
     set((s) => ({
       tabs: [...s.tabs, tab],
@@ -146,7 +154,7 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
   },
 
   resumeAgentSession(profileId, session, cwd) {
-    const effectiveCwd = cwd || get().workspaceCwd
+    const effectiveCwd = cwd || get().workspaceCwd || resolveStartupCwd()
     const tab = makeTab(profileId, effectiveCwd, session)
     set((state) => ({ tabs: [...state.tabs, tab], activeTabId: tab.id, workspaceCwd: cwd || state.workspaceCwd }))
     return tab.id

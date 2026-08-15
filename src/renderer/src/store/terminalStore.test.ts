@@ -53,6 +53,38 @@ describe('addTab', () => {
     expect(tab?.cwd).toBe('/work/project/subdir')
   })
 
+  it('uses the shared custom startup directory for shells and agents', () => {
+    useSettingsStore.setState({
+      settings: { ...DEFAULT_SETTINGS, startupDirectory: 'custom', customStartupDirectory: 'C:\\default-workspace' }
+    })
+    useTerminalStore.getState().addTab('bash')
+    useTerminalStore.getState().addTab('claude')
+    expect(useTerminalStore.getState().tabs.map((tab) => tab.launchCwd)).toEqual([
+      'C:\\default-workspace',
+      'C:\\default-workspace'
+    ])
+  })
+
+  it('prefers an Explorer launch path over the configured startup directory', () => {
+    useSettingsStore.setState({
+      settings: { ...DEFAULT_SETTINGS, startupDirectory: 'custom', customStartupDirectory: 'C:\\default-workspace' }
+    })
+    useTerminalStore.getState().addTab('bash', true, 'C:\\opened-folder')
+    useTerminalStore.getState().addTab('codex')
+    expect(useTerminalStore.getState().tabs.map((tab) => tab.launchCwd)).toEqual([
+      'C:\\opened-folder',
+      'C:\\opened-folder'
+    ])
+  })
+
+  it('uses the last directory when that startup option is selected', () => {
+    useSettingsStore.setState({
+      settings: { ...DEFAULT_SETTINGS, startupDirectory: 'last', lastCwd: 'C:\\recent-project' }
+    })
+    useTerminalStore.getState().addTab('provider:deepseek')
+    expect(useTerminalStore.getState().tabs[0].launchCwd).toBe('C:\\recent-project')
+  })
+
   it('uses the custom profile name when the profile is user-defined', () => {
     useSettingsStore.setState({
       settings: { ...DEFAULT_SETTINGS, profiles: [{ id: 'dev', name: 'Dev Box', command: 'tmux' }] }
@@ -220,6 +252,22 @@ describe('hydrateSession', () => {
     expect(st.splitDirection).toBe('vertical')
     // cwd, PTY'nin o klasörde açılması için launchCwd olarak da verilir
     expect(st.tabs[0]).toMatchObject({ cwd: '/work', launchCwd: '/work' })
+  })
+
+  it('restarts restored shells and agents in the configured startup directory', () => {
+    expect(useTerminalStore.getState().hydrateSession(session, 'C:\\default-workspace')).toBe(true)
+    const st = useTerminalStore.getState()
+    expect(st.tabs.map((tab) => tab.launchCwd)).toEqual([
+      'C:\\default-workspace',
+      'C:\\default-workspace'
+    ])
+    expect(st.workspaceCwd).toBe('C:\\default-workspace')
+  })
+
+  it('lets the PTY resolve Home when Home is the configured startup directory', () => {
+    expect(useTerminalStore.getState().hydrateSession(session, undefined, true)).toBe(true)
+    expect(useTerminalStore.getState().tabs.map((tab) => tab.launchCwd)).toEqual([undefined, undefined])
+    expect(useTerminalStore.getState().workspaceCwd).toBeUndefined()
   })
 
   it('rejects a paneTree that references unknown terminals', () => {

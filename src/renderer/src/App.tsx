@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { DEFAULT_SETTINGS } from '../../shared/types'
 import { resolveDefaultProfileId, useSettingsStore } from './store/settingsStore'
-import { dataHandlers, exitHandlers, useTerminalStore } from './store/terminalStore'
+import { dataHandlers, exitHandlers, resolveStartupCwd, useTerminalStore } from './store/terminalStore'
 import { TabBar } from './tabs/TabBar'
 import { TerminalView } from './terminal/TerminalView'
 import { Settings } from './settings/Settings'
@@ -54,7 +54,7 @@ export default function App(): React.JSX.Element {
       let restored = false
       if (settings.restoreSession) {
         const session = await window.termflow.session.get()
-        if (session) restored = useTerminalStore.getState().hydrateSession(session)
+        if (session) restored = useTerminalStore.getState().hydrateSession(session, resolveStartupCwd(), true)
       }
       if (!restored || request) {
         useTerminalStore.getState().addTab(resolveLaunchProfile(request, settings, shells), true, request?.cwd)

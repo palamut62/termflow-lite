@@ -21,6 +21,11 @@ export function TerminalSettings(): React.JSX.Element {
   // değeri her zaman geçerli bir seçenek göstersin (boot'taki davranışla aynı).
   const activeDefaultId = resolveDefaultProfileId(settings, shells)
 
+  const selectStartupDirectory = async (): Promise<void> => {
+    const directory = await window.termflow.dialog.openDir()
+    if (directory) await update({ startupDirectory: 'custom', customStartupDirectory: directory })
+  }
+
   const profileOptions = [
     ...shells.map((s) => ({ value: s.id, label: s.name })),
     ...settings.profiles.map((p) => ({ value: p.id, label: `${p.name} (custom)` }))
@@ -49,12 +54,15 @@ export function TerminalSettings(): React.JSX.Element {
               onChange={(v) => void update({ startupDirectory: v as 'home' | 'last' | 'custom' })}
             />
             {settings.startupDirectory === 'custom' && (
-              <TextInput
-                className="settings-input-wide"
-                placeholder="C:\path\..."
-                value={settings.customStartupDirectory}
-                onChange={(e) => void update({ customStartupDirectory: e.target.value })}
-              />
+              <>
+                <TextInput
+                  className="settings-input-wide"
+                  placeholder="C:\\path\\..."
+                  value={settings.customStartupDirectory}
+                  onChange={(e) => void update({ customStartupDirectory: e.target.value })}
+                />
+                <button className="settings-btn" type="button" onClick={() => { void selectStartupDirectory() }}>Browse...</button>
+              </>
             )}
           </span>
         </Field>
