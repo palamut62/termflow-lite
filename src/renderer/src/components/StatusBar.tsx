@@ -9,6 +9,7 @@ import { useCommandHistoryStore } from '../store/commandHistoryStore'
 import { useAgentSessionStore } from '../store/agentSessionStore'
 import { useTaskPaletteStore } from '../store/taskPaletteStore'
 import { useSavedCommandStore } from '../store/savedCommandStore'
+import { useAgentEventStore } from '../store/agentEventStore'
 
 export function StatusBar(): React.JSX.Element {
   const tabs = useTerminalStore((s) => s.tabs)
@@ -56,6 +57,7 @@ export function StatusBar(): React.JSX.Element {
       <button className="status-action" onClick={() => useCommandHistoryStore.getState().show()} title="Command history (Ctrl+Shift+H)"><Clock3 size={12} />History</button>
       <button className="status-action" onClick={() => useSavedCommandStore.getState().show()} title="Saved commands"><Bookmark size={12} />Saved</button>
       <button className="status-action" onClick={() => useAgentSessionStore.getState().show()} title="Saved agent sessions"><Bot size={12} />Sessions</button>
+      <button className="status-action" onClick={() => useAgentEventStore.getState().show()} title="Live agent activity and timeline"><Radio size={12} />Agents</button>
       <button className="status-action" onClick={() => useTaskPaletteStore.getState().show()} title="Command palette (Ctrl+Shift+P)"><Command size={12} />Commands</button>
       <span className="status-spacer" />
       {/* Yanlışlıkla açık kalmasın diye belirgin rozet; tıklama kapatır. */}

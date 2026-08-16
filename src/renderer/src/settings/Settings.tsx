@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, InputHTMLAttributes, ReactNode } from 'react'
-import { Bot, Info, Keyboard, Palette, Server, SquareTerminal, UserRound, X } from 'lucide-react'
+import { Bot, Info, Keyboard, Palette, Server, ShieldCheck, SquareTerminal, UserRound, X } from 'lucide-react'
 import { useSettingsStore } from '../store/settingsStore'
 import { AppearanceSettings } from './AppearanceSettings'
 import { TerminalSettings } from './TerminalSettings'
@@ -9,14 +9,16 @@ import { KeyboardSettings } from './KeyboardSettings'
 import { AboutSettings } from './AboutSettings'
 import { ProviderSettings } from './ProviderSettings'
 import { SshSettings } from './SshSettings'
+import { AgentSecuritySettings } from './AgentSecuritySettings'
 
-type SectionId = 'appearance' | 'terminal' | 'profiles' | 'providers' | 'ssh' | 'keyboard' | 'about'
+type SectionId = 'appearance' | 'terminal' | 'profiles' | 'providers' | 'agent-security' | 'ssh' | 'keyboard' | 'about'
 
 const SECTIONS: { id: SectionId; label: string; icon: ReactNode }[] = [
   { id: 'appearance', label: 'Appearance', icon: <Palette size={14} /> },
   { id: 'terminal', label: 'Terminal', icon: <SquareTerminal size={14} /> },
   { id: 'profiles', label: 'Profiles', icon: <UserRound size={14} /> },
   { id: 'providers', label: 'Providers', icon: <Bot size={14} /> },
+  { id: 'agent-security', label: 'Agent Security', icon: <ShieldCheck size={14} /> },
   { id: 'ssh', label: 'SSH', icon: <Server size={14} /> },
   { id: 'keyboard', label: 'Keyboard', icon: <Keyboard size={14} /> },
   { id: 'about', label: 'About', icon: <Info size={14} /> }
@@ -80,6 +82,7 @@ export function Settings(): React.JSX.Element {
             {section === 'terminal' && <TerminalSettings />}
             {section === 'profiles' && <ProfileSettings />}
             {section === 'providers' && <ProviderSettings />}
+            {section === 'agent-security' && <AgentSecuritySettings />}
             {section === 'ssh' && <SshSettings />}
             {section === 'keyboard' && <KeyboardSettings />}
             {section === 'about' && <AboutSettings />}

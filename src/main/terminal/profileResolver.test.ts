@@ -109,7 +109,7 @@ describe('profileToInput', () => {
 
   it('yerleşik CLI ajan profilini varsayılan kabukta açıp startupCommand taşır', () => {
     const input = profileToInput('claude', settings(), SHELLS, { cols: 80, rows: 24 })
-    expect(input.startupCommand).toBe('claude --model opus --dangerously-skip-permissions')
+    expect(input.startupCommand).toBe('claude --model opus --permission-mode manual')
     // command boş: Windows'ta cmd.exe, diğer platformlarda kullanıcı kabuğu.
     if (process.platform === 'win32') expect(input.kind).toBe('cmd')
     else expect(input.kind).toBe('custom')
@@ -142,7 +142,7 @@ describe('profileToInput', () => {
       cwd: '/work/provider'
     })
     expect(input.cwd).toBe('/work/provider')
-    expect(input.startupCommand).toBe('claude --dangerously-skip-permissions')
+    expect(input.startupCommand).toBe('claude --permission-mode manual')
     expect(input.env).toEqual({
       ANTHROPIC_MODEL: 'deepseek-v4-pro',
       ANTHROPIC_BASE_URL: 'https://api.deepseek.com/anthropic'
@@ -164,6 +164,13 @@ describe('profileToInput', () => {
       profiles: [{ id: 'claude', name: 'Claude Code', command: '', startupCommand: 'claude', fullPermissions: false }]
     })
     const input = profileToInput('claude', s, SHELLS, { cols: 80, rows: 24 })
-    expect(input.startupCommand).toBe('claude --model opus')
+    expect(input.startupCommand).toBe('claude --model opus --permission-mode manual')
+  })
+
+  it('pins safe and full permission modes into Codex startup arguments', () => {
+    const safe = profileToInput('codex', settings(), SHELLS, { cols: 80, rows: 24, permissionMode: 'safe' })
+    expect(safe.startupCommand).toBe('codex --sandbox read-only --ask-for-approval never')
+    const full = profileToInput('codex', settings(), SHELLS, { cols: 80, rows: 24, permissionMode: 'full' })
+    expect(full.startupCommand).toBe('codex --dangerously-bypass-approvals-and-sandbox')
   })
 })

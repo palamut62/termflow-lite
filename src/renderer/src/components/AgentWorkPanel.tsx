@@ -3,6 +3,7 @@ import { Clock3, Folder, ShieldCheck, Sparkles } from 'lucide-react'
 import { mergeProfiles, providerFromProfileId } from '../../../shared/profiles'
 import { useSettingsStore } from '../store/settingsStore'
 import { useTerminalStore } from '../store/terminalStore'
+import { useAgentEventStore } from '../store/agentEventStore'
 
 const activityLabels = {
   running: 'Running',
@@ -35,6 +36,12 @@ export function AgentWorkPanel({ tabId, onChangeCwd }: Props): React.JSX.Element
   const profile = tab ? mergeProfiles(settings.profiles).find((item) => item.id === tab.profileId) : undefined
   const provider = tab ? providerFromProfileId(settings, tab.profileId) : undefined
   const isAgent = !!provider || !!profile?.startupCommand
+  const latestEvent = useAgentEventStore((state) => {
+    for (let index = state.events.length - 1; index >= 0; index -= 1) {
+      if (state.events[index].tabId === tabId) return state.events[index]
+    }
+    return undefined
+  })
 
   useEffect(() => {
     if (!tab?.running) return
@@ -43,7 +50,7 @@ export function AgentWorkPanel({ tabId, onChangeCwd }: Props): React.JSX.Element
   }, [tab?.running])
 
   if (!tab) return null
-  const fullPermissions = provider ? provider.fullPermissions !== false : profile?.fullPermissions !== false
+  const permissionMode = tab.permissionMode ?? settings.defaultAgentPermissionMode
   const name = provider?.name || profile?.name || tab.title
   const cwd = tab.cwd || tab.launchCwd || 'Default directory'
 
@@ -65,7 +72,8 @@ export function AgentWorkPanel({ tabId, onChangeCwd }: Props): React.JSX.Element
       {isAgent && (provider?.model || profile?.model) && <span title="Active model"><Sparkles size={12} />{provider?.model || profile?.model}</span>}
       <span className={`agent-work-state status-process agent-work-${tab.activity}`}>{activityLabels[tab.activity]}</span>
       <span title="Session duration"><Clock3 size={12} />{formatDuration(now - tab.startedAt)}</span>
-      {isAgent && <span className={fullPermissions ? 'agent-work-full' : ''} title="Permission mode"><ShieldCheck size={12} />{fullPermissions ? 'Full access' : 'Standard access'}</span>}
+      {isAgent && <span className={permissionMode === 'full' ? 'agent-work-full' : ''} title="Permission mode"><ShieldCheck size={12} />{permissionMode === 'safe' ? 'Safe' : permissionMode === 'workspace' ? 'Workspace' : 'Full access'}</span>}
+      {isAgent && latestEvent && <span className={`agent-work-event agent-work-event-${latestEvent.kind}`} title={latestEvent.detail}>{latestEvent.title}</span>}
       <button className="agent-work-cwd" type="button" title={`${cwd} - click to select a folder`} disabled={savingCwd} onClick={() => { void selectCwd() }}><Folder size={12} /><span>{cwd}</span></button>
     </section>
   )

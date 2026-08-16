@@ -1,7 +1,7 @@
 import { statSync } from 'fs'
 import { isAbsolute, normalize } from 'path'
 import { ipcMain } from 'electron'
-import type { AgentSessionRef, RenderMode } from '../../shared/types'
+import type { AgentPermissionMode, AgentSessionRef, RenderMode } from '../../shared/types'
 import { IPC } from '../../shared/ipc'
 import type { TerminalManager } from '../terminal/TerminalManager'
 
@@ -41,16 +41,20 @@ function validLaunchCommand(value: unknown): string | undefined {
   return value.trim() || undefined
 }
 
+function validPermissionMode(value: unknown): AgentPermissionMode | undefined {
+  return value === 'safe' || value === 'workspace' || value === 'full' ? value : undefined
+}
+
 /**
  * Wire the PTY channels onto ipcMain. create/restart/buffer are invoke-based
  * (the renderer awaits a result); write/resize/kill/mode are fire-and-forget.
  */
 export function registerTerminalIpc(manager: TerminalManager): void {
-  ipcMain.handle(IPC.PTY_CREATE, (_event, tabId: unknown, profileId: unknown, cols: unknown, rows: unknown, cwd: unknown, resumeSession: unknown, launchCommand: unknown) => {
+  ipcMain.handle(IPC.PTY_CREATE, (_event, tabId: unknown, profileId: unknown, cols: unknown, rows: unknown, cwd: unknown, resumeSession: unknown, launchCommand: unknown, permissionMode: unknown) => {
     if (!validId(tabId) || !validId(profileId)) throw new Error('invalid tab id')
     const c = validSize(cols, 2) || 120
     const r = validSize(rows, 1) || 30
-    return manager.create(tabId, profileId, c, r, validCwd(cwd), validResumeSession(resumeSession), validLaunchCommand(launchCommand))
+    return manager.create(tabId, profileId, c, r, validCwd(cwd), validResumeSession(resumeSession), validLaunchCommand(launchCommand), validPermissionMode(permissionMode))
   })
 
   ipcMain.on(IPC.PTY_WRITE, (_event, tabId: unknown, data: unknown) => {

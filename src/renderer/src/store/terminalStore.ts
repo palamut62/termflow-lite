@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { nanoid } from 'nanoid'
 import type { SearchAddon } from '@xterm/addon-search'
-import type { AgentSessionRef, PersistedSession, TabActivity, TerminalTab } from '../../../shared/types'
+import type { AgentPermissionMode, AgentSessionRef, PersistedSession, TabActivity, TerminalTab } from '../../../shared/types'
 import { mergeProfiles, providerFromProfileId, sshFromProfileId } from '../../../shared/profiles'
 import { resolveDefaultProfileId, useSettingsStore } from './settingsStore'
 import { buildTiledPane, closePane, isValidPaneTree, paneTerminalIds, setPaneRatio, splitPane, type PaneNode } from '../paneUtils'
@@ -41,8 +41,8 @@ export function broadcastTargetIds(tabId: string, splitTabIds: string[] | null, 
   return splitTabIds.includes(tabId) ? [...splitTabIds] : [tabId]
 }
 
-function makeTab(profileId: string, cwd?: string, resumeSession?: AgentSessionRef, launchCommand?: string): TerminalTab {
-  return { id: nanoid(10), title: tabTitleFor(profileId), profileId, running: true, activity: 'running', startedAt: Date.now(), cwd, launchCwd: cwd, resumeSession, launchCommand }
+function makeTab(profileId: string, cwd?: string, resumeSession?: AgentSessionRef, launchCommand?: string, permissionMode?: AgentPermissionMode): TerminalTab {
+  return { id: nanoid(10), title: tabTitleFor(profileId), profileId, running: true, activity: 'running', startedAt: Date.now(), cwd, launchCwd: cwd, resumeSession, launchCommand, permissionMode: permissionMode ?? useSettingsStore.getState().settings.defaultAgentPermissionMode }
 }
 
 /** Fresh shells and agents share one configured startup directory. */
@@ -66,7 +66,7 @@ interface TerminalState {
   broadcastInput: boolean
   toggleBroadcastInput(): void
   /** id nanoid(10); title = profile adı. activate=false ile arka planda açar (sonraki fazlar). */
-  addTab(profileId: string, activate?: boolean, cwd?: string, launchCommand?: string): string
+  addTab(profileId: string, activate?: boolean, cwd?: string, launchCommand?: string, permissionMode?: AgentPermissionMode): string
   /** Kayıtlı oturumu (sekmeler + pane düzeni) geri yükler; bozuk ağaç reddedilir. */
   hydrateSession(session: PersistedSession, startupCwd?: string, overrideCwd?: boolean): boolean
   resumeAgentSession(profileId: string, session: AgentSessionRef, cwd?: string): string
@@ -122,7 +122,8 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
       activity: 'running',
       startedAt: Date.now(),
       cwd: overrideCwd ? startupCwd : startupCwd || tab.cwd,
-      launchCwd: overrideCwd ? startupCwd : startupCwd || tab.cwd
+      launchCwd: overrideCwd ? startupCwd : startupCwd || tab.cwd,
+      permissionMode: useSettingsStore.getState().settings.defaultAgentPermissionMode
     }))
     const ids = new Set(tabs.map((tab) => tab.id))
     // Bozuk dosyaya karşı savunma: ağaçtaki her id gerçekten bir sekme olmalı.
@@ -140,9 +141,9 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
     return true
   },
 
-  addTab(profileId, activate = true, cwd, launchCommand) {
+  addTab(profileId, activate = true, cwd, launchCommand, permissionMode) {
     const effectiveCwd = cwd || get().workspaceCwd || resolveStartupCwd()
-    const tab = makeTab(profileId, effectiveCwd, undefined, launchCommand)
+    const tab = makeTab(profileId, effectiveCwd, undefined, launchCommand, permissionMode)
     set((s) => ({
       tabs: [...s.tabs, tab],
       workspaceCwd: cwd || s.workspaceCwd,

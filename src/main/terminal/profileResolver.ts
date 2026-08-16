@@ -10,6 +10,8 @@ import {
 } from '../../shared/profiles'
 import { buildSshArgs } from '../../shared/sshArgs'
 import type { AgentSessionRef, AppSettings, CreateTerminalInput, ShellInfo, TerminalProfile } from '../../shared/types'
+import type { AgentPermissionMode } from '../../shared/types'
+import { applyAgentPermission } from '../../shared/agentEvents'
 
 export const DEFAULT_SHELL_PRIORITY: ShellInfo['id'][] = ['pwsh', 'powershell', 'cmd', 'gitbash', 'wsl', 'bash', 'sh']
 
@@ -69,6 +71,7 @@ export interface ProfileResolveOptions {
   rows: number
   cwd?: string
   resumeSession?: AgentSessionRef
+  permissionMode?: AgentPermissionMode
 }
 
 const LIGHT_THEME_IDS = new Set(['light-plus', 'light-modern', 'solarized-light', 'quiet-light'])
@@ -145,19 +148,20 @@ export function profileToInput(
       ...base,
       ...defaultShellInput(),
       env,
-      startupCommand: commandWithResume(
+      startupCommand: applyAgentPermission(commandWithResume(
         commandWithPermissions(provider.command, provider.fullPermissions, provider.fullPermissionArgs),
         opts.resumeSession
-      )
+      ) ?? '', opts.permissionMode ?? settings.defaultAgentPermissionMode)
     }
   }
 
   if (profile) {
-    const startupCommand = commandWithResume(commandWithPermissions(
+    let startupCommand = commandWithResume(commandWithPermissions(
       commandWithModel(profile.startupCommand, profile.model),
       profile.fullPermissions,
       profile.fullPermissionArgs
     ), opts.resumeSession)
+    if (startupCommand) startupCommand = applyAgentPermission(startupCommand, opts.permissionMode ?? settings.defaultAgentPermissionMode)
     // command boşsa profil, platformun varsayılan kabuğunda açılır ve
     // startupCommand ile başlatılır (CLI ajan profilleri).
     if (!profile.command.trim()) {

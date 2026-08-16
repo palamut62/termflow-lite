@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { IPC, type AgentSessionsQuery, type AppLaunchRequest, type GitStatus, type ProjectInfo, type ProjectTask, type TitleBarOverlayPayload } from '../shared/ipc'
-import type { AgentSession, AgentSessionRef, AppSettings, PersistedSession, RenderMode, ShellInfo, UpdateStatus } from '../shared/types'
+import type { AgentEvent, AgentPermissionMode, AgentSession, AgentSessionRef, AppSettings, PersistedSession, RenderMode, ShellInfo, UpdateStatus } from '../shared/types'
 
 // Windows OS build number (e.g. 26200 for current Win11). xterm's windowsPty
 // option keys its reflow behaviour on this; fall back to a modern build when
@@ -37,8 +37,8 @@ const api = {
   },
   // ---- PTY ----
   pty: {
-    create: (tabId: string, profileId: string, cols: number, rows: number, cwd?: string, resumeSession?: AgentSessionRef, launchCommand?: string): Promise<{ pid: number }> =>
-      ipcRenderer.invoke(IPC.PTY_CREATE, tabId, profileId, cols, rows, cwd, resumeSession, launchCommand),
+    create: (tabId: string, profileId: string, cols: number, rows: number, cwd?: string, resumeSession?: AgentSessionRef, launchCommand?: string, permissionMode?: AgentPermissionMode): Promise<{ pid: number }> =>
+      ipcRenderer.invoke(IPC.PTY_CREATE, tabId, profileId, cols, rows, cwd, resumeSession, launchCommand, permissionMode),
     write: (tabId: string, data: string): void => ipcRenderer.send(IPC.PTY_WRITE, tabId, data),
     resize: (tabId: string, cols: number, rows: number): void =>
       ipcRenderer.send(IPC.PTY_RESIZE, tabId, cols, rows),
@@ -105,6 +105,11 @@ const api = {
   },
   agentSessions: {
     list: (query: AgentSessionsQuery = {}): Promise<AgentSession[]> => ipcRenderer.invoke(IPC.AGENT_SESSIONS_LIST, query)
+  },
+  agentEvents: {
+    list: (limit = 500): Promise<AgentEvent[]> => ipcRenderer.invoke(IPC.AGENT_EVENTS_LIST, limit),
+    append: (event: AgentEvent): void => ipcRenderer.send(IPC.AGENT_EVENTS_APPEND, event),
+    clear: (): void => ipcRenderer.send(IPC.AGENT_EVENTS_CLEAR)
   },
   appLaunch: {
     request: (): Promise<AppLaunchRequest | null> => ipcRenderer.invoke(IPC.APP_LAUNCH_CWD),

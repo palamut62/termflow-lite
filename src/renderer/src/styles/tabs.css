@@ -347,3 +347,6 @@
   padding: 12px 18px;
   border-top: 1px solid var(--widget-border);
 }
+.agent-mode-picker { display:grid; grid-template-columns:repeat(3,1fr); gap:3px; padding:4px 8px 8px; }
+.agent-mode-picker button { padding:4px 5px; color:var(--tab-inactive-foreground); background:transparent; border:1px solid var(--widget-border); font:inherit; font-size:10px; text-transform:capitalize; cursor:pointer; }
+.agent-mode-picker button.agent-mode-active { color:var(--button-foreground); background:var(--button-background); }

@@ -95,6 +95,10 @@
   display: none;
 }
 
+.agent-security-grid { display:grid; gap:8px; margin-top:18px; }
+.agent-security-grid article { display:flex; flex-direction:column; gap:4px; padding:12px; border:1px solid var(--widget-border); background:var(--side-bar-background); }
+.agent-security-grid article span { color:var(--tab-inactive-foreground); font-size:11px; line-height:1.45; }
+
 .settings-content input {
   user-select: text;
 }

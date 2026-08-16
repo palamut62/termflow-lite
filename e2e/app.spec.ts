@@ -388,7 +388,7 @@ test('shows agent work details below provider terminals', async () => {
   await expect(panel).toBeVisible()
   await expect(panel).toContainText('DeepSeek')
   await expect(panel).toContainText('deepseek-v4-pro')
-  await expect(panel).toContainText('Full access')
+  await expect(panel).toContainText('Workspace')
   await expect(panel).toContainText(/\d+:\d{2}/)
   const activeTab = win.locator('.tab-active')
   await expect(activeTab.locator('.tab-process-indicator')).toHaveCount(1)
@@ -401,7 +401,21 @@ test('shows agent work details below provider terminals', async () => {
   expect(colors.panel).toBe(colors.terminal)
   await expect(win.locator('.status-bar')).not.toContainText('DeepSeek')
   await expect(win.locator('.status-bar')).not.toContainText('deepseek-v4-pro')
-  await expect(win.locator('.status-bar')).not.toContainText('Full access')
+  await expect(win.locator('.status-bar')).not.toContainText('Workspace')
+})
+
+test('configures agent security and opens the agent inbox', async () => {
+  await win.keyboard.press('Control+,')
+  await win.getByRole('button', { name: 'Agent Security' }).click()
+  await expect(win.getByRole('heading', { name: 'Agent Security' })).toBeVisible()
+  await expect(win.locator('.settings-field', { hasText: 'Default permission mode' }).locator('select')).toHaveValue('workspace')
+  await win.keyboard.press('Escape')
+  await win.getByRole('button', { name: 'Agents' }).click()
+  const inbox = win.getByRole('complementary', { name: 'Agent inbox' })
+  await expect(inbox).toBeVisible()
+  await expect(inbox).toContainText(/events|No agent activity/)
+  await inbox.getByRole('button', { name: 'Close agent inbox' }).click()
+  await expect(inbox).toBeHidden()
 })
 
 test('choosing a theme changes --terminal-background', async () => {

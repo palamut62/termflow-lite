@@ -4,6 +4,7 @@ import { Bot, FolderOpen, TerminalSquare, X } from 'lucide-react'
 import { mergeProfiles, providerProfileId } from '../../../shared/profiles'
 import { useSettingsStore } from '../store/settingsStore'
 import { useTerminalStore } from '../store/terminalStore'
+import type { AgentPermissionMode } from '../../../shared/types'
 
 export function PathLauncherModal({ onClose }: { onClose: () => void }): React.JSX.Element {
   const shells = useSettingsStore((s) => s.shells)
@@ -15,6 +16,7 @@ export function PathLauncherModal({ onClose }: { onClose: () => void }): React.J
   ], [settings.profiles, settings.providerProfiles, shells])
   const [profileId, setProfileId] = useState(options[0]?.id ?? settings.defaultProfileId)
   const [cwd, setCwd] = useState('')
+  const [permissionMode, setPermissionMode] = useState<AgentPermissionMode>(settings.defaultAgentPermissionMode)
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => { if (event.key === 'Escape') onClose() }
@@ -38,6 +40,10 @@ export function PathLauncherModal({ onClose }: { onClose: () => void }): React.J
               </optgroup>
             ))}
           </select>
+          <label className="path-launch-label" htmlFor="path-launch-permission">Agent permission mode</label>
+          <select id="path-launch-permission" className="settings-input settings-select path-launch-select" value={permissionMode} onChange={(event) => setPermissionMode(event.target.value as AgentPermissionMode)}>
+            <option value="safe">Safe - read only</option><option value="workspace">Workspace - project writes</option><option value="full">Full Access</option>
+          </select>
           <label className="path-launch-label" htmlFor="path-launch-cwd"><FolderOpen size={14} /> Working directory</label>
           <div className="path-launch-row">
             <input id="path-launch-cwd" className="settings-input" value={cwd} onChange={(event) => setCwd(event.target.value)} placeholder="C:\\projects\\my-app" autoFocus />
@@ -46,7 +52,7 @@ export function PathLauncherModal({ onClose }: { onClose: () => void }): React.J
         </div>
         <div className="path-launch-actions">
           <button className="settings-btn" onClick={onClose}>Cancel</button>
-          <button className="settings-btn settings-btn-primary" disabled={!cwd.trim() || !profileId} onClick={() => { useTerminalStore.getState().addTab(profileId, true, cwd.trim()); onClose() }}>Open</button>
+          <button className="settings-btn settings-btn-primary" disabled={!cwd.trim() || !profileId} onClick={() => { useTerminalStore.getState().addTab(profileId, true, cwd.trim(), undefined, permissionMode); onClose() }}>Open</button>
         </div>
       </div>
     </div>,

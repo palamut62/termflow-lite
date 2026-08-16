@@ -17,6 +17,8 @@ import { matchShortcut } from './shortcuts'
 import type { AppLaunchRequest } from '../../shared/ipc'
 import { SavedCommands } from './components/SavedCommands'
 import { useSavedCommandStore } from './store/savedCommandStore'
+import { AgentInbox } from './components/AgentInbox'
+import { useAgentEventStore } from './store/agentEventStore'
 
 // StrictMode double-mounts effects in dev — the boot sequence must run once.
 let bootStarted = false
@@ -37,6 +39,7 @@ export default function App(): React.JSX.Element {
   const taskPaletteOpen = useTaskPaletteStore((s) => s.open)
   const agentSessionsOpen = useAgentSessionStore((s) => s.open)
   const savedCommandsOpen = useSavedCommandStore((s) => s.open)
+  const agentInboxOpen = useAgentEventStore((s) => s.open)
 
   // Boot: settings + shells yükle, sonra default profile ile ilk tab'ı aç.
   useEffect(() => {
@@ -240,6 +243,7 @@ export default function App(): React.JSX.Element {
       {historyOpen && <CommandHistory />}
       {savedCommandsOpen && <SavedCommands />}
       {agentSessionsOpen && <AgentSessions />}
+      {agentInboxOpen && <AgentInbox />}
       {taskPaletteOpen && <TaskPalette />}
       {settingsOpen && <Settings />}
       {pendingCloseTabId && <CloseTabConfirm />}

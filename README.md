@@ -20,6 +20,9 @@ TermFlow Lite opens straight into a terminal — no welcome screens, no setup wi
 - **Command history** - search commands across folders and profiles, rerun them in the active terminal, or clear saved history with `Ctrl+Shift+H`
 - **Task and command palette** - discover `package.json` scripts and run project, Git, npm, or Docker tasks with `Ctrl+Shift+P`
 - **Agent work panel** - agent/provider, model, activity, permission mode, working directory, and live session duration below the terminal
+- **Agent security profiles** - start Codex or Claude in Safe, Workspace, or Full Access mode with CLI-native permission flags pinned per tab
+- **Agent Inbox and timeline** - review redacted, persistent agent activity, approval waits, tool work, completion, and failure events across tabs
+- **Persistent agent event log** - keep a local JSONL audit trail without storing raw terminal input or API keys
 - **Agent session browser** - search saved Claude Code, Codex, and OpenCode conversations and resume one in a new tab with the selected profile or provider
 - **Project detection** - recognize Node.js, Python, Rust, Go, Docker, and Git projects and suggest matching tasks automatically
 - **Split terminals** - tile multiple live terminals side by side or stacked, resize them by dragging dividers, and move focus by click or keyboard
@@ -42,8 +45,8 @@ Download the latest release from [GitHub Releases](https://github.com/palamut62/
 
 | Platform | Artifacts |
 | --- | --- |
-| Windows | `TermFlow-Lite-1.2.2-x64.exe` (installer) · `TermFlow-Lite-1.2.2-x64.zip` (portable) |
-| Linux | `TermFlow-Lite-1.2.2-x86_64.AppImage` · `TermFlow-Lite-1.2.2-amd64.deb` |
+| Windows | `TermFlow-Lite-1.3.0-x64.exe` (installer) · `TermFlow-Lite-1.3.0-x64.zip` (portable) |
+| Linux | `TermFlow-Lite-1.3.0-x86_64.AppImage` · `TermFlow-Lite-1.3.0-amd64.deb` |
 
 **Automatic updates:** the installed Windows build (`.exe`) and the Linux AppImage can update
 themselves — see *Settings → About → Updates* (checking on startup can be turned off there).

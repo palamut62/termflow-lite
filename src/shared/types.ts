@@ -3,6 +3,19 @@
 export type ShellKind = 'powershell' | 'pwsh' | 'cmd' | 'wsl' | 'gitbash' | 'custom'
 export type TabActivity = 'running' | 'waiting' | 'unread' | 'completed' | 'error'
 export type AgentKind = 'claude' | 'codex' | 'opencode'
+export type AgentPermissionMode = 'safe' | 'workspace' | 'full'
+export type AgentEventKind = 'session' | 'activity' | 'tool' | 'approval' | 'question' | 'completed' | 'error'
+
+export interface AgentEvent {
+  id: string
+  tabId: string
+  agent: AgentKind
+  kind: AgentEventKind
+  title: string
+  detail?: string
+  createdAt: number
+  permissionMode: AgentPermissionMode
+}
 
 export interface AgentSessionRef {
   agent: AgentKind
@@ -30,6 +43,8 @@ export interface TerminalTab {
   resumeSession?: AgentSessionRef
   /** New terminal açıldığında yalnızca bir kez çalıştırılan kayıtlı komut. */
   launchCommand?: string
+  /** Ajan başlatılırken sabitlenen güvenlik profili. */
+  permissionMode?: AgentPermissionMode
 }
 
 export interface TerminalProfile {
@@ -249,6 +264,8 @@ export interface AppSettings {
   quakeHeightPercent: number
   /** Açılışta sessizce güncelleme kontrolü yap (yalnızca kurulu sürümde). */
   autoCheckUpdates: boolean
+  /** Yeni ajan sekmelerinin varsayılan güvenlik profili. */
+  defaultAgentPermissionMode: AgentPermissionMode
 }
 
 /**
@@ -371,5 +388,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   quakeHotkey: 'F12',
   quakeHideOnBlur: true,
   quakeHeightPercent: 50,
-  autoCheckUpdates: true
+  autoCheckUpdates: true,
+  defaultAgentPermissionMode: 'workspace'
 }

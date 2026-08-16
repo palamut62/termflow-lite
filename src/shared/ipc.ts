@@ -1,6 +1,6 @@
 // IPC channel names + payload types (TermFlow Lite)
 
-import type { AgentSession, AgentSessionRef, AppSettings, RenderMode, ShellInfo, UpdateStatus } from './types'
+import type { AgentEvent, AgentSession, AgentSessionRef, AppSettings, RenderMode, ShellInfo, UpdateStatus } from './types'
 
 export const IPC = {
   PTY_CREATE: 'pty:create', // (tabId, profileId, cols, rows, cwd?) -> { pid }
@@ -33,6 +33,9 @@ export const IPC = {
   TASKS_DISCOVER: 'tasks:discover',
   PROJECT_DETECT: 'project:detect',
   AGENT_SESSIONS_LIST: 'agent-sessions:list',
+  AGENT_EVENTS_LIST: 'agent-events:list',
+  AGENT_EVENTS_APPEND: 'agent-events:append',
+  AGENT_EVENTS_CLEAR: 'agent-events:clear',
   APP_LAUNCH_CWD: 'app:launch-cwd',
   APP_LAUNCH_READY: 'app:launch-ready',
   APP_OPEN_PATH: 'app:open-path',
@@ -60,6 +63,7 @@ export interface AgentSessionsQuery {
 }
 
 export type { AgentSession }
+export type { AgentEvent }
 
 export interface PtyWritePayload {
   tabId: string

@@ -17,6 +17,8 @@ import { registerProjectIpc } from './ipc/project'
 import { registerAgentSessionsIpc } from './ipc/agentSessions'
 import { registerSessionIpc } from './ipc/session'
 import { registerUpdaterIpc } from './ipc/updater'
+import { registerAgentEventsIpc } from './ipc/agentEvents'
+import { AgentEventStore } from './storage/AgentEventStore'
 import { initUpdater, maybeAutoCheck } from './updater'
 import { SessionStore } from './storage/SessionStore'
 import { IPC } from '../shared/ipc'
@@ -268,6 +270,7 @@ app.whenReady().then(() => {
   registerAgentSessionsIpc()
   registerSessionIpc(sessionStore)
   registerUpdaterIpc()
+  registerAgentEventsIpc(new AgentEventStore(app.getPath('userData')))
   initUpdater(
     () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null),
     () => (settingsStore ? settingsStore.get() : DEFAULT_SETTINGS)

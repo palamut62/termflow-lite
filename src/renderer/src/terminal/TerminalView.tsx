@@ -16,6 +16,9 @@ import { TerminalContextMenu } from './TerminalContextMenu'
 import { TerminalSearch } from './TerminalSearch'
 import { AgentWorkPanel } from '../components/AgentWorkPanel'
 import { redactApiKeys } from '../../../shared/secretRedaction'
+import { agentKindForCommand, parseAgentOutput } from '../../../shared/agentEvents'
+import { mergeProfiles, providerFromProfileId } from '../../../shared/profiles'
+import { useAgentEventStore } from '../store/agentEventStore'
 
 interface Props {
   tabId: string
@@ -88,6 +91,7 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
   const launchCwd = useTerminalStore((s) => s.tabs.find((t) => t.id === tabId)?.launchCwd)
   const launchCommand = useTerminalStore((s) => s.tabs.find((t) => t.id === tabId)?.launchCommand)
   const settings = useSettingsStore((s) => s.settings)
+  const permissionMode = useTerminalStore((s) => s.tabs.find((t) => t.id === tabId)?.permissionMode) ?? settings.defaultAgentPermissionMode
   const uiSearchTabId = useSettingsStore((s) => s.uiSearchTabId)
   const [menu, setMenu] = useState<ContextMenuState | null>(null)
 
@@ -211,6 +215,14 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
           ? 'waiting'
           : 'running'
       useTerminalStore.getState().setTabActivity(tabId, activity)
+      const profile = mergeProfiles(settings.profiles).find((item) => item.id === profileId)
+      const provider = providerFromProfileId(settings, profileId)
+      const agent = agentKindForCommand(profile?.startupCommand || profile?.command || provider?.command)
+      if (agent) {
+        for (const event of parseAgentOutput(agent, data)) {
+          useAgentEventStore.getState().append(tabId, agent, permissionMode, event)
+        }
+      }
     }
     dataHandlers.set(tabId, onDataHandler)
 
@@ -219,6 +231,14 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
       term.write(`\r\n\x1b[33mProcess exited with code ${exitCode}\x1b[0m\r\n`)
       setExited({ exitCode, durationMs })
       useTerminalStore.getState().setTabActivity(tabId, exitCode === 0 ? 'completed' : 'error')
+      const profile = mergeProfiles(settings.profiles).find((item) => item.id === profileId)
+      const provider = providerFromProfileId(settings, profileId)
+      const agent = agentKindForCommand(profile?.startupCommand || profile?.command || provider?.command)
+      if (agent) useAgentEventStore.getState().append(tabId, agent, permissionMode, {
+        kind: exitCode === 0 ? 'completed' : 'error',
+        title: exitCode === 0 ? 'Agent session completed' : 'Agent process failed',
+        detail: `Exit code ${exitCode} · ${Math.round(durationMs / 1000)}s`
+      })
     }
     exitHandlers.set(tabId, onExitHandler)
 
@@ -259,12 +279,18 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
       }
       createdPtys.add(tabId)
       void window.termflow.pty
-        .create(tabId, profileId, lastSizeRef.current.cols, lastSizeRef.current.rows, launchCwd, resumeSession, launchCommand)
+        .create(tabId, profileId, lastSizeRef.current.cols, lastSizeRef.current.rows, launchCwd, resumeSession, launchCommand, permissionMode)
         .then(() => {
           if (disposed) return
           // Re-assert the current cell size so a size change that landed while
           // the PTY was spawning is not lost (main no-ops when identical).
           window.termflow.pty.resize(tabId, lastSizeRef.current.cols, lastSizeRef.current.rows)
+          const profile = mergeProfiles(settings.profiles).find((item) => item.id === profileId)
+          const provider = providerFromProfileId(settings, profileId)
+          const agent = agentKindForCommand(profile?.startupCommand || profile?.command || provider?.command)
+          if (agent) useAgentEventStore.getState().append(tabId, agent, permissionMode, {
+            kind: 'session', title: 'Agent session started', detail: `${agent} · ${permissionMode}`
+          })
         void window.termflow.pty.buffer(tabId).then((data) => {
           if (disposed) return
           if (data) term.write(data)
