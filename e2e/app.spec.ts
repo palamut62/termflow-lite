@@ -408,8 +408,16 @@ test('configures agent security and opens the agent inbox', async () => {
   const securityProfile = win.getByRole('button', { name: 'Agent security profile: Workspace' })
   await expect(securityProfile).toBeVisible()
   await securityProfile.click()
-  await expect(win.getByRole('button', { name: 'Agent security profile: Full access' })).toBeVisible()
-  await win.getByRole('button', { name: 'Agent security profile: Full access' }).click()
+  const fullAccess = win.getByRole('button', { name: 'Agent security profile: Full access' })
+  await expect(fullAccess).toBeVisible()
+  const fullAccessColors = await fullAccess.evaluate((element) => ({
+    text: getComputedStyle(element).color,
+    statusText: getComputedStyle(element.closest('.status-bar')!).color,
+    background: getComputedStyle(element).backgroundColor
+  }))
+  expect(fullAccessColors.text).toBe(fullAccessColors.statusText)
+  expect(fullAccessColors.background).not.toBe('rgba(0, 0, 0, 0)')
+  await fullAccess.click()
   await expect(win.getByRole('button', { name: 'Agent security profile: Safe' })).toBeVisible()
   await win.getByRole('button', { name: 'Agent security profile: Safe' }).click()
   await expect(win.getByRole('button', { name: 'Agent security profile: Workspace' })).toBeVisible()
