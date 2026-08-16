@@ -6,7 +6,6 @@ import { sshTarget } from '../../../shared/sshArgs'
 import { resolveDefaultProfileId, useSettingsStore } from '../store/settingsStore'
 import { useTerminalStore } from '../store/terminalStore'
 import { TabIcon } from './TabIcon'
-import type { AgentPermissionMode } from '../../../shared/types'
 
 interface NewTabMenuProps {
   /** Caret butonu — menü bunun alt-sağına hizalanır, dışa tıkta "içeri" sayılır. */
@@ -35,7 +34,6 @@ export function NewTabMenu({ anchor, onClose, onOpenAtPath }: NewTabMenuProps): 
   const providers = useSettingsStore((s) => s.settings.providerProfiles)
   const sshConnections = useSettingsStore((s) => s.settings.sshConnections) ?? []
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
-  const [permissionMode, setPermissionMode] = useState<AgentPermissionMode>(useSettingsStore.getState().settings.defaultAgentPermissionMode)
 
   // Measure after paint: sağ kenarlar çakışacak şekilde hizala, taşarsa clamp'le.
   useEffect(() => {
@@ -76,7 +74,7 @@ export function NewTabMenu({ anchor, onClose, onOpenAtPath }: NewTabMenuProps): 
   }, [anchor, onClose])
 
   const openTab = (profileId: string): void => {
-    useTerminalStore.getState().addTab(profileId, true, undefined, undefined, permissionMode)
+    useTerminalStore.getState().addTab(profileId, true)
     onClose()
   }
 
@@ -91,9 +89,6 @@ export function NewTabMenu({ anchor, onClose, onOpenAtPath }: NewTabMenuProps): 
       style={{ left: pos?.x ?? 0, top: pos?.y ?? 0, visibility: pos ? undefined : 'hidden' }}
     >
       <div className="menu-section">Shells</div>
-      <div className="agent-mode-picker" aria-label="Agent permission mode">
-        {(['safe', 'workspace', 'full'] as AgentPermissionMode[]).map((mode) => <button key={mode} className={permissionMode === mode ? 'agent-mode-active' : ''} onClick={() => setPermissionMode(mode)}>{mode}</button>)}
-      </div>
       <button className="menu-item" role="menuitem" onClick={onOpenAtPath}>
         <FolderOpen size={14} />
         <span className="menu-item-label">Open at folder...</span>

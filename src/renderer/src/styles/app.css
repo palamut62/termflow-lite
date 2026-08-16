@@ -139,6 +139,14 @@ body {
 
 .status-action:hover { background: color-mix(in srgb, currentColor 14%, transparent); }
 
+.status-security {
+  font-weight: 600;
+}
+
+.status-security-safe { color: var(--term-green); }
+.status-security-workspace { color: var(--term-yellow); }
+.status-security-full { color: var(--term-red); }
+
 .status-spacer {
   flex: 1;
 }

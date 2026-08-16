@@ -405,8 +405,16 @@ test('shows agent work details below provider terminals', async () => {
 })
 
 test('configures agent security and opens the agent inbox', async () => {
+  const securityProfile = win.getByRole('button', { name: 'Agent security profile: Workspace' })
+  await expect(securityProfile).toBeVisible()
+  await securityProfile.click()
+  await expect(win.getByRole('button', { name: 'Agent security profile: Full access' })).toBeVisible()
+  await win.getByRole('button', { name: 'Agent security profile: Full access' }).click()
+  await expect(win.getByRole('button', { name: 'Agent security profile: Safe' })).toBeVisible()
+  await win.getByRole('button', { name: 'Agent security profile: Safe' }).click()
+  await expect(win.getByRole('button', { name: 'Agent security profile: Workspace' })).toBeVisible()
   await win.keyboard.press('Control+,')
-  await win.getByRole('button', { name: 'Agent Security' }).click()
+  await win.getByRole('button', { name: 'Agent Security', exact: true }).click()
   await expect(win.getByRole('heading', { name: 'Agent Security' })).toBeVisible()
   await expect(win.locator('.settings-field', { hasText: 'Default permission mode' }).locator('select')).toHaveValue('workspace')
   await win.keyboard.press('Escape')

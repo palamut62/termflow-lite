@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Bookmark, Bot, Braces, Clock3, Command, GitBranch, Radio, Server } from 'lucide-react'
+import { Bookmark, Bot, Braces, Clock3, Command, GitBranch, Radio, Server, ShieldCheck } from 'lucide-react'
+import type { AgentPermissionMode } from '../../../shared/types'
 import type { GitStatus, ProjectInfo } from '../../../shared/ipc'
 import { sshFromProfileId } from '../../../shared/profiles'
 import { sshTarget } from '../../../shared/sshArgs'
@@ -11,6 +12,13 @@ import { useTaskPaletteStore } from '../store/taskPaletteStore'
 import { useSavedCommandStore } from '../store/savedCommandStore'
 import { useAgentEventStore } from '../store/agentEventStore'
 
+const PERMISSION_MODES: AgentPermissionMode[] = ['safe', 'workspace', 'full']
+const PERMISSION_LABELS: Record<AgentPermissionMode, string> = {
+  safe: 'Safe',
+  workspace: 'Workspace',
+  full: 'Full access'
+}
+
 export function StatusBar(): React.JSX.Element {
   const tabs = useTerminalStore((s) => s.tabs)
   const activeTabId = useTerminalStore((s) => s.activeTabId)
@@ -21,6 +29,12 @@ export function StatusBar(): React.JSX.Element {
   const cwd = active?.cwd || active?.launchCwd || ''
   const [git, setGit] = useState<GitStatus | null>(null)
   const [project, setProject] = useState<ProjectInfo | null>(null)
+  const permissionMode = settings.defaultAgentPermissionMode
+  const cyclePermissionMode = (): void => {
+    const currentIndex = PERMISSION_MODES.indexOf(permissionMode)
+    const next = PERMISSION_MODES[(currentIndex + 1) % PERMISSION_MODES.length]
+    void useSettingsStore.getState().update({ defaultAgentPermissionMode: next })
+  }
   useEffect(() => {
     let current = true
     const refresh = (): void => {
@@ -74,6 +88,14 @@ export function StatusBar(): React.JSX.Element {
       {project && <span className="status-item status-project" title={`Detected project: ${project.technologies.join(', ')}`}><Braces size={12} />{project.technologies.join(' · ')}</span>}
       {git && <span className="status-item status-git" title={`${git.changedFiles} changed file${git.changedFiles === 1 ? '' : 's'}`}><GitBranch size={12} />{git.branch}{git.changedFiles > 0 ? ` (${git.changedFiles})` : ''}</span>}
       <span className="status-item">{tabs.length} tab{tabs.length === 1 ? '' : 's'}</span>
+      <button
+        className={`status-action status-security status-security-${permissionMode}`}
+        onClick={cyclePermissionMode}
+        title={`Agent security profile: ${PERMISSION_LABELS[permissionMode]}. Click to change.`}
+        aria-label={`Agent security profile: ${PERMISSION_LABELS[permissionMode]}`}
+      >
+        <ShieldCheck size={12} />{PERMISSION_LABELS[permissionMode]}
+      </button>
     </footer>
   )
 }
