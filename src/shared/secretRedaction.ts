@@ -38,6 +38,10 @@ export function redactApiKeys(value: string, knownKeys: Iterable<string> = findA
 export class TerminalSecretRedactor {
   private readonly keys = new Set<string>()
 
+  register(value: string): void {
+    if (value) this.keys.add(value)
+  }
+
   registerInput(value: string): void {
     for (const key of findApiKeys(value)) this.keys.add(key)
   }

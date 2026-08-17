@@ -73,6 +73,11 @@ const api = {
     get: (): Promise<AppSettings> => ipcRenderer.invoke(IPC.SETTINGS_GET),
     set: (patch: Partial<AppSettings>): Promise<AppSettings> => ipcRenderer.invoke(IPC.SETTINGS_SET, patch)
   },
+  providerSecrets: {
+    has: (providerId: string): Promise<boolean> => ipcRenderer.invoke(IPC.PROVIDER_SECRET_STATUS, providerId),
+    set: (providerId: string, secret: string): Promise<boolean> => ipcRenderer.invoke(IPC.PROVIDER_SECRET_SET, providerId, secret),
+    delete: (providerId: string): Promise<void> => ipcRenderer.invoke(IPC.PROVIDER_SECRET_DELETE, providerId)
+  },
   // ---- Session (tab + split layout restore) ----
   session: {
     get: (): Promise<PersistedSession | null> => ipcRenderer.invoke(IPC.SESSION_GET),

@@ -8,6 +8,12 @@ describe('API key redaction', () => {
     expect(findApiKeys(`OPENAI_API_KEY=${openAi} api-key: ${custom}`)).toEqual([openAi, custom])
   })
 
+  it('masks an explicitly registered provider credential', () => {
+    const redactor = new TerminalSecretRedactor()
+    redactor.register('provider-key-without-a-known-prefix')
+    expect(redactor.redact('token=provider-key-without-a-known-prefix')).toBe('token=************')
+  })
+
   it('recognizes a pasted bare opaque credential but ignores normal commands', () => {
     expect(findApiKeys('Abcd1234efgh5678ijkl9012')).toEqual(['Abcd1234efgh5678ijkl9012'])
     expect(findApiKeys('npm run build')).toEqual([])

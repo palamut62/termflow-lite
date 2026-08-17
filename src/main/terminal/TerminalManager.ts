@@ -1,8 +1,25 @@
 import type { BrowserWindow } from 'electron'
-import type { AgentPermissionMode, AgentSessionRef, AppSettings, PtyEvent, RenderMode, ShellInfo } from '../../shared/types'
+import type { AgentPermissionMode, AgentSessionRef, AppSettings, CreateTerminalInput, PtyEvent, RenderMode, ShellInfo } from '../../shared/types'
 import { IPC } from '../../shared/ipc'
 import { PtyCore } from './PtyCore'
 import { profileToInput, resolveProfileId } from './profileResolver'
+
+export function applyProviderSecret(
+  input: CreateTerminalInput,
+  resolvedId: string,
+  settings: AppSettings,
+  getSecret: (providerId: string) => string | undefined
+): CreateTerminalInput {
+  if (!resolvedId.startsWith('provider:')) return input
+  const provider = settings.providerProfiles.find((item) => `provider:${item.id}` === resolvedId)
+  const secret = provider ? getSecret(provider.id) : undefined
+  if (!provider?.apiKeyEnv || !secret) return input
+  return {
+    ...input,
+    env: { ...input.env, [provider.apiKeyEnv]: secret },
+    secretEnvNames: [provider.apiKeyEnv]
+  }
+}
 
 /**
  * PTY lifecycle owner (PRD §20). Wraps PtyCore and forwards its events to the
@@ -15,7 +32,8 @@ export class TerminalManager {
 
   constructor(
     private readonly getWindow: () => BrowserWindow | null,
-    private readonly getSettings: () => AppSettings
+    private readonly getSettings: () => AppSettings,
+    private readonly getProviderSecret: (providerId: string) => string | undefined = () => undefined
   ) {
     this.core = new PtyCore((event) => this.handleEvent(event))
   }
@@ -29,7 +47,12 @@ export class TerminalManager {
   create(tabId: string, profileId: string, cols: number, rows: number, cwd?: string, resumeSession?: AgentSessionRef, launchCommand?: string, permissionMode?: AgentPermissionMode): { pid: number } {
     const settings = this.getSettings()
     const resolvedId = resolveProfileId(profileId, settings, this.shells)
-    const input = { ...profileToInput(resolvedId, settings, this.shells, { cols, rows, cwd, resumeSession, permissionMode }), launchCommand }
+    const input = applyProviderSecret(
+      { ...profileToInput(resolvedId, settings, this.shells, { cols, rows, cwd, resumeSession, permissionMode }), launchCommand },
+      resolvedId,
+      settings,
+      this.getProviderSecret
+    )
     // Keep the ring buffer limit in sync with the current setting on every
     // spawn so a settings change applies even to terminals created later.
     this.core.setScrollback(settings.scrollback)

@@ -17,6 +17,9 @@ export const IPC = {
   SHELLS_DISCOVER: 'shells:discover', // -> ShellInfo[]
   SETTINGS_GET: 'settings:get', // -> AppSettings
   SETTINGS_SET: 'settings:set', // (patch) -> AppSettings
+  PROVIDER_SECRET_STATUS: 'provider-secret:status', // (providerId) -> boolean
+  PROVIDER_SECRET_SET: 'provider-secret:set', // (providerId, secret) -> boolean
+  PROVIDER_SECRET_DELETE: 'provider-secret:delete', // (providerId) -> void
   SESSION_GET: 'session:get', // -> PersistedSession | null
   SESSION_SAVE: 'session:save', // (PersistedSession) — fire-and-forget, main debounces
   SESSION_CLEAR: 'session:clear', // ()

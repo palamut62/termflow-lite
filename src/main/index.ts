@@ -18,6 +18,8 @@ import { registerAgentSessionsIpc } from './ipc/agentSessions'
 import { registerSessionIpc } from './ipc/session'
 import { registerUpdaterIpc } from './ipc/updater'
 import { registerAgentEventsIpc } from './ipc/agentEvents'
+import { registerProviderSecretsIpc } from './ipc/providerSecrets'
+import { ProviderSecretStore } from './storage/ProviderSecretStore'
 import { AgentEventStore } from './storage/AgentEventStore'
 import { initUpdater, maybeAutoCheck } from './updater'
 import { SessionStore } from './storage/SessionStore'
@@ -233,7 +235,12 @@ app.whenReady().then(() => {
 
   settingsStore = new SettingsStore(join(app.getPath('userData'), 'settings.json'))
   sessionStore = new SessionStore(join(app.getPath('userData'), 'session.json'))
-  const mgr = new TerminalManager(() => mainWindow, () => (settingsStore ? settingsStore.get() : DEFAULT_SETTINGS))
+  const providerSecrets = new ProviderSecretStore(join(app.getPath('userData'), 'provider-secrets.json'))
+  const mgr = new TerminalManager(
+    () => mainWindow,
+    () => (settingsStore ? settingsStore.get() : DEFAULT_SETTINGS),
+    (providerId) => providerSecrets.get(providerId)
+  )
   manager = mgr
   // WSL distro enumeration makes discovery async — the renderer re-queries
   // via SHELLS_DISCOVER anyway, so the warm value is only a fallback.
@@ -260,6 +267,7 @@ app.whenReady().then(() => {
     mainWindow && !mainWindow.isDestroyed() ? mainWindow : null,
     onSettingsChanged
   )
+  registerProviderSecretsIpc(providerSecrets)
   registerShellIpc()
   registerClipboardIpc()
   registerWindowIpc(() => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null))

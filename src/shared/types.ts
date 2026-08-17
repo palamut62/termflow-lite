@@ -77,7 +77,7 @@ export interface ProviderProfile {
   /** Selectable model ids shown in Settings; model is the active one. */
   models?: string[]
   baseUrl?: string
-  /** Existing OS environment variable that contains the provider secret. */
+  /** Environment variable exposed only to this provider's CLI process. */
   apiKeyEnv?: string
   modelEnv?: string
   baseUrlEnv?: string
@@ -119,6 +119,8 @@ export interface CreateTerminalInput {
   args?: string[]
   cwd?: string
   env?: Record<string, string>
+  /** Environment values that must be masked from terminal output and scrollback. */
+  secretEnvNames?: string[]
   cols?: number
   rows?: number
   /** PTY spawn edildikten kısa süre sonra kabuğa yazılacak komut. */

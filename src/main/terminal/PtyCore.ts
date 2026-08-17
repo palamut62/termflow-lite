@@ -77,6 +77,11 @@ export class PtyCore {
       useConpty: true
     })
 
+    const secretRedactor = new TerminalSecretRedactor()
+    for (const name of input.secretEnvNames ?? []) {
+      const value = resolved.env[name]
+      if (value) secretRedactor.register(value)
+    }
     const managed: ManagedPty = {
       id,
       proc,
@@ -92,7 +97,7 @@ export class PtyCore {
       cwd: resolved.cwd,
       cols,
       rows,
-      secretRedactor: new TerminalSecretRedactor()
+      secretRedactor
     }
     this.terminals.set(id, managed)
 
