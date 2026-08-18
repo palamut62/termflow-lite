@@ -17,6 +17,7 @@ import { matchShortcut } from './shortcuts'
 import type { AppLaunchRequest } from '../../shared/ipc'
 import { SavedCommands } from './components/SavedCommands'
 import { useSavedCommandStore } from './store/savedCommandStore'
+import { useCommandScheduler } from './store/useCommandScheduler'
 import { AgentInbox } from './components/AgentInbox'
 import { useAgentEventStore } from './store/agentEventStore'
 
@@ -40,6 +41,8 @@ export default function App(): React.JSX.Element {
   const agentSessionsOpen = useAgentSessionStore((s) => s.open)
   const savedCommandsOpen = useSavedCommandStore((s) => s.open)
   const agentInboxOpen = useAgentEventStore((s) => s.open)
+
+  useCommandScheduler()
 
   // Boot: settings + shells yükle, sonra default profile ile ilk tab'ı aç.
   useEffect(() => {

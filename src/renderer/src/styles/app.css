@@ -279,6 +279,9 @@ body {
 .saved-command-input-row input { flex: 1; }
 .saved-command-input-row button { display: flex; align-items: center; gap: 5px; padding: 0 9px; color: var(--button-foreground); background: var(--button-background); border: 0; cursor: pointer; }
 .saved-command-input-row button:disabled { cursor: default; opacity: .45; }
+.saved-command-schedule-row { display: flex; gap: 6px; }
+.saved-command-schedule-row select, .saved-command-schedule-row input { flex: 1; min-width: 0; }
+.saved-command-copy .saved-command-schedule { color: var(--tab-inactive-foreground); font-size: 10px; }
 .saved-command-search { flex-shrink: 0; margin: 10px 12px; }
 .saved-command-entry { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--widget-border); }
 .saved-command-entry:hover { background: var(--menu-selection-background); }
