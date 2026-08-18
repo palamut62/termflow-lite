@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
 import type { UpdateStatus } from '../../../shared/types'
 import { useSettingsStore } from '../store/settingsStore'
+import { useUpdateStore } from '../store/updateStore'
 import { Field, Toggle } from './Settings'
 
 /** Durum -> kullanıcıya gösterilecek metin. */
@@ -31,10 +31,8 @@ function statusText(status: UpdateStatus): string {
 export function AboutSettings(): React.JSX.Element {
   const settings = useSettingsStore((s) => s.settings)
   const update = useSettingsStore((s) => s.update)
-  const [status, setStatus] = useState<UpdateStatus>({ state: 'idle' })
-
-  // Main tarafındaki updater olayları; bileşen kapanınca abonelik çözülür.
-  useEffect(() => window.termflow.updater.onStatus(setStatus), [])
+  // Durum kaynağı merkezi store (abonelik StatusBar'da tek yerden kurulur).
+  const status = useUpdateStore((s) => s.status)
 
   const busy = status.state === 'checking' || status.state === 'downloading'
 
@@ -52,7 +50,7 @@ export function AboutSettings(): React.JSX.Element {
           <button
             className="settings-btn"
             disabled={busy}
-            onClick={async () => setStatus(await window.termflow.updater.check())}
+            onClick={async () => useUpdateStore.getState().setStatus(await window.termflow.updater.check())}
           >
             Check for updates
           </button>

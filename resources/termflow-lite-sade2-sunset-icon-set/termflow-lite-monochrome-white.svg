@@ -6,7 +6,7 @@
     <stop offset="100%" stop-color="#FF2E7A"/>
   </linearGradient>
 </defs>
-<path fill="url(#sunset)" fill-rule="evenodd" d="
+<path fill="#FFFFFF" fill-rule="evenodd" d="
 M256 44
 L438 149
 L438 292

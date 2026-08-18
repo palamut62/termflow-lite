@@ -151,6 +151,26 @@ body {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--term-red) 55%, transparent);
 }
 
+/* Güncelleme rozeti: sağ blokta, güvenlik rozetinin solunda; belirgin accent. */
+.status-update-group { gap: 2px; }
+.status-update { color: var(--term-cyan); font-weight: 600; background: color-mix(in srgb, var(--term-cyan) 16%, transparent); }
+.status-update:hover:not(:disabled) { background: color-mix(in srgb, var(--term-cyan) 30%, transparent); }
+.status-update:disabled { cursor: default; }
+.status-update-downloaded { color: var(--term-green); background: color-mix(in srgb, var(--term-green) 18%, transparent); }
+.status-update-downloaded:hover:not(:disabled) { background: color-mix(in srgb, var(--term-green) 32%, transparent); }
+.status-update-dismiss { padding: 2px; opacity: 0.7; background: transparent; }
+.status-update-dismiss:hover { opacity: 1; }
+.status-update-spin { animation: status-update-spin 1s linear infinite; }
+
+@keyframes status-update-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-update-spin { animation: none; }
+}
+
 .status-spacer {
   flex: 1;
 }

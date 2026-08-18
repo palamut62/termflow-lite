@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Bookmark, Bot, Braces, Clock3, Command, GitBranch, Radio, Server, ShieldCheck } from 'lucide-react'
+import { Bookmark, Bot, Braces, Clock3, Command, Download, GitBranch, Loader2, Radio, RefreshCw, Server, ShieldCheck, X } from 'lucide-react'
 import type { AgentPermissionMode } from '../../../shared/types'
 import type { GitStatus, ProjectInfo } from '../../../shared/ipc'
 import { sshFromProfileId } from '../../../shared/profiles'
@@ -11,12 +11,67 @@ import { useAgentSessionStore } from '../store/agentSessionStore'
 import { useTaskPaletteStore } from '../store/taskPaletteStore'
 import { useSavedCommandStore } from '../store/savedCommandStore'
 import { useAgentEventStore } from '../store/agentEventStore'
+import { initUpdateStatusBridge, shouldShowUpdateBadge, updateBadgeLabel, updateBadgeTitle, useUpdateStore } from '../store/updateStore'
 
 const PERMISSION_MODES: AgentPermissionMode[] = ['safe', 'workspace', 'full']
 const PERMISSION_LABELS: Record<AgentPermissionMode, string> = {
   safe: 'Safe',
   workspace: 'Workspace',
   full: 'Full access'
+}
+
+const CONFIRM_RESET_MS = 6000
+
+/** Sağ blokta güncelleme rozeti; 'downloaded' durumunda kurulum iki aşamalı onaylanır. */
+function UpdateBadge(): React.JSX.Element | null {
+  const status = useUpdateStore((s) => s.status)
+  const dismissedVersion = useUpdateStore((s) => s.dismissedVersion)
+  const confirmingInstall = useUpdateStore((s) => s.confirmingInstall)
+
+  useEffect(() => {
+    if (!confirmingInstall) return
+    const timer = window.setTimeout(() => useUpdateStore.getState().setConfirmingInstall(false), CONFIRM_RESET_MS)
+    return () => window.clearTimeout(timer)
+  }, [confirmingInstall])
+
+  if (!shouldShowUpdateBadge(status, dismissedVersion)) return null
+
+  const title = updateBadgeTitle(status)
+  const label = confirmingInstall && status.state === 'downloaded' ? 'Click again to restart' : updateBadgeLabel(status)
+  const onClick = (): void => {
+    if (status.state === 'available') void window.termflow.updater.download()
+    else if (status.state === 'downloaded') {
+      if (confirmingInstall) void window.termflow.updater.install()
+      else useUpdateStore.getState().setConfirmingInstall(true)
+    }
+  }
+
+  return (
+    <span className="status-item status-update-group">
+      <button
+        className={`status-action status-update${status.state === 'downloaded' ? ' status-update-downloaded' : ''}`}
+        onClick={onClick}
+        disabled={status.state === 'downloading'}
+        title={title}
+        aria-label={title}
+      >
+        {status.state === 'available' && <Download size={12} />}
+        {status.state === 'downloading' && <Loader2 size={12} className="status-update-spin" />}
+        {status.state === 'downloaded' && <RefreshCw size={12} />}
+        {label}
+      </button>
+      {status.state === 'available' && (
+        <button
+          className="status-action status-update-dismiss"
+          onClick={() => useUpdateStore.getState().dismiss()}
+          title="Dismiss update notification"
+          aria-label="Dismiss update notification"
+        >
+          <X size={10} />
+        </button>
+      )}
+    </span>
+  )
 }
 
 export function StatusBar(): React.JSX.Element {
@@ -35,6 +90,8 @@ export function StatusBar(): React.JSX.Element {
     const next = PERMISSION_MODES[(currentIndex + 1) % PERMISSION_MODES.length]
     void useSettingsStore.getState().update({ defaultAgentPermissionMode: next })
   }
+  useEffect(() => initUpdateStatusBridge(), [])
+
   useEffect(() => {
     let current = true
     const refresh = (): void => {
@@ -88,6 +145,7 @@ export function StatusBar(): React.JSX.Element {
       {project && <span className="status-item status-project" title={`Detected project: ${project.technologies.join(', ')}`}><Braces size={12} />{project.technologies.join(' · ')}</span>}
       {git && <span className="status-item status-git" title={`${git.changedFiles} changed file${git.changedFiles === 1 ? '' : 's'}`}><GitBranch size={12} />{git.branch}{git.changedFiles > 0 ? ` (${git.changedFiles})` : ''}</span>}
       <span className="status-item">{tabs.length} tab{tabs.length === 1 ? '' : 's'}</span>
+      <UpdateBadge />
       <button
         className={`status-action status-security status-security-${permissionMode}`}
         onClick={cyclePermissionMode}
