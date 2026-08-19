@@ -631,10 +631,17 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
     termRef.current?.focus()
   }
 
+  // --terminal-padding: bilgi şeridi terminal dolgusunun dışına taşıp status
+  // bar'a yaslanabilsin diye aynı değer CSS'e de verilir.
+  const paneStyle = {
+    padding: settings.terminalPadding,
+    '--terminal-padding': `${settings.terminalPadding}px`
+  } as React.CSSProperties
+
   return (
     <div
       className={`terminal-view${visible ? '' : ' inactive'}${splitPane ? ` split-pane split-pane-${splitPane} split-${splitDirection}` : ''}${active ? ' split-pane-active' : ''}`}
-      style={{ padding: settings.terminalPadding }}
+      style={paneStyle}
       onMouseDown={() => {
         if (visible && !active) useTerminalStore.getState().setActiveTab(tabId)
       }}

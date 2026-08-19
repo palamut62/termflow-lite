@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.3 - 2026-08-19
+
+- Removed the empty gap between the session info strip and the status bar; the strip is no longer pushed up by the terminal padding setting and now spans the full width.
+- Tightened the strip's own height so the information sits closer to the status bar.
+
 ## 1.4.2 - 2026-08-19
 
 - Toned down the session info strip below the terminal: dimmer text, a fainter divider, and softer status colours so it no longer competes with the terminal.

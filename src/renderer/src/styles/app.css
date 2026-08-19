@@ -84,10 +84,14 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 22px;
+  /* Sabit yükseklik yerine içerik yüksekliği: altta ölü boşluk kalmasın,
+     şerit status bar'a yaslansın. */
+  line-height: 14px;
   flex-shrink: 0;
   min-width: 0;
-  padding: 0 9px;
+  /* Terminal dolgusunu iptal et: şerit kenarlara ve status bar'a yaslanır. */
+  margin: 0 calc(-1 * var(--terminal-padding, 8px)) calc(-1 * var(--terminal-padding, 8px));
+  padding: 3px 9px 2px;
   background: var(--terminal-background);
   color: var(--tab-inactive-foreground);
   font-size: 10px;
@@ -100,7 +104,7 @@ body {
 
 .agent-work-panel > span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .agent-work-primary { color: color-mix(in srgb, var(--app-foreground) 80%, transparent); }
-.agent-work-state { padding: 1px 6px; border-radius: 8px; background: color-mix(in srgb, currentColor 10%, transparent); }
+.agent-work-state { padding: 0 6px; border-radius: 8px; background: color-mix(in srgb, currentColor 10%, transparent); }
 .agent-work-running { color: color-mix(in srgb, var(--term-green) 70%, var(--terminal-background)); }
 .agent-work-waiting { color: color-mix(in srgb, var(--term-yellow) 70%, var(--terminal-background)); }
 .agent-work-unread { color: color-mix(in srgb, var(--term-blue) 70%, var(--terminal-background)); }
@@ -111,7 +115,7 @@ body {
 .agent-work-event-approval,.agent-work-event-question { color: color-mix(in srgb, var(--term-yellow) 70%, var(--terminal-background)); }
 .agent-work-event-error { color: color-mix(in srgb, var(--term-red) 75%, var(--terminal-background)); }
 .agent-work-event-completed { color: color-mix(in srgb, var(--term-green) 70%, var(--terminal-background)); }
-.agent-work-cwd { display:inline-flex;align-items:center;gap:5px;min-width:0;margin-left:auto;max-width:48%;padding:2px 4px;color:inherit;background:transparent;border:0;border-radius:3px;font:inherit;cursor:pointer; }
+.agent-work-cwd { display:inline-flex;align-items:center;gap:5px;min-width:0;margin-left:auto;max-width:48%;padding:0 4px;line-height:inherit;color:inherit;background:transparent;border:0;border-radius:3px;font:inherit;cursor:pointer; }
 .agent-work-cwd span { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
 .agent-work-cwd:hover { background:color-mix(in srgb,currentColor 12%,transparent);color:var(--accent-color); }
 
