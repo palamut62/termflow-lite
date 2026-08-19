@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.2 - 2026-08-19
+
+- Toned down the session info strip below the terminal: dimmer text, a fainter divider, and softer status colours so it no longer competes with the terminal.
+- Moved the strip closer to the status bar by trimming its height and spacing.
+- Hovering the strip (or focusing the folder button) restores full contrast.
+
 ## 1.4.1 - 2026-08-18
 
 - Added an update indicator to the right side of the status bar: download a new version or restart to install without opening Settings.
