@@ -1,5 +1,10 @@
 name: Release
 
+# CI is the ONLY publisher of release assets. Never upload locally built
+# artifacts to a release: latest.yml and the installer it describes must come
+# from the same build, otherwise the auto-updater fails with a sha512 mismatch.
+# See docs/releasing.md.
+
 on:
   push:
     tags:
@@ -7,6 +12,11 @@ on:
 
 permissions:
   contents: write
+
+# A second push of the same tag replaces the run instead of racing it.
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
   release-windows:
@@ -29,13 +39,19 @@ jobs:
       - name: Package Windows artifacts
         run: npm run dist:win
 
+      - name: Generate release notes from CHANGELOG
+        shell: bash
+        run: node scripts/release-notes.mjs "${{ github.ref_name }}" > release-notes.md
+
       - name: Upload Windows artifacts to release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           draft: false
+          body_path: release-notes.md
           files: |
             dist/*.exe
+            dist/*.blockmap
             dist/*.zip
             dist/latest.yml
 
@@ -68,3 +84,19 @@ jobs:
             dist/*.AppImage
             dist/*.deb
             dist/latest-linux.yml
+
+  verify-release:
+    name: Verify published assets
+    runs-on: ubuntu-latest
+    needs: [release-windows, release-linux]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # Fails the run if any asset does not match the sha512 in its update
+      # manifest — the exact breakage users hit as "sha512 checksum mismatch".
+      - name: Check that every asset matches its update manifest
+        run: node scripts/verify-release-assets.mjs "${{ github.ref_name }}"
