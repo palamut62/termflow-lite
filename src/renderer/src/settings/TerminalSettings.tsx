@@ -106,6 +106,16 @@ export function TerminalSettings(): React.JSX.Element {
             label="Restore session on startup"
           />
         </Field>
+        <Field
+          label="Close to Tray"
+          hint="Pencere kapatılınca uygulama sistem tepsisinde çalışmaya devam eder; gerçek çıkış tepsi menüsündeki Quit ile yapılır."
+        >
+          <Toggle
+            checked={settings.closeToTray}
+            onChange={(v) => void update({ closeToTray: v })}
+            label="Close to tray"
+          />
+        </Field>
       </section>
 
       <section>

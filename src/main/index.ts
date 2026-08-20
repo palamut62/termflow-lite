@@ -26,6 +26,7 @@ import { SessionStore } from './storage/SessionStore'
 import { IPC } from '../shared/ipc'
 import { parseLaunchRequest } from './launchPath'
 import { syncExplorerContextMenu } from './explorerContextMenu'
+import { createTray, destroyTray, isTrayActive, refreshTrayMenu } from './tray'
 
 // Dev: project resources/. Packaged: extraResources under process.resourcesPath.
 const APP_ICON = app.isPackaged
@@ -44,6 +45,41 @@ let mainWindow: BrowserWindow | null = null
 let settingsStore: SettingsStore | null = null
 let sessionStore: SessionStore | null = null
 let manager: TerminalManager | null = null
+
+// ---- Sistem tepsisi durumu ----
+/**
+ * Gerçek çıkış talebi verildi mi. `close` handler'ı pencereyi yalnızca bu bayrak
+ * kapalıyken gizler; tepsideki "Quit" (ve app.quit çağıran her yol) bunu açar.
+ */
+let isQuitting = false
+
+function hideMainWindow(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  mainWindow.hide()
+  refreshTrayMenu()
+}
+
+function quitApp(): void {
+  isQuitting = true
+  app.quit()
+}
+
+/** Tepsi ayarı canlı uygulanır: kapalıysa ikon kaldırılır. */
+function applyTrayConfig(settings: AppSettings): void {
+  // E2E koşusunda tepsi kapalı kalır: gizlenen pencere Playwright'ı asar.
+  if (!settings.closeToTray || process.env.TERMFLOW_E2E === '1') {
+    destroyTray()
+    // Ayar pencere gizliyken kapatılırsa uygulama erişilemez kalırdı.
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) showMainWindow()
+    return
+  }
+  createTray(APP_ICON, {
+    onShow: showMainWindow,
+    onHide: hideMainWindow,
+    onQuit: quitApp,
+    isWindowVisible: () => Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible())
+  })
+}
 
 // ---- Quake (açılır) mod durumu ----
 /** Kayıtlı global kısayol; null = quake kapalı veya kayıt başarısız. */
@@ -115,6 +151,7 @@ function showMainWindow(): void {
   if (mainWindow.isMinimized()) mainWindow.restore()
   mainWindow.show()
   mainWindow.focus()
+  refreshTrayMenu()
 }
 
 // Single-instance: focus the existing window instead of spawning a second
@@ -179,9 +216,22 @@ function createWindow(): void {
   mainWindow.webContents.on('did-start-loading', () => { launchListenerReady = false })
   setTimeout(reveal, 3000)
 
+  // Kapatma tepsiye gizler: PTY'ler ve ajan oturumları yaşamaya devam eder.
+  // Bayrak açıkken (tepsi "Quit", app.quit) normal kapanış yolu işler.
+  mainWindow.on('close', (event) => {
+    if (isQuitting || !settingsStore?.get().closeToTray) return
+    if (!isTrayActive()) return // tepsi oluşturulamadıysa pencereyi hapsetme
+    event.preventDefault()
+    hideMainWindow()
+  })
+
   mainWindow.on('closed', () => {
     mainWindow = null
+    refreshTrayMenu()
   })
+
+  mainWindow.on('show', refreshTrayMenu)
+  mainWindow.on('hide', refreshTrayMenu)
 
   // Quake: odak kaybında gizle. Ayarlar penceresi/dialog açıkken sinir bozucu
   // olmasın diye yalnızca uygulamanın HİÇBİR penceresi odakta değilken gizlenir.
@@ -260,6 +310,7 @@ app.whenReady().then(() => {
   const onSettingsChanged = (settings: AppSettings): void => {
     refreshContextMenu()
     applyQuakeConfig(settings)
+    applyTrayConfig(settings)
   }
 
   registerTerminalIpc(manager)
@@ -306,6 +357,7 @@ app.whenReady().then(() => {
 
   createWindow()
   applyQuakeConfig(settingsStore.get())
+  applyTrayConfig(settingsStore.get())
 
   // Sessiz güncelleme kontrolü: pencere yüklendikten ~10 sn SONRA, bir kez.
   // Açılış hızını etkilememesi için kritik yolun dışında tutulur.
@@ -321,10 +373,14 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+  // Tepsi aktifken pencere yokluğu "çıkış" demek değildir — uygulama arka
+  // planda yaşar ve tepsiden geri çağrılır.
+  if (isTrayActive() && !isQuitting) return
   if (process.platform !== 'darwin') app.quit()
 })
 
 app.on('before-quit', () => {
+  isQuitting = true
   settingsStore?.flush() // write any debounced settings mutations
   sessionStore?.flush() // write the debounced tab/split layout
   manager?.shutdown() // kill every live PTY
@@ -332,4 +388,5 @@ app.on('before-quit', () => {
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll()
+  destroyTray()
 })

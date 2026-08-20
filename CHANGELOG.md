@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.0 - 2026-08-20
+
+- Closing the window now keeps TermFlow Lite running in the system tray, so terminals and agent sessions stay alive.
+- Added a tray icon with Show/Hide and Quit; quitting from the tray menu really exits the app.
+- Added a "Close to Tray" toggle in Settings > Terminal (on by default) that applies immediately.
+
 ## 1.4.3 - 2026-08-19
 
 - Removed the empty gap between the session info strip and the status bar; the strip is no longer pushed up by the terminal padding setting and now spans the full width.

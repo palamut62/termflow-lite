@@ -256,6 +256,11 @@ export interface AppSettings {
   windowHeight: number
   /** Açık sekmeler + split düzeni yeniden açılışta geri yüklenir (userData/session.json). */
   restoreSession: boolean
+  /**
+   * Pencere kapatıldığında uygulama sistem tepsisinde çalışmaya devam eder;
+   * gerçek çıkış yalnızca tepsi menüsündeki "Quit" ile yapılır.
+   */
+  closeToTray: boolean
   /** Quake (açılır) mod: global kısayolla ekranın üstünden inen pencere. */
   quakeMode: boolean
   /** Electron accelerator formatında global kısayol (ör. 'F12'). */
@@ -386,6 +391,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   windowWidth: 1100,
   windowHeight: 700,
   restoreSession: true,
+  closeToTray: true,
   quakeMode: false,
   quakeHotkey: 'F12',
   quakeHideOnBlur: true,

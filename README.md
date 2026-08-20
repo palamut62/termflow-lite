@@ -33,6 +33,7 @@ TermFlow Lite opens straight into a terminal — no welcome screens, no setup wi
 - **SSH connections** - save hosts and open them in a tab; the system OpenSSH client handles keys, `~/.ssh/config`, and host verification (no passwords are ever stored)
 - **Broadcast input** - type once into every pane of a split with `Ctrl+Alt+B`
 - **Quake mode** - drop the window down from the top of the screen with a global hotkey
+- **Close to tray** - closing the window keeps terminals and agent sessions alive in the system tray; quit for real from the tray menu
 - **Automatic updates** - the installed build checks for new releases and updates itself on your confirmation
 - **Keyboard shortcuts** - every action is bound to a key; rebind them in Settings
 - **Terminal search** - find anything in the current buffer with `Ctrl+Shift+F`
