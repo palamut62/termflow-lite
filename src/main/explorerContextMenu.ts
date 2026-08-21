@@ -30,12 +30,32 @@ export function buildExplorerMenuEntries(settings: AppSettings, shells: ShellInf
   return entries.filter((entry, index, all) => all.findIndex((item) => item.profileId === entry.profileId) === index)
 }
 
+export function parseRegistryChildNames(stdout: string): string[] {
+  return stdout.split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => /^HKEY_[^\\]+\\/i.test(line))
+    .map((line) => line.slice(line.lastIndexOf('\\') + 1))
+    .filter((name) => name.toLowerCase() !== 'shell')
+}
+
 async function reg(args: string[]): Promise<void> {
   await execFileAsync('reg.exe', args, { windowsHide: true })
 }
 
 async function setValue(key: string, name: string | null, value: string): Promise<void> {
   await reg(['add', key, ...(name ? ['/v', name] : ['/ve']), '/t', 'REG_SZ', '/d', value, '/f'])
+}
+
+async function removeStaleEntries(parent: string, expectedKeys: Set<string>): Promise<void> {
+  const shellKey = `${parent}\\shell`
+  const existing = await execFileAsync('reg.exe', ['query', shellKey], { windowsHide: true })
+    .then(({ stdout }) => parseRegistryChildNames(stdout))
+    .catch(() => [])
+  for (const name of existing) {
+    if (name && !expectedKeys.has(name.toLowerCase())) {
+      await reg(['delete', `${shellKey}\\${name}`, '/f']).catch(() => undefined)
+    }
+  }
 }
 
 export async function syncExplorerContextMenu(exePath: string, resourcesPath: string, settings: AppSettings, shells: ShellInfo[]): Promise<void> {
@@ -47,7 +67,6 @@ export async function syncExplorerContextMenu(exePath: string, resourcesPath: st
   for (const key of existing) await reg(['delete', key, '/f']).catch(() => undefined)
 
   for (const parent of PARENT_KEYS) {
-    await reg(['delete', parent, '/f']).catch(() => undefined)
     await setValue(parent, 'MUIVerb', 'Open in TermFlow Lite')
     await setValue(parent, 'Icon', `${exePath},0`)
     await setValue(parent, 'SubCommands', '')
@@ -64,5 +83,6 @@ export async function syncExplorerContextMenu(exePath: string, resourcesPath: st
       const profileArg = launchProfileId ? ` --profile "${launchProfileId}"` : ''
       await setValue(`${key}\\command`, null, `"${exePath}"${profileArg} "%V"`)
     }
+    await removeStaleEntries(parent, new Set(entries.map((entry) => entry.key.toLowerCase())))
   }
 }

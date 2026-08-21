@@ -27,16 +27,18 @@
 !macroend
 
 !macro customUnInstall
-  DeleteRegKey HKCU "Software\Classes\Directory\Background\shell\TermFlowLite"
-  DeleteRegKey HKCU "Software\Classes\Directory\shell\TermFlowLite"
-  DeleteRegKey HKCU "Software\Classes\Drive\Background\shell\TermFlowLite"
-  DeleteRegKey HKCU "Software\Classes\TermFlowLite.ContextMenu"
-  DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\TermFlowLite.000-default"
-  DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\TermFlowLite.100-powershell"
-  DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\TermFlowLite.101-cmd"
-  DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\TermFlowLite.200-claude"
-  DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\TermFlowLite.201-codex"
-  System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
+  ${ifNot} ${isUpdated}
+    DeleteRegKey HKCU "Software\Classes\Directory\Background\shell\TermFlowLite"
+    DeleteRegKey HKCU "Software\Classes\Directory\shell\TermFlowLite"
+    DeleteRegKey HKCU "Software\Classes\Drive\Background\shell\TermFlowLite"
+    DeleteRegKey HKCU "Software\Classes\TermFlowLite.ContextMenu"
+    DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\TermFlowLite.000-default"
+    DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\TermFlowLite.100-powershell"
+    DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\TermFlowLite.101-cmd"
+    DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\TermFlowLite.200-claude"
+    DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Explorer\CommandStore\shell\TermFlowLite.201-codex"
+    System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
+  ${endif}
 !macroend
 
 !macro TermFlowLiteSeedMenu ROOT
