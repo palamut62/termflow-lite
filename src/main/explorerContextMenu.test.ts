@@ -1,6 +1,20 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_SETTINGS } from '../shared/types'
-import { buildExplorerMenuEntries, parseRegistryChildNames } from './explorerContextMenu'
+import { DEFAULT_SETTINGS, type ShellInfo } from '../shared/types'
+import { buildExplorerMenuEntries, explorerMenuSignature, parseRegistryChildNames } from './explorerContextMenu'
+
+describe('explorerMenuSignature', () => {
+  const shells: ShellInfo[] = [{ id: 'cmd', name: 'Command Prompt', kind: 'cmd', command: 'cmd.exe', args: [] }]
+
+  it('changes only when menu-affecting data changes', () => {
+    const base = explorerMenuSignature(DEFAULT_SETTINGS, shells)
+    // Sık güncellenen ama menüyü etkilemeyen ayarlar imzayı değiştirmez:
+    // her SETTINGS_SET'te registry yeniden yazılmasın.
+    expect(explorerMenuSignature({ ...DEFAULT_SETTINGS, lastCwd: 'C:\\elsewhere', themeId: 'abyss' }, shells)).toBe(base)
+    expect(explorerMenuSignature({ ...DEFAULT_SETTINGS, profiles: [{ id: 'x', name: 'X', command: 'x' }] }, shells)).not.toBe(base)
+    expect(explorerMenuSignature({ ...DEFAULT_SETTINGS, providerProfiles: [] }, shells)).not.toBe(base)
+    expect(explorerMenuSignature(DEFAULT_SETTINGS, [])).not.toBe(base)
+  })
+})
 
 describe('buildExplorerMenuEntries', () => {
   it('includes default, installed shells, command profiles and providers', () => {

@@ -30,6 +30,16 @@ export function buildExplorerMenuEntries(settings: AppSettings, shells: ShellInf
   return entries.filter((entry, index, all) => all.findIndex((item) => item.profileId === entry.profileId) === index)
 }
 
+/**
+ * Registry içeriğini etkileyen verilerin özeti (shell listesi + profil listeleri).
+ * Sık değişen ayarlar (lastCwd, tema vb.) bilinçli olarak dışarıda tutulur:
+ * her SETTINGS_SET'te registry'yi yeniden yazmak yerine yalnızca bu özet
+ * değiştiğinde senkronize edilir.
+ */
+export function explorerMenuSignature(settings: AppSettings, shells: ShellInfo[]): string {
+  return JSON.stringify({ shells, profiles: settings.profiles, providers: settings.providerProfiles })
+}
+
 export function parseRegistryChildNames(stdout: string): string[] {
   return stdout.split(/\r?\n/)
     .map((line) => line.trim())

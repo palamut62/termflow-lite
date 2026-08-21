@@ -25,7 +25,7 @@ import { initUpdater, maybeAutoCheck } from './updater'
 import { SessionStore } from './storage/SessionStore'
 import { IPC } from '../shared/ipc'
 import { parseLaunchRequest } from './launchPath'
-import { syncExplorerContextMenu } from './explorerContextMenu'
+import { explorerMenuSignature, syncExplorerContextMenu } from './explorerContextMenu'
 import { createTray, destroyTray, isTrayActive, refreshTrayMenu } from './tray'
 
 // Dev: project resources/. Packaged: extraResources under process.resourcesPath.
@@ -295,9 +295,17 @@ app.whenReady().then(() => {
   // WSL distro enumeration makes discovery async — the renderer re-queries
   // via SHELLS_DISCOVER anyway, so the warm value is only a fallback.
   let currentShells: Awaited<ReturnType<typeof discoverShells>> = []
+  // Registry yalnızca menüyü etkileyen veri (profiller/shell listesi) gerçekten
+  // değiştiğinde yeniden yazılır. Koşulsuz sync, lastCwd gibi sık güncellenen
+  // ayarlarla her SETTINGS_SET'te ~30-50 reg.exe'lik bir storm başlatıyordu.
+  // İmza yalnızca BAŞARILI sync sonrası güncellenir — hatalı deneme tekrarlanır.
+  let lastMenuSignature: string | null = null
   const refreshContextMenu = (): void => {
     if (!app.isPackaged || !settingsStore) return
+    const signature = explorerMenuSignature(settingsStore.get(), currentShells)
+    if (signature === lastMenuSignature) return
     void syncExplorerContextMenu(process.execPath, process.resourcesPath, settingsStore.get(), currentShells)
+      .then(() => { lastMenuSignature = signature })
       .catch((error) => console.warn('Explorer context menu sync failed:', error))
   }
   void discoverShells().then((shells) => {
