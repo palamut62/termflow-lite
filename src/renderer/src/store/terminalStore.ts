@@ -4,7 +4,7 @@ import type { SearchAddon } from '@xterm/addon-search'
 import type { AgentPermissionMode, AgentSessionRef, PersistedSession, TabActivity, TerminalTab } from '../../../shared/types'
 import { mergeProfiles, providerFromProfileId, sshFromProfileId } from '../../../shared/profiles'
 import { resolveDefaultProfileId, useSettingsStore } from './settingsStore'
-import { buildTiledPane, closePane, isValidPaneTree, paneTerminalIds, setPaneRatio, splitPane, type PaneNode } from '../paneUtils'
+import { buildTiledPane, closePane, isValidPaneTree, paneTerminalIds, replacePaneTerminal, setPaneRatio, splitPane, type PaneNode } from '../paneUtils'
 
 /**
  * Global per-tab stream listeners. App registers exactly ONE preload onData /
@@ -220,10 +220,19 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
   },
 
   setActiveTab(id) {
-    if (!get().tabs.some((t) => t.id === id)) return
+    const state = get()
+    if (!state.tabs.some((t) => t.id === id)) return
+    // Split düzeninde ağaç dışı (arka plan) sekmesi seçilirse aktif yaprakla
+    // yer değiştirir; aksi halde sekme yalnızca vurgulanır ama terminali hiç
+    // gösterilemezdi. Yer değişen önceki sekme arka plana düşer, PTY'si yaşar.
+    let paneTree = state.paneTree
+    if (paneTree && state.activeTabId && !paneTerminalIds(paneTree).includes(id)) {
+      paneTree = replacePaneTerminal(paneTree, state.activeTabId, id)
+    }
     set((s) => ({
       activeTabId: id,
-      splitTabIds: s.splitTabIds,
+      paneTree,
+      splitTabIds: paneTree !== state.paneTree ? paneTerminalIds(paneTree!) : s.splitTabIds,
       tabs: s.tabs.map((tab) => tab.id === id && tab.activity === 'unread' ? { ...tab, activity: 'running' } : tab)
     }))
   },

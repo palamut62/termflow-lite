@@ -47,6 +47,18 @@ export function closePane(pane: PaneNode, targetId: string): PaneNode | null {
   return { ...pane, a, b }
 }
 
+/**
+ * Bir yapraktaki terminali başka biriyle değiştirir: split düzeninde ağaç
+ * dışı (arka plan) bir sekme seçildiğinde aktif yaprakla yer değiştirmesi
+ * için. `from` ağaçta yoksa ağaç değişmeden döner.
+ */
+export function replacePaneTerminal(pane: PaneNode, from: string, to: string): PaneNode {
+  if (pane.type === 'leaf') return pane.terminalId === from ? { ...pane, terminalId: to } : pane
+  const a = replacePaneTerminal(pane.a, from, to)
+  const b = replacePaneTerminal(pane.b, from, to)
+  return a === pane.a && b === pane.b ? pane : { ...pane, a, b }
+}
+
 export function setPaneRatio(pane: PaneNode, path: number[], ratio: number): PaneNode {
   if (path.length === 0) return pane.type === 'split' ? { ...pane, ratio: Math.max(0.15, Math.min(0.85, ratio)) } : pane
   if (pane.type === 'leaf') return pane

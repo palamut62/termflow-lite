@@ -12,7 +12,7 @@ import { TaskPalette } from './components/TaskPalette'
 import { useTaskPaletteStore } from './store/taskPaletteStore'
 import { AgentSessions } from './components/AgentSessions'
 import { useAgentSessionStore } from './store/agentSessionStore'
-import type { PaneNode } from './paneUtils'
+import { paneTerminalIds, type PaneNode } from './paneUtils'
 import { matchShortcut } from './shortcuts'
 import type { AppLaunchRequest } from '../../shared/ipc'
 import { SavedCommands } from './components/SavedCommands'
@@ -231,16 +231,27 @@ export default function App(): React.JSX.Element {
     if (loaded) useSettingsStore.getState().applyTheme()
   }, [themeId, loaded])
 
+  // Split düzeninde ağaç dışı (arka plan) sekmeleri: gizli TerminalView olarak
+  // mount edilirler (PTY yaşar); setActiveTab onları aktif yaprağa getirir.
+  const paneTabIds = paneTree ? new Set(paneTerminalIds(paneTree)) : null
+  const backgroundTabs = paneTabIds ? tabs.filter((tab) => !paneTabIds.has(tab.id)) : []
+
   return (
     <div className="app">
       <TabBar height={tabHeight} />
       <div className="terminal-area" style={{ '--split-percent': `${splitRatio * 100}%` } as React.CSSProperties}>
         {/* Tüm tab'lar mount kalır (mount = PTY create); aktif olmayanlar CSS ile
             gizlenir ama layout boyutunu korur, böylece arka plandaki process
-            ölmez ve gizli terminal doğru cols/rows'a fit olmaya devam eder. */}
-        {paneTree
-          ? <PaneRenderer pane={paneTree} path={[]} activeTabId={activeTabId} />
-          : tabs.map((tab) => <TerminalView key={tab.id} tabId={tab.id} active={tab.id === activeTabId} />)}
+            ölmez ve gizli terminal doğru cols/rows'a fit olmaya devam eder.
+            Split düzeninde ağaç dışı sekmeler de gizli mount edilir — aksi halde
+            PTY'leri hiç spawn edilmezdi (zamanlanmış komutlar sessizce
+            hiç çalışmıyordu). */}
+        {paneTree ? (
+          <>
+            <PaneRenderer pane={paneTree} path={[]} activeTabId={activeTabId} />
+            {backgroundTabs.map((tab) => <TerminalView key={tab.id} tabId={tab.id} active={false} visible={false} />)}
+          </>
+        ) : tabs.map((tab) => <TerminalView key={tab.id} tabId={tab.id} active={tab.id === activeTabId} />)}
       </div>
       <StatusBar />
       {historyOpen && <CommandHistory />}
