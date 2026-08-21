@@ -150,17 +150,23 @@ export function ProfileSettings(): React.JSX.Element {
   return (
     <section>
       <div className="settings-section-title">Command Profiles</div>
-      <p className="settings-note">Built-in command profiles launch with full permissions by default. Edit any profile to disable it or change its CLI-specific permission arguments.</p>
-      {effectiveBuiltins.map((p) => editingId !== p.id && (
-        <div className="profile-row" key={p.id}>
-          <span className="menu-item-dot" style={{ background: p.color || '#6467f2' }} />
-          <span className="profile-row-info">
-            <span className="profile-row-name">{p.name}</span>
-            <span className="profile-row-command">{p.startupCommand}{p.model ? ` · ${p.model}` : ''} · {p.fullPermissions !== false ? 'Full permissions' : 'Standard permissions'}</span>
-          </span>
-          <button className="settings-btn settings-btn-small" onClick={() => startEdit(p)}>Edit</button>
-        </div>
-      ))}
+      <p className="settings-note">Built-in command profiles launch with full permissions by default. Edit any profile to disable it or change its CLI-specific permission arguments. Reset restores the built-in defaults.</p>
+      {effectiveBuiltins.map((p) => {
+        const isOverridden = settings.profiles.some((candidate) => candidate.id === p.id)
+        return editingId !== p.id && (
+          <div className="profile-row" key={p.id}>
+            <span className="menu-item-dot" style={{ background: p.color || '#6467f2' }} />
+            <span className="profile-row-info">
+              <span className="profile-row-name">{p.name}</span>
+              <span className="profile-row-command">{p.startupCommand}{p.model ? ` · ${p.model}` : ''} · {p.fullPermissions !== false ? 'Full permissions' : 'Standard permissions'}</span>
+            </span>
+            <button className="settings-btn settings-btn-small" onClick={() => startEdit(p)}>Edit</button>
+            {isOverridden && (
+              <button className="settings-btn settings-btn-small" onClick={() => remove(p.id)} title="Restore built-in defaults">Reset</button>
+            )}
+          </div>
+        )
+      })}
       <div className="settings-section-title">Custom Profiles</div>
       {customProfiles.length === 0 && !editing && (
         <div className="settings-empty">Henüz özel profil yok — aşağıdan ekleyebilirsiniz.</div>
