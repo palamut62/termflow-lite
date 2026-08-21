@@ -10,12 +10,12 @@ TermFlow Lite opens straight into a terminal — no welcome screens, no setup wi
 - **Tabs** - create, close, and switch between tabs with `Ctrl+Shift+T/W` and `Ctrl+Tab`
 - **Tab activity** - live process state at a glance: running, waiting for input, background output, completed, or failed
 - **Cross-platform** - Windows (10/11 x64) and Linux (x64) support
-- **8 themes** - Dark, Light, Dracula, Nord, Tokyo Night, Catppuccin Mocha, Gruvbox, plus a Custom theme editor for your own palette
+- **15 themes** - Dark+, Light+, Dark Modern, Light Modern, Monokai, Monokai Dimmed, Solarized Dark/Light, Abyss, Kimbie Dark, Red, Quiet Light, Tomorrow Night Blue, High Contrast, plus a Custom theme editor for your own palette
 - **Shell profiles** - PowerShell, CMD, WSL, and Git Bash out of the box, plus fully custom profiles
 - **CLI agents and providers** - launch Claude Code, Codex, OpenCode, Ollama, DeepSeek, OpenRouter, or your own provider profile
 - **Open at folder** - choose any shell, agent, custom profile, or provider and start it directly in a selected path
 - **Explorer context menu** - the Windows installer adds “Open in TermFlow Lite” for folders, folder backgrounds, and drive backgrounds, opening a tab at the clicked path
-- **Controlled full permissions** - command and provider profiles default to full access; permission mode and CLI-specific flags remain editable in Settings
+- **Controlled full permissions** - command profiles launch with full access by default while provider profiles start approval-gated; permission mode and CLI-specific flags remain editable in Settings
 - **Smart status bar** - see process activity, provider model, Git branch and changes, full-access state, current directory, and tab count without visual clutter
 - **Command history** - search commands across folders and profiles, rerun them in the active terminal, or clear saved history with `Ctrl+Shift+H`
 - **Task and command palette** - discover `package.json` scripts and run project, Git, npm, or Docker tasks with `Ctrl+Shift+P`
@@ -46,8 +46,8 @@ Download the latest release from [GitHub Releases](https://github.com/palamut62/
 
 | Platform | Artifacts |
 | --- | --- |
-| Windows | `TermFlow-Lite-1.3.0-x64.exe` (installer) · `TermFlow-Lite-1.3.0-x64.zip` (portable) |
-| Linux | `TermFlow-Lite-1.3.0-x86_64.AppImage` · `TermFlow-Lite-1.3.0-amd64.deb` |
+| Windows | `TermFlow-Lite-1.6.0-x64.exe` (installer) · `TermFlow-Lite-1.6.0-x64.zip` (portable) |
+| Linux | `TermFlow-Lite-1.6.0-x86_64.AppImage` · `TermFlow-Lite-1.6.0-amd64.deb` |
 
 **Automatic updates:** the installed Windows build (`.exe`) and the Linux AppImage can update
 themselves — see *Settings → About → Updates* (checking on startup can be turned off there).
