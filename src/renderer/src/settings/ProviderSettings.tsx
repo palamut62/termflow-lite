@@ -16,7 +16,7 @@ const emptyProvider = (): ProviderProfile => ({
   modelEnv: '',
   baseUrlEnv: '',
   color: '#6467f2',
-  fullPermissions: true,
+  fullPermissions: false,
   fullPermissionArgs: ''
 })
 

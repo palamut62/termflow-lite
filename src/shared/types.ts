@@ -356,7 +356,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
       modelEnv: 'ANTHROPIC_MODEL',
       baseUrlEnv: 'ANTHROPIC_BASE_URL',
       color: '#111827',
-      fullPermissions: true,
+      fullPermissions: false,
       fullPermissionArgs: '--dangerously-skip-permissions'
     },
     {
@@ -370,7 +370,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
       modelEnv: 'ANTHROPIC_MODEL',
       baseUrlEnv: 'ANTHROPIC_BASE_URL',
       color: '#6467f2',
-      fullPermissions: true,
+      fullPermissions: false,
       fullPermissionArgs: '--dangerously-skip-permissions'
     },
     {
@@ -383,7 +383,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
       modelEnv: 'OLLAMA_MODEL',
       baseUrlEnv: 'OLLAMA_HOST',
       color: '#b48ead',
-      fullPermissions: true,
+      fullPermissions: false,
       fullPermissionArgs: ''
     }
   ],
