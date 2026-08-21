@@ -104,7 +104,12 @@ export function StatusBar(): React.JSX.Element {
       })
     }
     refresh()
-    const timer = window.setInterval(refresh, 5000)
+    // Interval yalnızca aynı dizindeki dosya değişimlerini yakalamak içindir;
+    // dizin değişimi effect restart'ı ([cwd]) ile zaten anında yenilenir.
+    const timer = window.setInterval(() => {
+      if (document.hidden) return
+      refresh()
+    }, 30_000)
     return () => {
       current = false
       window.clearInterval(timer)
