@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.6.0 - 2026-08-21
+
+- Fixed scheduled saved commands never running while a split layout was active: background tabs now start their terminals even when they are not part of the visible split tree.
+- Clicking a background tab while a split layout is active now swaps it into the split instead of highlighting an unreachable terminal.
+- The Explorer context menu is no longer re-registered on every settings change; it syncs only when profiles or shells actually change.
+- Provider profiles now start approval-gated by default instead of with full access. Existing saved providers keep their current setting.
+- Added a Reset button for edited built-in command profiles to restore their defaults.
+- The persistent agent event log is now trimmed automatically instead of growing without bound.
+- The status bar Git status refreshes every 30 seconds and pauses while the window is hidden, instead of polling every 5 seconds.
+- Corrected the theme list and artifact versions in the README.
+
 ## 1.5.0 - 2026-08-20
 
 - Closing the window now keeps TermFlow Lite running in the system tray, so terminals and agent sessions stay alive.
