@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.1 - 2026-08-22
+
+- Replaced the app icon with the MausCrew Workspace Core 6.1A set across the window, taskbar, shortcut, installer, and Linux package.
+- The icon now has a transparent background, so it no longer shows a grey box on dark taskbars.
+
 ## 1.6.0 - 2026-08-21
 
 - Fixed scheduled saved commands never running while a split layout was active: background tabs now start their terminals even when they are not part of the visible split tree.

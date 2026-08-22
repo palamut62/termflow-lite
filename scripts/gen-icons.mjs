@@ -1,4 +1,5 @@
-// Generates the app icon set from resources/icon.svg:
+// Generates the app icon set from resources/icon-source.png (1024px master,
+// transparent background — MausCrew Workspace Core 6.1A):
 //  - PNG sizes for window / installer / web
 //  - build/icon.ico (multi-size, used by electron-builder + the desktop shortcut)
 import sharp from 'sharp'
@@ -8,7 +9,7 @@ import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const svg = readFileSync(join(root, 'resources', 'icon.svg'))
+const master = readFileSync(join(root, 'resources', 'icon-source.png'))
 
 const pngDir = join(root, 'resources', 'icons')
 const buildDir = join(root, 'build')
@@ -20,7 +21,8 @@ const sizes = [16, 24, 32, 48, 64, 128, 256, 512]
 const pngPaths = {}
 for (const s of sizes) {
   const out = join(pngDir, `icon-${s}.png`)
-  await sharp(svg, { density: 384 }).resize(s, s).png().toFile(out)
+  // Lanczos küçültme: 16/24 px'te pencere çizgileri ve yüz detayı erimesin.
+  await sharp(master).resize(s, s, { kernel: 'lanczos3' }).png().toFile(out)
   pngPaths[s] = out
   console.log('png', out)
 }
