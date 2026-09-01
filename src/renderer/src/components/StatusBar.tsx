@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
-import { Bookmark, Bot, Braces, Clock3, Command, Download, GitBranch, Loader2, Radio, RefreshCw, Server, ShieldCheck, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { AlertCircle, Bookmark, Bot, Braces, Clock3, Command, Download, GitBranch, Loader2, Radio, RefreshCw, Server, ShieldCheck, X } from 'lucide-react'
 import type { AgentPermissionMode } from '../../../shared/types'
 import type { GitStatus, ProjectInfo } from '../../../shared/ipc'
-import { sshFromProfileId } from '../../../shared/profiles'
+import { agentForProfile, sshFromProfileId } from '../../../shared/profiles'
 import { sshTarget } from '../../../shared/sshArgs'
 import { useSettingsStore } from '../store/settingsStore'
 import { useTerminalStore } from '../store/terminalStore'
@@ -12,6 +12,7 @@ import { useTaskPaletteStore } from '../store/taskPaletteStore'
 import { useSavedCommandStore } from '../store/savedCommandStore'
 import { useAgentEventStore } from '../store/agentEventStore'
 import { initUpdateStatusBridge, shouldShowUpdateBadge, updateBadgeLabel, updateBadgeTitle, useUpdateStore } from '../store/updateStore'
+import { agentProfileOptions, switchActiveAgentProfile } from '../agentHandover'
 
 const PERMISSION_MODES: AgentPermissionMode[] = ['safe', 'workspace', 'full']
 const PERMISSION_LABELS: Record<AgentPermissionMode, string> = {
@@ -84,11 +85,29 @@ export function StatusBar(): React.JSX.Element {
   const cwd = active?.cwd || active?.launchCwd || ''
   const [git, setGit] = useState<GitStatus | null>(null)
   const [project, setProject] = useState<ProjectInfo | null>(null)
+  const [switchingProfile, setSwitchingProfile] = useState(false)
+  const [profileSwitchError, setProfileSwitchError] = useState(false)
+  const agentProfiles = useMemo(() => agentProfileOptions(settings), [settings])
+  const activeAgent = active ? agentForProfile(settings, active.profileId) : null
   const permissionMode = settings.defaultAgentPermissionMode
   const cyclePermissionMode = (): void => {
     const currentIndex = PERMISSION_MODES.indexOf(permissionMode)
     const next = PERMISSION_MODES[(currentIndex + 1) % PERMISSION_MODES.length]
     void useSettingsStore.getState().update({ defaultAgentPermissionMode: next })
+  }
+  const changeAgentProfile = async (profileId: string): Promise<void> => {
+    if (!active || !activeAgent || profileId === active.profileId) return
+    const target = agentProfiles.find((profile) => profile.id === profileId)
+    if (!target) return
+    setSwitchingProfile(true)
+    setProfileSwitchError(false)
+    try {
+      await switchActiveAgentProfile(active, target, activeAgent)
+    } catch {
+      setProfileSwitchError(true)
+    } finally {
+      setSwitchingProfile(false)
+    }
   }
   useEffect(() => initUpdateStatusBridge(), [])
 
@@ -151,6 +170,20 @@ export function StatusBar(): React.JSX.Element {
       {git && <span className="status-item status-git" title={`${git.changedFiles} changed file${git.changedFiles === 1 ? '' : 's'}`}><GitBranch size={12} />{git.branch}{git.changedFiles > 0 ? ` (${git.changedFiles})` : ''}</span>}
       <span className="status-item">{tabs.length} tab{tabs.length === 1 ? '' : 's'}</span>
       <UpdateBadge />
+      {profileSwitchError && <span className="status-item status-switch-error" title="The active agent profile could not be changed"><AlertCircle size={12} />Switch failed</span>}
+      {activeAgent && (
+        <label className="status-agent-profile" title="Hand this work over to another profile or provider">
+          <Bot size={12} />
+          <select
+            value={active?.profileId ?? ''}
+            disabled={switchingProfile}
+            onChange={(event) => void changeAgentProfile(event.target.value)}
+            aria-label="Active agent profile"
+          >
+            {agentProfiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}
+          </select>
+        </label>
+      )}
       <button
         className={`status-action status-security status-security-${permissionMode}`}
         onClick={cyclePermissionMode}

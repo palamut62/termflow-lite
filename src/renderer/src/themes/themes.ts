@@ -552,6 +552,10 @@ export function applyThemeToDom(theme: Theme): void {
   const ui = themeUi(theme)
   const tab = tabBarSurface(theme)
 
+  // Keep native controls (notably Windows select popups) aligned with the
+  // active palette instead of inheriting the operating-system light scheme.
+  style.colorScheme = isDark(c.background) ? 'dark' : 'light'
+
   style.setProperty('--app-background', ui.panelBackground)
   style.setProperty('--app-foreground', c.foreground)
   style.setProperty('--tab-background', tab.background)

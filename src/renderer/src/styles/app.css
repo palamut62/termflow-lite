@@ -149,6 +149,32 @@ body {
 
 .status-action:hover { background: color-mix(in srgb, currentColor 14%, transparent); }
 
+.status-agent-profile {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.status-agent-profile select {
+  max-width: 132px;
+  height: 20px;
+  padding: 0 18px 0 4px;
+  color: inherit;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+  border: 0;
+  border-radius: 3px;
+  font: inherit;
+}
+
+.status-agent-profile select option {
+  color: var(--menu-foreground);
+  background: var(--menu-background);
+}
+
+.status-agent-profile select:disabled { opacity: .55; }
+.status-switch-error { color: var(--term-red); }
+
 .status-security {
   font-weight: 600;
 }

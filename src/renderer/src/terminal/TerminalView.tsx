@@ -12,6 +12,7 @@ import { broadcastTargetIds, dataHandlers, exitHandlers, searchAddons, useTermin
 import { useCommandHistoryStore } from '../store/commandHistoryStore'
 import { resolveTheme } from '../themes/themes'
 import { formatDroppedPaths } from './dropPaths'
+import { getPathAtMouse, registerPathLinkProvider, type PathMenuInfo } from './pathLinks'
 import { TerminalContextMenu } from './TerminalContextMenu'
 import { TerminalSearch } from './TerminalSearch'
 import { AgentWorkPanel } from '../components/AgentWorkPanel'
@@ -37,6 +38,8 @@ interface ContextMenuState {
   x: number
   y: number
   hasSelection: boolean
+  /** İmleç altında çözülmüş bir yol varsa menünün en üstüne yol işlemleri eklenir. */
+  path?: PathMenuInfo | null
 }
 
 /**
@@ -195,9 +198,18 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
     syncLigatures(term, settings.fontLigatures)
     termRef.current = term
     fitRef.current = fit
+    // Terminaldeki tıklanabilir yollar (PRD ek). Ayarlar canlı okunur:
+    // clickablePaths kapatılınca provider link üretmeyi bırakır.
+    const pathLinksDisposable = registerPathLinkProvider(
+      term,
+      () => useTerminalStore.getState().tabs.find((t) => t.id === tabId)?.cwd ?? launchCwd ?? '',
+      () => useSettingsStore.getState().settings.clickablePaths
+    )
 
     let disposed = false
     let ready = false
+    /** Sağ tıklama sırası; hızlı art arda tıklamalarda eski çözümleme yok sayılır. */
+    let ctxMenuToken = 0
     const queue: string[] = []
     let recentOutput = ''
     let inputBuffer = ''
@@ -431,16 +443,39 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
       bellTimer = setTimeout(() => host.classList.remove('bell-flash'), 150)
     })
 
-    // Sağ tık (PRD §24): 'paste' davranışı — seçim varsa kopyala, yoksa
-    // yapıştır (Windows Terminal); 'context-menu' — menüyü aç.
+    // Sağ tık (PRD §24): imleç çözülmüş bir yolun üzerindeyse ve pathContextMenu
+    // açıksa yol menüsü (Open / Open File Location / Copy Path) gösterilir;
+    // aksi halde 'paste' davranışı — seçim varsa kopyala, yoksa yapıştır;
+    // 'context-menu' — normal menüyü aç. Yol çözümlemesi IPC'ye gittiği için
+    // menü async açılır; bu sırada yeni sağ tık gelirse eski sonuç yok sayılır.
     const onCtxMenu = (e: MouseEvent): void => {
       e.preventDefault()
-      if (useSettingsStore.getState().settings.rightClickBehavior === 'paste') {
-        if (term.hasSelection()) copySelection(term)
-        else pasteFromClipboard(term)
+      const current = useSettingsStore.getState().settings
+      const hasSelection = term.hasSelection()
+      if (!current.pathContextMenu) {
+        if (current.rightClickBehavior === 'paste') {
+          if (hasSelection) copySelection(term)
+          else pasteFromClipboard(term)
+          return
+        }
+        setMenu({ x: e.clientX, y: e.clientY, hasSelection, path: null })
         return
       }
-      setMenu({ x: e.clientX, y: e.clientY, hasSelection: term.hasSelection() })
+      const token = ++ctxMenuToken
+      const cwd = useTerminalStore.getState().tabs.find((t) => t.id === tabId)?.cwd ?? launchCwd ?? ''
+      void getPathAtMouse(term, e, cwd).then((path) => {
+        if (disposed || token !== ctxMenuToken) return
+        if (path) {
+          setMenu({ x: e.clientX, y: e.clientY, hasSelection, path })
+          return
+        }
+        if (current.rightClickBehavior === 'paste') {
+          if (hasSelection) copySelection(term)
+          else pasteFromClipboard(term)
+          return
+        }
+        setMenu({ x: e.clientX, y: e.clientY, hasSelection, path: null })
+      })
     }
     host.addEventListener('contextmenu', onCtxMenu)
 
@@ -457,6 +492,7 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
       dataSub.dispose()
       selSub.dispose()
       bellSub.dispose()
+      pathLinksDisposable.dispose()
       host.removeEventListener('contextmenu', onCtxMenu)
       // Bu view'lar tabId ile anahtarlanır; unmount yalnızca kendi kaydını siler.
       dataHandlers.delete(tabId)
@@ -609,6 +645,26 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
     closeMenu()
     useSettingsStore.getState().openSettings()
   }
+  // ---- Yol işlemleri (tıklanabilir yollar, PRD ek) ----
+  const handleOpenPath = (): void => {
+    const path = menu?.path
+    closeMenu()
+    if (path?.canOpen) void window.termflow.system.openPath(path.path)
+    else if (path) void window.termflow.system.revealInFolder(path.path)
+  }
+  const handleRevealInFolder = (): void => {
+    const path = menu?.path
+    closeMenu()
+    if (path) void window.termflow.system.revealInFolder(path.path)
+  }
+  const handleCopyPath = (): void => {
+    const path = menu?.path
+    closeMenu()
+    // navigator.clipboard.writeText, pencere odaklı değilse/permission yoksa
+    // sessizce başarısız olabilir; yazma main üzerinden yapılır (okuma zaten
+    // IPC ile gidiyordu — bkz. src/main/ipc/clipboard.ts).
+    if (path) void window.termflow.clipboard.writeText(path.path)
+  }
 
   // ---- Dosya sürükle-bırak: yalnızca yolu input'a yaz (Enter'a BASILMAZ) ----
   // Yalnızca gerçek dosya taşıyan sürüklemeler kabul edilir; metin/URL
@@ -664,6 +720,10 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
           x={menu.x}
           y={menu.y}
           hasSelection={menu.hasSelection}
+          path={menu.path ?? null}
+          onOpenPath={handleOpenPath}
+          onRevealInFolder={handleRevealInFolder}
+          onCopyPath={handleCopyPath}
           onClose={closeMenu}
           onCopy={handleCopy}
           onPaste={handlePaste}

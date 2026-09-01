@@ -1,7 +1,11 @@
 # Changelog
 
-## 1.6.1 - 2026-08-22
+## 1.6.1 - 2026-09-01
 
+- Added provider-independent agent handover: Claude Code, Codex, OpenCode, and compatible provider profiles can continue one another's work from the status bar.
+- Resuming a saved session now defaults to the profile/provider that created it, while still allowing an explicit compatible profile choice.
+- Added clickable terminal file and folder paths with working-directory resolution, context-menu actions, paths containing spaces, and safe reveal-only handling for executable files.
+- Fixed the native profile selector popup using unreadable light colors on dark themes.
 - Replaced the app icon with the MausCrew Workspace Core 6.1A set across the window, taskbar, shortcut, installer, and Linux package.
 - The icon now has a transparent background, so it no longer shows a grey box on dark taskbars.
 

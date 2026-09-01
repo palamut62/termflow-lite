@@ -2,6 +2,7 @@ import type { BrowserWindow } from 'electron'
 import type { AgentPermissionMode, AgentSessionRef, AppSettings, CreateTerminalInput, PtyEvent, RenderMode, ShellInfo } from '../../shared/types'
 import { IPC } from '../../shared/ipc'
 import { PtyCore } from './PtyCore'
+import { agentForProfile } from '../../shared/profiles'
 import { profileToInput, resolveProfileId } from './profileResolver'
 
 export function applyProviderSecret(
@@ -33,7 +34,8 @@ export class TerminalManager {
   constructor(
     private readonly getWindow: () => BrowserWindow | null,
     private readonly getSettings: () => AppSettings,
-    private readonly getProviderSecret: (providerId: string) => string | undefined = () => undefined
+    private readonly getProviderSecret: (providerId: string) => string | undefined = () => undefined,
+    private readonly onAgentLaunch: (record: { agent: AgentSessionRef['agent']; profileId: string; cwd?: string; startedAt: number; resumeSession?: AgentSessionRef }) => void = () => undefined
   ) {
     this.core = new PtyCore((event) => this.handleEvent(event))
   }
@@ -56,7 +58,10 @@ export class TerminalManager {
     // Keep the ring buffer limit in sync with the current setting on every
     // spawn so a settings change applies even to terminals created later.
     this.core.setScrollback(settings.scrollback)
-    return this.core.create(tabId, input)
+    const result = this.core.create(tabId, input)
+    const agent = agentForProfile(settings, resolvedId)
+    if (agent) this.onAgentLaunch({ agent, profileId: resolvedId, cwd: input.cwd, startedAt: Date.now(), resumeSession })
+    return result
   }
 
   write(id: string, data: string): void {

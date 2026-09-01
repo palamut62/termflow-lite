@@ -10,6 +10,13 @@ import { IPC } from '../../shared/ipc'
  */
 export function registerClipboardIpc(): void {
   ipcMain.handle(IPC.CLIPBOARD_READ, () => clipboard.readText())
+  // Yazma da main üzerinden: renderer'da navigator.clipboard.writeText,
+  // pencere odaklı değilse/permission yoksa sessizce başarısız olabiliyor.
+  ipcMain.handle(IPC.CLIPBOARD_WRITE, (_event, text: unknown): boolean => {
+    if (typeof text !== 'string' || text.length === 0 || text.length > 8192) return false
+    clipboard.writeText(text)
+    return true
+  })
   ipcMain.handle(IPC.CLIPBOARD_READ_PASTE, () => {
     if (process.platform === 'win32') {
       const filePath = clipboard.readBuffer('FileNameW').toString('utf16le').replace(/\0+$/g, '').trim()

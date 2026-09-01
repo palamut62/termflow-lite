@@ -25,6 +25,7 @@ export const IPC = {
   SESSION_CLEAR: 'session:clear', // ()
   CLIPBOARD_READ: 'clipboard:read', // -> string (sandboxed renderer paste fallback)
   CLIPBOARD_READ_PASTE: 'clipboard:read-paste', // -> copied file path or text
+  CLIPBOARD_WRITE: 'clipboard:write', // (text) -> boolean; navigator.clipboard.writeText odak/permission'a duyarlı
   WINDOW_TITLEBAR_OVERLAY: 'window:titlebar-overlay', // (TitleBarOverlayPayload) — Windows only
   DIALOG_OPEN_DIR: 'dialog:open-dir',
   DIALOG_OPEN_FILE: 'dialog:open-file', // -> seçilen dosya yolu | null
@@ -36,13 +37,18 @@ export const IPC = {
   TASKS_DISCOVER: 'tasks:discover',
   PROJECT_DETECT: 'project:detect',
   AGENT_SESSIONS_LIST: 'agent-sessions:list',
+  AGENT_SESSION_HANDOVER: 'agent-sessions:handover',
   AGENT_EVENTS_LIST: 'agent-events:list',
   AGENT_EVENTS_APPEND: 'agent-events:append',
   AGENT_EVENTS_CLEAR: 'agent-events:clear',
   APP_LAUNCH_CWD: 'app:launch-cwd',
   APP_LAUNCH_READY: 'app:launch-ready',
   APP_OPEN_PATH: 'app:open-path',
-  SYSTEM_OPEN_EXTERNAL: 'system:open-external'
+  SYSTEM_OPEN_EXTERNAL: 'system:open-external',
+  // Terminaldeki tıklanabilir dosya/klasör yolları (PRD ek).
+  SYSTEM_RESOLVE_PATH: 'system:resolve-path', // (candidate, cwd) -> ResolvedPath | null
+  SYSTEM_OPEN_PATH: 'system:open-path', // (path) -> boolean — varsayılan uygulamayla aç
+  SYSTEM_REVEAL_IN_FOLDER: 'system:reveal-in-folder' // (path) -> boolean — Explorer'da konum
 } as const
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC]
@@ -50,6 +56,14 @@ export type IpcChannel = (typeof IPC)[keyof typeof IPC]
 export interface AppLaunchRequest {
   cwd: string
   profileId?: string
+}
+
+/** cwd'ye göre çözülmüş ve diskte var olduğu doğrulanmış yol (pathLinks). */
+export interface ResolvedPath {
+  path: string
+  isDirectory: boolean
+  /** False for executable/script/shortcut types; clicks reveal them instead of running them. */
+  canOpen: boolean
 }
 
 // ---- Payload types ----

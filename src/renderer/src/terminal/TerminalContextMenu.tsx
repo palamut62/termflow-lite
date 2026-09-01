@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { PathMenuInfo } from './pathLinks'
 
 interface TerminalContextMenuProps {
   /** Fare pozisyonu (clientX/clientY). */
@@ -6,6 +7,11 @@ interface TerminalContextMenuProps {
   y: number
   /** Seçim yoksa Copy devre dışı. */
   hasSelection: boolean
+  /** İmleç altında çözülmüş bir yol varsa bağlam menüsünün en üstünde gösterilir. */
+  path?: PathMenuInfo | null
+  onOpenPath?: () => void
+  onRevealInFolder?: () => void
+  onCopyPath?: () => void
   onClose: () => void
   onCopy: () => void
   onPaste: () => void
@@ -63,6 +69,23 @@ export function TerminalContextMenu(props: TerminalContextMenuProps): React.JSX.
 
   return (
     <div className="ctx-menu" ref={ref} role="menu" style={{ left: pos.x, top: pos.y }}>
+      {props.path && (
+        <>
+          <div className="ctx-menu-section" role="presentation">Path</div>
+          <button className="ctx-menu-item" role="menuitem" onClick={props.onOpenPath}>
+            {!props.path.canOpen ? 'Show in Folder' : props.path.isDirectory ? 'Open Folder' : 'Open File'}
+          </button>
+          {props.path.canOpen && (
+            <button className="ctx-menu-item" role="menuitem" onClick={props.onRevealInFolder}>
+              Open File Location
+            </button>
+          )}
+          <button className="ctx-menu-item" role="menuitem" onClick={props.onCopyPath}>
+            Copy Path
+          </button>
+          <div className="ctx-menu-divider" />
+        </>
+      )}
       <button className="ctx-menu-item" role="menuitem" disabled={!props.hasSelection} onClick={props.onCopy}>
         Copy
       </button>

@@ -27,6 +27,9 @@ test.beforeEach(async ({}, testInfo) => {
   cleanupDirectories = []
   e2eUserData = mkdtempSync(join(tmpdir(), 'termflow-e2e-user-data-'))
   cleanupDirectories.push(e2eUserData)
+  // Terminal metniyle assertion yapan bu paket DOM renderer kullanmalı;
+  // closeToTray kapalı olmalı ki app.close child PTY'leri de gerçekten bitirsin.
+  writeFileSync(join(e2eUserData, 'settings.json'), JSON.stringify({ gpuAcceleration: 'off', closeToTray: false }))
   const contextCase = contextMenuCases.find(([id]) => testInfo.title === `Explorer menu opens ${id}`)
   const args = ['.', '--no-sandbox']
   if (contextCase) {
@@ -268,7 +271,7 @@ test('command profiles and providers expose full-permission controls', async () 
   await win.getByRole('button', { name: 'Providers' }).click()
   const deepSeekRow = win.locator('.profile-row', { hasText: 'DeepSeek' })
   await deepSeekRow.getByRole('button', { name: 'Edit' }).click()
-  await expect(win.getByRole('switch', { name: 'Provider full permissions' })).toHaveAttribute('aria-checked', 'true')
+  await expect(win.getByRole('switch', { name: 'Provider full permissions' })).toHaveAttribute('aria-checked', 'false')
   await expect(win.locator('.settings-field', { hasText: 'Active Model' }).locator('select')).toHaveValue('deepseek-v4-pro')
 })
 
@@ -399,9 +402,40 @@ test('shows agent work details below provider terminals', async () => {
     terminal: getComputedStyle(document.querySelector('.terminal-area')!).backgroundColor
   }))
   expect(colors.panel).toBe(colors.terminal)
-  await expect(win.locator('.status-bar')).not.toContainText('DeepSeek')
+  const agentProfile = win.getByLabel('Active agent profile')
+  await expect(agentProfile).toHaveValue('provider:deepseek')
+  await expect(agentProfile).toContainText('Claude Code')
+  await expect(agentProfile).toContainText('Codex')
+  await expect(agentProfile).toContainText('OpenCode')
+  await expect(agentProfile).toContainText('DeepSeek')
+  const profilePopupPalette = await agentProfile.evaluate((element) => {
+    const option = element.querySelector('option')!
+    const rootStyle = getComputedStyle(document.documentElement)
+    const probe = document.createElement('span')
+    probe.style.color = rootStyle.getPropertyValue('--menu-foreground')
+    probe.style.backgroundColor = rootStyle.getPropertyValue('--menu-background')
+    document.body.appendChild(probe)
+    const probeStyle = getComputedStyle(probe)
+    const palette = {
+      colorScheme: rootStyle.colorScheme,
+      optionColor: getComputedStyle(option).color,
+      optionBackground: getComputedStyle(option).backgroundColor,
+      menuColor: probeStyle.color,
+      menuBackground: probeStyle.backgroundColor
+    }
+    probe.remove()
+    return palette
+  })
+  expect(profilePopupPalette.colorScheme).toBe('dark')
+  expect(profilePopupPalette.optionColor).toBe(profilePopupPalette.menuColor)
+  expect(profilePopupPalette.optionBackground).toBe(profilePopupPalette.menuBackground)
+  const tabCountBeforeHandover = await win.locator('.tab').count()
+  await agentProfile.selectOption('codex')
+  await expect(win.getByLabel('Active agent profile')).toHaveValue('codex')
+  await expect(win.locator('.tab')).toHaveCount(tabCountBeforeHandover + 1)
+  await expect(win.locator('.tab-title', { hasText: 'DeepSeek' })).toHaveCount(1)
   await expect(win.locator('.status-bar')).not.toContainText('deepseek-v4-pro')
-  await expect(win.locator('.status-bar')).not.toContainText('Workspace')
+  await expect(win.getByRole('button', { name: 'Agent security profile: Workspace' })).toBeVisible()
 })
 
 test('configures agent security and opens the agent inbox', async () => {
@@ -444,6 +478,7 @@ test('choosing a theme changes --terminal-background', async () => {
   await win.waitForSelector('.settings-backdrop')
   await win.locator('.theme-card', { hasText: 'Light+ (default light)' }).click()
   await expect.poll(cssVar).toBe('#ffffff') // Light+ background
+  await expect.poll(() => win.evaluate(() => getComputedStyle(document.documentElement).colorScheme)).toBe('light')
 })
 
 test('font size stepper updates the font size input', async () => {

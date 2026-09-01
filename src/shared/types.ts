@@ -25,7 +25,11 @@ export interface AgentSessionRef {
 export interface AgentSession extends AgentSessionRef {
   title: string
   cwd?: string
+  /** Native session'ın oluşturulma zamanı; TermFlow profil sahipliğini eşlemek için kullanılır. */
+  createdAt?: number
   updatedAt: number
+  /** Session TermFlow içinden başlatıldıysa kullanılan profil/provider. */
+  profileId?: string
 }
 
 export interface TerminalTab {
@@ -239,6 +243,10 @@ export interface AppSettings {
   tabHeight: number
   copyOnSelect: boolean
   rightClickBehavior: 'context-menu' | 'paste'
+  /** Terminal çıktısındaki mevcut dosya/klasör yollarını tıklanabilir yap. */
+  clickablePaths: boolean
+  /** Yol üzerinde sağ tıkta Open / Open File Location / Copy Path menüsü. */
+  pathContextMenu: boolean
   confirmBeforeClose: boolean
   bell: boolean
   defaultProfileId: string
@@ -326,6 +334,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   tabHeight: 36,
   copyOnSelect: false,
   rightClickBehavior: 'context-menu',
+  clickablePaths: true,
+  pathContextMenu: true,
   confirmBeforeClose: true,
   bell: true,
   defaultProfileId: 'powershell',

@@ -1,4 +1,5 @@
-import type { AppSettings, ProviderProfile, SshConnection, TerminalProfile } from './types'
+import { agentKindForCommand } from './agentEvents'
+import type { AgentKind, AppSettings, ProviderProfile, SshConnection, TerminalProfile } from './types'
 
 export const providerProfileId = (id: string): string => `provider:${id}`
 
@@ -34,6 +35,14 @@ export function commandWithModel(command: string | undefined, model: string | un
 export function providerFromProfileId(settings: AppSettings, profileId: string): ProviderProfile | undefined {
   if (!profileId.startsWith('provider:')) return undefined
   return settings.providerProfiles.find((provider) => provider.id === profileId.slice('provider:'.length))
+}
+
+/** Bir profil/provider'ın çalıştırdığı native CLI ajanını tek yerde çözer. */
+export function agentForProfile(settings: AppSettings, profileId: string): AgentKind | null {
+  const provider = providerFromProfileId(settings, profileId)
+  if (provider) return agentKindForCommand(provider.command)
+  const profile = mergeProfiles(settings.profiles).find((item) => item.id === profileId)
+  return agentKindForCommand(profile?.startupCommand || profile?.command)
 }
 
 /** `ssh:<connectionId>` profil id'sini kayıtlı SSH bağlantısına çözer. */

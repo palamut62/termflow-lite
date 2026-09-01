@@ -121,6 +121,16 @@
   background: var(--widget-border);
 }
 
+.ctx-menu-section {
+  padding: 4px 12px 2px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--menu-foreground);
+  opacity: 0.55;
+  user-select: none;
+}
+
 /* ---- Terminal search overlay (PRD §22) ---- */
 .terminal-search {
   position: absolute;

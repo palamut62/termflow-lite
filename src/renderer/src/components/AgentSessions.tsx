@@ -1,20 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Bot, Folder, LoaderCircle, Play, RefreshCw, Search, X } from 'lucide-react'
 import type { AgentKind, AgentSession } from '../../../shared/types'
-import { mergeProfiles, providerProfileId } from '../../../shared/profiles'
 import { useSettingsStore } from '../store/settingsStore'
-import { useTerminalStore } from '../store/terminalStore'
 import { useAgentSessionStore } from '../store/agentSessionStore'
+import { agentProfileOptions, continueAgentSession } from '../agentHandover'
 
 const LABELS: Record<AgentKind, string> = { claude: 'Claude', codex: 'Codex', opencode: 'OpenCode' }
-
-function commandAgent(command: string, fallback = ''): AgentKind | null {
-  const text = `${fallback} ${command}`.toLowerCase()
-  if (/\bclaude(?:\.cmd|\.exe)?\b/.test(text)) return 'claude'
-  if (/\bcodex(?:\.cmd|\.exe)?\b/.test(text)) return 'codex'
-  if (/\bopencode(?:\.cmd|\.exe)?\b/.test(text)) return 'opencode'
-  return null
-}
 
 function relativeTime(timestamp: number): string {
   const diff = Math.max(0, Date.now() - timestamp)
@@ -34,19 +25,9 @@ export function AgentSessions(): React.JSX.Element {
   const [agent, setAgent] = useState<AgentKind | 'all'>('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [selectedProfiles, setSelectedProfiles] = useState<Partial<Record<AgentKind, string>>>({})
-
-  const profiles = useMemo(() => {
-    const commandProfiles = mergeProfiles(settings.profiles).flatMap((profile) => {
-      const kind = commandAgent(profile.startupCommand || profile.command, profile.id)
-      return kind ? [{ id: profile.id, name: profile.name, agent: kind }] : []
-    })
-    const providers = settings.providerProfiles.flatMap((provider) => {
-      const kind = commandAgent(provider.command)
-      return kind ? [{ id: providerProfileId(provider.id), name: provider.name, agent: kind }] : []
-    })
-    return [...commandProfiles, ...providers]
-  }, [settings.profiles, settings.providerProfiles])
+  const [selectedProfiles, setSelectedProfiles] = useState<Record<string, string>>({})
+  const [continuing, setContinuing] = useState('')
+  const profiles = useMemo(() => agentProfileOptions(settings), [settings])
 
   const refresh = (): void => {
     setLoading(true)
@@ -64,12 +45,21 @@ export function AgentSessions(): React.JSX.Element {
     return haystack.includes(query.trim().toLowerCase())
   })
 
-  const resume = (session: AgentSession): void => {
-    const compatible = profiles.filter((profile) => profile.agent === session.agent)
-    const profileId = selectedProfiles[session.agent] || compatible[0]?.id
-    if (!profileId) return
-    useTerminalStore.getState().resumeAgentSession(profileId, { agent: session.agent, id: session.id }, session.cwd)
-    hide()
+  const resume = async (session: AgentSession): Promise<void> => {
+    const key = `${session.agent}:${session.id}`
+    const original = profiles.find((profile) => profile.id === session.profileId)
+      ?? profiles.find((profile) => profile.agent === session.agent)
+    const target = profiles.find((profile) => profile.id === selectedProfiles[key]) ?? original
+    if (!target) return
+    setContinuing(key)
+    try {
+      await continueAgentSession(session, target, session.cwd, settings.defaultAgentPermissionMode)
+      hide()
+    } catch {
+      setError('Session could not be continued')
+    } finally {
+      setContinuing('')
+    }
   }
 
   return <aside className="agent-sessions-panel" aria-label="Agent sessions">
@@ -92,17 +82,23 @@ export function AgentSessions(): React.JSX.Element {
       {!loading && error && <div className="history-empty">{error}</div>}
       {!loading && !error && filtered.length === 0 && <div className="history-empty">No saved agent sessions</div>}
       {!loading && filtered.map((session) => {
-        const compatible = profiles.filter((profile) => profile.agent === session.agent)
-        const selected = selectedProfiles[session.agent] || compatible[0]?.id || ''
-        return <article className="agent-session-entry" key={`${session.agent}:${session.id}`}>
+        const key = `${session.agent}:${session.id}`
+        const original = profiles.find((profile) => profile.id === session.profileId)
+          ?? profiles.find((profile) => profile.agent === session.agent)
+        const selected = selectedProfiles[key] || original?.id || ''
+        const target = profiles.find((profile) => profile.id === selected)
+        const isNativeResume = target?.agent === session.agent
+        return <article className="agent-session-entry" key={key}>
           <div className="agent-session-main">
             <strong>{session.title}</strong>
             <div className="history-meta"><span>{LABELS[session.agent]}</span><span title={session.cwd}><Folder size={11} />{session.cwd || 'Unknown folder'}</span><time title={new Date(session.updatedAt).toLocaleString()}>{relativeTime(session.updatedAt)}</time></div>
           </div>
-          <select value={selected} onChange={(event) => setSelectedProfiles((state) => ({ ...state, [session.agent]: event.target.value }))} aria-label={`Profile for ${session.title}`}>
-            {compatible.map((profile) => <option value={profile.id} key={profile.id}>{profile.name}</option>)}
+          <select value={selected} onChange={(event) => setSelectedProfiles((state) => ({ ...state, [key]: event.target.value }))} aria-label={`Profile for ${session.title}`}>
+            {profiles.map((profile) => <option value={profile.id} key={profile.id}>{profile.name} ({LABELS[profile.agent]})</option>)}
           </select>
-          <button className="agent-session-resume" onClick={() => resume(session)} disabled={!selected} title="Resume in a new tab"><Play size={12} /> Resume</button>
+          <button className="agent-session-resume" onClick={() => void resume(session)} disabled={!selected || continuing === key} title={isNativeResume ? 'Resume the native session in a new tab' : 'Hand work over to another agent'}>
+            {continuing === key ? <LoaderCircle className="session-spinner" size={12} /> : <Play size={12} />}{isNativeResume ? 'Resume' : 'Hand over'}
+          </button>
         </article>
       })}
     </div>

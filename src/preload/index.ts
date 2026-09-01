@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
-import { IPC, type AgentSessionsQuery, type AppLaunchRequest, type GitStatus, type ProjectInfo, type ProjectTask, type TitleBarOverlayPayload } from '../shared/ipc'
+import { IPC, type AgentSessionsQuery, type AppLaunchRequest, type GitStatus, type ProjectInfo, type ProjectTask, type ResolvedPath, type TitleBarOverlayPayload } from '../shared/ipc'
 import type { AgentEvent, AgentPermissionMode, AgentSession, AgentSessionRef, AppSettings, PersistedSession, RenderMode, ShellInfo, UpdateStatus } from '../shared/types'
 
 // Windows OS build number (e.g. 26200 for current Win11). xterm's windowsPty
@@ -20,6 +20,13 @@ const api = {
   system: {
     osBuildNumber: osBuildNumber(),
     openExternal: (url: string): Promise<boolean> => ipcRenderer.invoke(IPC.SYSTEM_OPEN_EXTERNAL, url),
+    /** Terminaldeki tıklanabilir yollar: adayı tab cwd'sine göre çöz, var mı döndür. */
+    resolvePath: (candidate: string, cwd: string): Promise<ResolvedPath | null> =>
+      ipcRenderer.invoke(IPC.SYSTEM_RESOLVE_PATH, candidate, cwd),
+    /** Dosyayı/klasörü varsayılan uygulamayla aç (dosya çalışır, klasör Explorer'da). */
+    openPath: (path: string): Promise<boolean> => ipcRenderer.invoke(IPC.SYSTEM_OPEN_PATH, path),
+    /** Dosyayı Explorer'da konumuyla göster (Open File Location). */
+    revealInFolder: (path: string): Promise<boolean> => ipcRenderer.invoke(IPC.SYSTEM_REVEAL_IN_FOLDER, path),
     // Blur (acrylic) yalnızca Windows'ta desteklenir — UI buna göre uyarlanır.
     platform: process.platform as NodeJS.Platform,
     /**
@@ -109,7 +116,8 @@ const api = {
     detect: (cwd: string): Promise<ProjectInfo | null> => ipcRenderer.invoke(IPC.PROJECT_DETECT, cwd)
   },
   agentSessions: {
-    list: (query: AgentSessionsQuery = {}): Promise<AgentSession[]> => ipcRenderer.invoke(IPC.AGENT_SESSIONS_LIST, query)
+    list: (query: AgentSessionsQuery = {}): Promise<AgentSession[]> => ipcRenderer.invoke(IPC.AGENT_SESSIONS_LIST, query),
+    handover: (session: AgentSessionRef): Promise<string> => ipcRenderer.invoke(IPC.AGENT_SESSION_HANDOVER, session)
   },
   agentEvents: {
     list: (limit = 500): Promise<AgentEvent[]> => ipcRenderer.invoke(IPC.AGENT_EVENTS_LIST, limit),
@@ -134,7 +142,9 @@ const api = {
   // ---- Clipboard ----
   clipboard: {
     readText: (): Promise<string> => ipcRenderer.invoke(IPC.CLIPBOARD_READ),
-    readPaste: (): Promise<{ kind: 'file' | 'text'; value: string }> => ipcRenderer.invoke(IPC.CLIPBOARD_READ_PASTE)
+    readPaste: (): Promise<{ kind: 'file' | 'text'; value: string }> => ipcRenderer.invoke(IPC.CLIPBOARD_READ_PASTE),
+    /** Yazma main üzerinden; navigator.clipboard.writeText odak/permission duyarlı olduğundan (PRD ek). */
+    writeText: (text: string): Promise<boolean> => ipcRenderer.invoke(IPC.CLIPBOARD_WRITE, text)
   }
 }
 

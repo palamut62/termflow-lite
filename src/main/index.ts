@@ -1,5 +1,5 @@
 import { app, BrowserWindow, globalShortcut, ipcMain, shell } from 'electron'
-import { join } from 'path'
+import { dirname, isAbsolute, join } from 'path'
 import { DEFAULT_SETTINGS, type AppSettings } from '../shared/types'
 import { applyQuakeBounds, applyWindowAppearance, restoreNormalBounds, titleBarOptions } from './window'
 import { TerminalManager } from './terminal/TerminalManager'
@@ -21,10 +21,12 @@ import { registerAgentEventsIpc } from './ipc/agentEvents'
 import { registerProviderSecretsIpc } from './ipc/providerSecrets'
 import { ProviderSecretStore } from './storage/ProviderSecretStore'
 import { AgentEventStore } from './storage/AgentEventStore'
+import { AgentSessionOwnershipStore } from './storage/AgentSessionOwnershipStore'
 import { initUpdater, maybeAutoCheck } from './updater'
 import { SessionStore } from './storage/SessionStore'
 import { IPC } from '../shared/ipc'
 import { parseLaunchRequest } from './launchPath'
+import { resolvePathCandidate } from './pathResolver'
 import { explorerMenuSignature, syncExplorerContextMenu } from './explorerContextMenu'
 import { createTray, destroyTray, isTrayActive, refreshTrayMenu } from './tray'
 
@@ -286,10 +288,12 @@ app.whenReady().then(() => {
   settingsStore = new SettingsStore(join(app.getPath('userData'), 'settings.json'))
   sessionStore = new SessionStore(join(app.getPath('userData'), 'session.json'))
   const providerSecrets = new ProviderSecretStore(join(app.getPath('userData'), 'provider-secrets.json'))
+  const agentSessionOwnership = new AgentSessionOwnershipStore(join(app.getPath('userData'), 'agent-session-owners.json'))
   const mgr = new TerminalManager(
     () => mainWindow,
     () => (settingsStore ? settingsStore.get() : DEFAULT_SETTINGS),
-    (providerId) => providerSecrets.get(providerId)
+    (providerId) => providerSecrets.get(providerId),
+    (record) => agentSessionOwnership.recordLaunch(record)
   )
   manager = mgr
   // WSL distro enumeration makes discovery async — the renderer re-queries
@@ -334,7 +338,7 @@ app.whenReady().then(() => {
   registerGitIpc()
   registerTasksIpc()
   registerProjectIpc()
-  registerAgentSessionsIpc()
+  registerAgentSessionsIpc(agentSessionOwnership)
   registerSessionIpc(sessionStore)
   registerUpdaterIpc()
   registerAgentEventsIpc(new AgentEventStore(app.getPath('userData')))
@@ -353,6 +357,37 @@ app.whenReady().then(() => {
       const url = new URL(value)
       if (url.protocol !== 'http:' && url.protocol !== 'https:') return false
       await shell.openExternal(url.toString())
+      return true
+    } catch {
+      return false
+    }
+  })
+  // Terminaldeki tıklanabilir yollar: renderer yalnızca aday + cwd gönderir;
+  // çözümleme ve fs doğrulaması burada tek yerde yapılır (sandbox uyumlu).
+  ipcMain.handle(IPC.SYSTEM_RESOLVE_PATH, (_event, candidate: unknown, cwd: unknown) => {
+    if (typeof candidate !== 'string' || typeof cwd !== 'string') return null
+    return resolvePathCandidate(candidate, cwd)
+  })
+  ipcMain.handle(IPC.SYSTEM_OPEN_PATH, async (_event, value: unknown): Promise<boolean> => {
+    if (typeof value !== 'string' || value.length === 0 || value.length > 8192 || !isAbsolute(value)) return false
+    try {
+      const resolved = resolvePathCandidate(value, dirname(value))
+      if (!resolved) return false
+      if (!resolved.canOpen) {
+        shell.showItemInFolder(resolved.path)
+        return true
+      }
+      return (await shell.openPath(resolved.path)) === '' // '' = başarılı
+    } catch {
+      return false
+    }
+  })
+  ipcMain.handle(IPC.SYSTEM_REVEAL_IN_FOLDER, (_event, value: unknown): boolean => {
+    if (typeof value !== 'string' || value.length === 0 || value.length > 8192 || !isAbsolute(value)) return false
+    try {
+      const resolved = resolvePathCandidate(value, dirname(value))
+      if (!resolved) return false
+      shell.showItemInFolder(resolved.path)
       return true
     } catch {
       return false

@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { jsonlMetadata } from './agentSessions'
+import { handoverPromptFromFile, handoverPromptFromOpenCodeExport, jsonlMetadata } from './agentSessions'
 
 const dirs: string[] = []
 afterEach(async () => Promise.all(dirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true }))))
@@ -30,5 +30,36 @@ describe('agent session metadata', () => {
       { type: 'response_item', payload: { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'Add tests' }] } }
     ])
     await expect(jsonlMetadata(file, 'codex')).resolves.toEqual({ id: 'codex-id', cwd: 'C:\\repo', title: 'Add tests' })
+  })
+
+  it('reads the native creation timestamp used for profile ownership matching', async () => {
+    const file = await fixture('timed.jsonl', [
+      { type: 'session_meta', timestamp: '2026-09-01T10:00:00.000Z', payload: { id: 'timed-id', cwd: 'C:\\repo' } },
+      { type: 'response_item', payload: { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'Continue' }] } }
+    ])
+    await expect(jsonlMetadata(file, 'codex')).resolves.toMatchObject({ createdAt: Date.parse('2026-09-01T10:00:00.000Z') })
+  })
+
+  it('builds a compact redacted cross-agent handover prompt from Codex history', async () => {
+    const file = await fixture('handover.jsonl', [
+      { type: 'session_meta', payload: { id: 'handover-id', cwd: 'C:\\repo' } },
+      { type: 'response_item', payload: { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'Fix login with api_key: abcdefghijklmnop123456' }] } },
+      { type: 'response_item', payload: { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Tests now pass & calc.exe | whoami; echo $HOME > owned.txt' }] } }
+    ])
+    const prompt = await handoverPromptFromFile(file, 'codex')
+    expect(prompt).toContain('Continue this task from codex')
+    expect(prompt).toContain('Tests now pass')
+    expect(prompt).not.toContain('abcdefghijklmnop123456')
+    expect(prompt).not.toContain('\n')
+    expect(prompt).not.toMatch(/[&|;<>^`$(){}\[\]!%]/)
+  })
+
+  it('builds an OpenCode handover prompt from exported messages', () => {
+    const prompt = handoverPromptFromOpenCodeExport({ messages: [
+      { info: { role: 'user' }, parts: [{ type: 'text', text: 'Finish the session feature' }] },
+      { info: { role: 'assistant' }, parts: [{ type: 'text', text: 'Ownership tests pass' }] }
+    ] })
+    expect(prompt).toContain('Continue this task from opencode')
+    expect(prompt).toContain('Ownership tests pass')
   })
 })

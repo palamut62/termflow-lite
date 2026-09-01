@@ -13,7 +13,9 @@ TermFlow Lite opens straight into a terminal — no welcome screens, no setup wi
 - **15 themes** - Dark+, Light+, Dark Modern, Light Modern, Monokai, Monokai Dimmed, Solarized Dark/Light, Abyss, Kimbie Dark, Red, Quiet Light, Tomorrow Night Blue, High Contrast, plus a Custom theme editor for your own palette
 - **Shell profiles** - PowerShell, CMD, WSL, and Git Bash out of the box, plus fully custom profiles
 - **CLI agents and providers** - launch Claude Code, Codex, OpenCode, Ollama, DeepSeek, OpenRouter, or your own provider profile
+- **Cross-agent handover** - continue active work with another compatible profile/provider from the status bar; native resumes keep their original session and cross-agent switches receive a compact redacted handover
 - **Open at folder** - choose any shell, agent, custom profile, or provider and start it directly in a selected path
+- **Clickable terminal paths** - open real files and folders from terminal output, including paths with spaces; executable files are revealed in Explorer instead of being run
 - **Explorer context menu** - the Windows installer adds “Open in TermFlow Lite” for folders, folder backgrounds, and drive backgrounds, opening a tab at the clicked path
 - **Controlled full permissions** - command profiles launch with full access by default while provider profiles start approval-gated; permission mode and CLI-specific flags remain editable in Settings
 - **Smart status bar** - see process activity, provider model, Git branch and changes, full-access state, current directory, and tab count without visual clutter
@@ -23,7 +25,7 @@ TermFlow Lite opens straight into a terminal — no welcome screens, no setup wi
 - **Agent security profiles** - start Codex or Claude in Safe, Workspace, or Full Access mode with CLI-native permission flags pinned per tab
 - **Agent Inbox and timeline** - review redacted, persistent agent activity, approval waits, tool work, completion, and failure events across tabs
 - **Persistent agent event log** - keep a local JSONL audit trail without storing raw terminal input or API keys
-- **Agent session browser** - search saved Claude Code, Codex, and OpenCode conversations and resume one in a new tab with the selected profile or provider
+- **Agent session browser** - search saved Claude Code, Codex, and OpenCode conversations and resume with the profile/provider that created the session, or explicitly choose another compatible profile
 - **Project detection** - recognize Node.js, Python, Rust, Go, Docker, and Git projects and suggest matching tasks automatically
 - **Split terminals** - tile multiple live terminals side by side or stacked, resize them by dragging dividers, and move focus by click or keyboard
 - **GPU rendering** - WebGL renderer for fast-scrolling output, with an automatic fallback to the DOM renderer on context loss

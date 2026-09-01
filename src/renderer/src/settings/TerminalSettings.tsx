@@ -93,6 +93,26 @@ export function TerminalSettings(): React.JSX.Element {
             onChange={(v) => void update({ rightClickBehavior: v as 'context-menu' | 'paste' })}
           />
         </Field>
+        <Field
+          label="Clickable Paths"
+          hint="Terminal çıktısındaki mevcut dosya/klasör yolları tıklanınca varsayılan uygulamayla açılır."
+        >
+          <Toggle
+            checked={settings.clickablePaths}
+            onChange={(v) => void update({ clickablePaths: v })}
+            label="Clickable paths"
+          />
+        </Field>
+        <Field
+          label="Path Menu on Right Click"
+          hint="Yol üzerinde sağ tık Open / Open File Location / Copy Path menüsü gösterir; kapalıysa global Right Click davranışı uygulanır."
+        >
+          <Toggle
+            checked={settings.pathContextMenu}
+            onChange={(v) => void update({ pathContextMenu: v })}
+            label="Path menu on right click"
+          />
+        </Field>
         <Field label="Confirm Before Close">
           <Toggle checked={settings.confirmBeforeClose} onChange={(v) => void update({ confirmBeforeClose: v })} label="Confirm before close" />
         </Field>

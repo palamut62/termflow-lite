@@ -69,7 +69,7 @@ interface TerminalState {
   addTab(profileId: string, activate?: boolean, cwd?: string, launchCommand?: string, permissionMode?: AgentPermissionMode): string
   /** Kayıtlı oturumu (sekmeler + pane düzeni) geri yükler; bozuk ağaç reddedilir. */
   hydrateSession(session: PersistedSession, startupCwd?: string, overrideCwd?: boolean): boolean
-  resumeAgentSession(profileId: string, session: AgentSessionRef, cwd?: string): string
+  resumeAgentSession(profileId: string, session: AgentSessionRef, cwd?: string, permissionMode?: AgentPermissionMode): string
   /** Onay bekleyen sekme (uygulama içi modal); null = onay istenmiyor. */
   pendingCloseTabId: string | null
   /** UI girişi: settings.confirmBeforeClose ise onay modalını açar, değilse direkt kapatır. */
@@ -154,9 +154,9 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
     return tab.id
   },
 
-  resumeAgentSession(profileId, session, cwd) {
+  resumeAgentSession(profileId, session, cwd, permissionMode) {
     const effectiveCwd = cwd || get().workspaceCwd || resolveStartupCwd()
-    const tab = makeTab(profileId, effectiveCwd, session)
+    const tab = makeTab(profileId, effectiveCwd, session, undefined, permissionMode)
     set((state) => ({ tabs: [...state.tabs, tab], activeTabId: tab.id, workspaceCwd: cwd || state.workspaceCwd }))
     return tab.id
   },
