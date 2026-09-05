@@ -20,6 +20,7 @@ import { registerUpdaterIpc } from './ipc/updater'
 import { registerAgentEventsIpc } from './ipc/agentEvents'
 import { registerProviderSecretsIpc } from './ipc/providerSecrets'
 import { ProviderSecretStore } from './storage/ProviderSecretStore'
+import { registerProfileHealth } from './ipc/profileHealth'
 import { AgentEventStore } from './storage/AgentEventStore'
 import { AgentSessionOwnershipStore } from './storage/AgentSessionOwnershipStore'
 import { initUpdater, maybeAutoCheck } from './updater'
@@ -331,6 +332,7 @@ app.whenReady().then(() => {
     onSettingsChanged
   )
   registerProviderSecretsIpc(providerSecrets)
+  registerProfileHealth(settingsStore, providerSecrets)
   registerShellIpc()
   registerClipboardIpc()
   registerWindowIpc(() => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null))

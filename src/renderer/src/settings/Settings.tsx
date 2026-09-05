@@ -10,13 +10,19 @@ import { AboutSettings } from './AboutSettings'
 import { ProviderSettings } from './ProviderSettings'
 import { SshSettings } from './SshSettings'
 import { AgentSecuritySettings } from './AgentSecuritySettings'
+import { ProfileHealthSettings } from './ProfileHealthSettings'
+import { WorkspaceSettings } from './WorkspaceSettings'
+import { BackupSettings } from './BackupSettings'
 
-type SectionId = 'appearance' | 'terminal' | 'profiles' | 'providers' | 'agent-security' | 'ssh' | 'keyboard' | 'about'
+type SectionId = 'appearance' | 'terminal' | 'profiles' | 'providers' | 'agent-security' | 'ssh' | 'keyboard' | 'about' | 'health' | 'workspaces' | 'backup'
 
 const SECTIONS: { id: SectionId; label: string; icon: ReactNode }[] = [
   { id: 'appearance', label: 'Appearance', icon: <Palette size={14} /> },
   { id: 'terminal', label: 'Terminal', icon: <SquareTerminal size={14} /> },
   { id: 'profiles', label: 'Profiles', icon: <UserRound size={14} /> },
+  { id: 'health', label: 'Profile Health', icon: <ShieldCheck size={14} /> },
+  { id: 'workspaces', label: 'Workspaces', icon: <SquareTerminal size={14} /> },
+  { id: 'backup', label: 'Backup & Restore', icon: <Server size={14} /> },
   { id: 'providers', label: 'Providers', icon: <Bot size={14} /> },
   { id: 'agent-security', label: 'Agent Security', icon: <ShieldCheck size={14} /> },
   { id: 'ssh', label: 'SSH', icon: <Server size={14} /> },
@@ -81,6 +87,9 @@ export function Settings(): React.JSX.Element {
             {section === 'appearance' && <AppearanceSettings />}
             {section === 'terminal' && <TerminalSettings />}
             {section === 'profiles' && <ProfileSettings />}
+            {section === 'health' && <ProfileHealthSettings />}
+            {section === 'workspaces' && <WorkspaceSettings />}
+            {section === 'backup' && <BackupSettings />}
             {section === 'providers' && <ProviderSettings />}
             {section === 'agent-security' && <AgentSecuritySettings />}
             {section === 'ssh' && <SshSettings />}

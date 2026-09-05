@@ -7,6 +7,7 @@ function validProviderId(value: unknown): value is string {
 }
 
 export function registerProviderSecretsIpc(store: ProviderSecretStore): void {
+  ipcMain.handle(IPC.PROVIDER_SECRET_HEALTH, (_event, id: unknown) => validProviderId(id) ? store.status(id) : 'missing')
   ipcMain.handle(IPC.PROVIDER_SECRET_STATUS, (_event, providerId: unknown) =>
     validProviderId(providerId) && store.has(providerId))
 

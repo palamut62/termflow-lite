@@ -19,13 +19,14 @@ export function useCommandScheduler(): void {
 
   useEffect(() => {
     const tick = (): void => {
+      if (!useSettingsStore.getState().loaded) return
       const now = Date.now()
       for (const item of selectDueCommands(useSavedCommandStore.getState().commands, now)) {
         if (ranAt.current.get(item.id) === (item.lastRunAt ?? item.scheduleAnchor ?? 0)) continue
-        if (!hasTarget(item.profileId)) continue
+        if (!hasTarget(item.profileId) || !item.cwd) continue
         ranAt.current.set(item.id, item.lastRunAt ?? item.scheduleAnchor ?? 0)
-        useTerminalStore.getState().addTab(item.profileId, false, undefined, item.command)
-        useSavedCommandStore.getState().markRan(item.id, now)
+        const tabId = useTerminalStore.getState().addTab(item.profileId, false, item.cwd, item.command)
+        useSavedCommandStore.getState().startRun(item.id, tabId, now)
       }
     }
     tick()

@@ -50,6 +50,13 @@ describe('resolveShell', () => {
     expect(custom.shell).toBe('C:\\tools\\app.exe')
     expect(custom.args).toEqual(['-x'])
   })
+
+  it('keeps interactive shell defaults when no launch arguments are given', () => {
+    if (process.platform !== 'win32') return // Windows-specific resolution
+    expect(resolveShell({ kind: 'powershell', args: [] }).args).toEqual(['-NoLogo'])
+    expect(resolveShell({ kind: 'powershell', args: ['-NoLogo', '-NoProfile', '-Command', 'dir'] }).args)
+      .toEqual(['-NoLogo', '-NoProfile', '-Command', 'dir'])
+  })
 })
 
 describe('parseWslOutput', () => {

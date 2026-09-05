@@ -91,6 +91,9 @@ export function sanitizeSession(value: unknown): PersistedSession | null {
       id: tab.id,
       title: typeof tab.title === 'string' ? tab.title : 'Terminal',
       profileId: tab.profileId,
+      ...(['safe', 'workspace', 'full'].includes(tab.permissionMode ?? '') ? { permissionMode: tab.permissionMode } : {}),
+      ...(typeof tab.model === 'string' && tab.model.length <= 200 ? { model: tab.model } : {}),
+      ...(tab.resumeSession && ['claude', 'codex', 'opencode'].includes(tab.resumeSession.agent) && /^[a-zA-Z0-9_-]{1,160}$/.test(tab.resumeSession.id) ? { resumeSession: { agent: tab.resumeSession.agent, id: tab.resumeSession.id } } : {}),
       ...(typeof tab.cwd === 'string' ? { cwd: tab.cwd } : {})
     }))
   if (tabs.length === 0) return null

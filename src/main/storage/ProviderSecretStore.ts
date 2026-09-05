@@ -13,7 +13,13 @@ export class ProviderSecretStore {
   }
 
   has(providerId: string): boolean {
-    return Object.hasOwn(this.load(), providerId)
+    return this.status(providerId) === 'ready'
+  }
+
+  status(providerId: string): 'missing' | 'ready' | 'unavailable' | 'recovery-required' {
+    if (!Object.hasOwn(this.load(), providerId)) return 'missing'
+    if (!this.isAvailable()) return 'unavailable'
+    return this.get(providerId) ? 'ready' : 'recovery-required'
   }
 
   get(providerId: string): string | undefined {

@@ -11,7 +11,7 @@ import {
 import { buildSshArgs } from '../../shared/sshArgs'
 import type { AgentSessionRef, AppSettings, CreateTerminalInput, ShellInfo, TerminalProfile } from '../../shared/types'
 import type { AgentPermissionMode } from '../../shared/types'
-import { applyAgentPermission } from '../../shared/agentEvents'
+import { applyAgentPermission, applyPermissionArgs } from '../../shared/agentEvents'
 
 export const DEFAULT_SHELL_PRIORITY: ShellInfo['id'][] = ['pwsh', 'powershell', 'cmd', 'gitbash', 'wsl', 'bash', 'sh']
 
@@ -171,7 +171,7 @@ export function profileToInput(
       ...base,
       kind: 'custom' as const,
       shell: profile.command,
-      args: [
+      args: applyPermissionArgs(profile.command, [
         ...(opts.resumeSession?.agent === 'codex' ? ['resume', opts.resumeSession.id] : []),
         ...(profile.args ?? []),
         ...(profile.model?.trim() ? ['--model', profile.model.trim()] : []),
@@ -180,7 +180,7 @@ export function profileToInput(
           : (profile.fullPermissionArgs?.trim() || defaultFullPermissionArgs(profile.command)).split(/\s+/).filter(Boolean)),
         ...(opts.resumeSession?.agent === 'claude' ? ['--resume', opts.resumeSession.id] : []),
         ...(opts.resumeSession?.agent === 'opencode' ? ['--session', opts.resumeSession.id] : [])
-      ],
+      ], opts.permissionMode ?? settings.defaultAgentPermissionMode),
       env: { ...agentAppearanceEnv(settings, profile.command), ...profile.env },
       startupCommand
     }

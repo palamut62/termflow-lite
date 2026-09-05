@@ -44,8 +44,8 @@ const api = {
   },
   // ---- PTY ----
   pty: {
-    create: (tabId: string, profileId: string, cols: number, rows: number, cwd?: string, resumeSession?: AgentSessionRef, launchCommand?: string, permissionMode?: AgentPermissionMode): Promise<{ pid: number }> =>
-      ipcRenderer.invoke(IPC.PTY_CREATE, tabId, profileId, cols, rows, cwd, resumeSession, launchCommand, permissionMode),
+    create: (tabId: string, profileId: string, cols: number, rows: number, cwd?: string, resumeSession?: AgentSessionRef, launchCommand?: string, permissionMode?: AgentPermissionMode, model?: string): Promise<{ pid: number }> =>
+      ipcRenderer.invoke(IPC.PTY_CREATE, tabId, profileId, cols, rows, cwd, resumeSession, launchCommand, permissionMode, model),
     write: (tabId: string, data: string): void => ipcRenderer.send(IPC.PTY_WRITE, tabId, data),
     resize: (tabId: string, cols: number, rows: number): void =>
       ipcRenderer.send(IPC.PTY_RESIZE, tabId, cols, rows),
@@ -81,10 +81,12 @@ const api = {
     set: (patch: Partial<AppSettings>): Promise<AppSettings> => ipcRenderer.invoke(IPC.SETTINGS_SET, patch)
   },
   providerSecrets: {
+    status: (id: string): Promise<'missing' | 'ready' | 'unavailable' | 'recovery-required'> => ipcRenderer.invoke(IPC.PROVIDER_SECRET_HEALTH, id),
     has: (providerId: string): Promise<boolean> => ipcRenderer.invoke(IPC.PROVIDER_SECRET_STATUS, providerId),
     set: (providerId: string, secret: string): Promise<boolean> => ipcRenderer.invoke(IPC.PROVIDER_SECRET_SET, providerId, secret),
     delete: (providerId: string): Promise<void> => ipcRenderer.invoke(IPC.PROVIDER_SECRET_DELETE, providerId)
   },
+  profileHealth: (id: string, connection = false): Promise<{ label: string; ok: boolean; detail: string }[]> => ipcRenderer.invoke(IPC.PROFILE_HEALTH, id, connection),
   // ---- Session (tab + split layout restore) ----
   session: {
     get: (): Promise<PersistedSession | null> => ipcRenderer.invoke(IPC.SESSION_GET),
@@ -116,6 +118,7 @@ const api = {
     detect: (cwd: string): Promise<ProjectInfo | null> => ipcRenderer.invoke(IPC.PROJECT_DETECT, cwd)
   },
   agentSessions: {
+    warnings: (): Promise<string[]> => ipcRenderer.invoke(IPC.AGENT_SESSION_WARNINGS),
     list: (query: AgentSessionsQuery = {}): Promise<AgentSession[]> => ipcRenderer.invoke(IPC.AGENT_SESSIONS_LIST, query),
     handover: (session: AgentSessionRef): Promise<string> => ipcRenderer.invoke(IPC.AGENT_SESSION_HANDOVER, session)
   },

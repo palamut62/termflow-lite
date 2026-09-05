@@ -652,3 +652,16 @@
   font-size: 12px;
   line-height: 1.5;
 }
+/* Workspace, backup and handover controls use the existing application palette. */
+.backup-text { display: block; width: 100%; min-height: 140px; resize: vertical; margin: 12px 0; background: var(--input-background); color: var(--input-foreground); border: 1px solid var(--widget-border); padding: 8px; font: 12px monospace; }
+.backup-preview { padding: 12px; margin-top: 12px; border: 1px solid var(--widget-border); }
+.handover-dialog { width: min(720px, calc(100vw - 40px)); max-height: calc(100vh - 60px); overflow: auto; padding: 20px; background: var(--panel-background); color: var(--foreground); border: 1px solid var(--widget-border); border-radius: 8px; }
+.handover-dialog h2 { font-size: 17px; margin: 0 0 12px; }
+.handover-dialog textarea { display: block; width: 100%; min-height: 90px; resize: vertical; margin: 8px 0 12px; background: var(--input-background); color: var(--input-foreground); border: 1px solid var(--widget-border); padding: 8px; font: inherit; }
+.handover-dialog textarea[aria-label="Handover context"] { min-height: 200px; }
+.settings-nav { overflow-y: auto; }
+.saved-command-entry { flex-wrap: wrap; }
+.saved-command-results { flex-basis: 100%; font-size: 11px; overflow-wrap: anywhere; padding-top: 6px; }
+.saved-command-results button { margin: 4px 8px; color: inherit; background: transparent; border: 1px solid var(--widget-border); border-radius: 3px; cursor: pointer; }
+.saved-command-results details { margin-top: 6px; }
+.exit-overlay span { overflow-wrap: anywhere; max-width: min(90vw, 800px); }

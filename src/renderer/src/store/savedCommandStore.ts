@@ -10,6 +10,10 @@ export interface SavedCommand {
   schedule?: CommandSchedule
   scheduleAnchor?: number
   lastRunAt?: number
+  cwd?: string
+  enabled?: boolean
+  activeTabId?: string
+  results?: { at: number; exitCode: number; durationMs: number; message?: string }[]
 }
 
 const STORAGE_KEY = 'termflow.saved-commands.v1'
@@ -33,6 +37,13 @@ export function normalizeStoredCommands(parsed: unknown, now: number): { command
         command: item.command as string,
         profileId: typeof item.profileId === 'string' ? item.profileId : ''
       }
+      if (typeof item.cwd === 'string') command.cwd = item.cwd
+      if (typeof item.enabled === 'boolean') command.enabled = item.enabled
+      if (Array.isArray(item.results)) command.results = item.results.filter(r => r && typeof r.at === 'number' && typeof r.exitCode === 'number' && typeof r.durationMs === 'number').slice(-20)
+      if (typeof item.activeTabId === 'string') {
+        command.results = [...(command.results ?? []), { at: now, exitCode: -1, durationMs: 0, message: 'Interrupted by application shutdown.' }].slice(-20)
+        changed = true
+      }
       const schedule = normalizeSchedule(item.schedule)
       if (schedule) {
         command.schedule = schedule
@@ -51,7 +62,7 @@ export function normalizeStoredCommands(parsed: unknown, now: number): { command
 }
 
 export function selectDueCommands(commands: SavedCommand[], now: number): SavedCommand[] {
-  return commands.filter((item) => item.schedule && isDue(item.schedule, item.lastRunAt ?? item.scheduleAnchor ?? now, now))
+  return commands.filter((item) => item.enabled !== false && !item.activeTabId && item.schedule && isDue(item.schedule, item.lastRunAt ?? item.scheduleAnchor ?? now, now))
 }
 
 function loadCommands(): SavedCommand[] {
@@ -82,6 +93,10 @@ interface SavedCommandState {
   update(id: string, name: string, command: string, profileId: string, schedule?: CommandSchedule | null): boolean
   remove(id: string): void
   markRan(id: string, at: number): void
+  configure(id: string, cwd: string, enabled: boolean): void
+  startRun(id: string, tabId: string, at: number): void
+  finishRun(tabId: string, exitCode: number, durationMs: number, message?: string): void
+  replace(commands: SavedCommand[]): void
 }
 
 function sameSchedule(a: CommandSchedule | undefined, b: CommandSchedule | undefined): boolean {
@@ -142,5 +157,24 @@ export const useSavedCommandStore = create<SavedCommandState>()((set, get) => ({
     const commands = get().commands.map((item) => item.id === id ? { ...item, lastRunAt: at } : item)
     persist(commands)
     set({ commands })
+  },
+  configure(id, cwd, enabled) {
+    const commands = get().commands.map(item => item.id === id ? { ...item, cwd: cwd.trim(), enabled } : item)
+    persist(commands); set({ commands })
+  },
+  startRun(id, tabId, at) {
+    const commands = get().commands.map(item => item.id === id ? { ...item, activeTabId: tabId, lastRunAt: at } : item)
+    persist(commands); set({ commands })
+  },
+  finishRun(tabId, exitCode, durationMs, message) {
+    if (!get().commands.some(item => item.activeTabId === tabId)) return
+    const commands = get().commands.map(item => item.activeTabId === tabId ? {
+      ...item, activeTabId: undefined,
+      results: [...(item.results ?? []), { at: Date.now(), exitCode, durationMs, message }].slice(-20)
+    } : item)
+    persist(commands); set({ commands })
+  },
+  replace(commands) {
+    persist(commands); set({ commands })
   }
 }))

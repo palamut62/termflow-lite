@@ -1,4 +1,5 @@
 import type { AgentEventKind, AgentKind, AgentPermissionMode } from './types'
+import { splitCommandLine, formatArguments } from './commandLine'
 
 const ANSI = /\x1b(?:\[[0-?]*[ -\/]*[@-~]|\][^\x07]*(?:\x07|\x1b\\))/g
 
@@ -35,17 +36,24 @@ export function permissionArgs(agent: AgentKind, mode: AgentPermissionMode): str
 export function applyAgentPermission(command: string, mode: AgentPermissionMode): string {
   const agent = agentKindForCommand(command)
   if (!agent) return command
-  if (agent === 'opencode' && mode !== 'full') {
-    return 'echo TermFlow Lite: OpenCode Safe and Workspace modes are unavailable; select Full Access only if you trust this project.'
+  const [executable, ...args] = splitCommandLine(command)
+  return formatArguments([executable, ...applyPermissionArgs(executable, args, mode)])
+}
+
+export function applyPermissionArgs(command: string, args: string[], mode: AgentPermissionMode): string[] {
+  const agent = agentKindForCommand(command)
+  if (!agent) return args
+  if (agent === 'opencode' && mode !== 'full') throw new Error('OpenCode does not support Safe or Workspace mode. Choose a compatible agent or explicitly select Full access.')
+  const clean: string[] = []
+  const values = ['--sandbox', '--ask-for-approval', '--permission-mode', ...(agent === 'codex' ? ['-s', '-a'] : [])]
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--') return [...clean, ...permissionArgs(agent, mode), ...args.slice(i)]
+    if (['--dangerously-bypass-approvals-and-sandbox', '--dangerously-skip-permissions', '--allow-dangerously-skip-permissions', '--yolo', '--auto', '--full-auto'].includes(args[i])) continue
+    if (values.includes(args[i])) { i++; continue }
+    if (values.some(flag => args[i].startsWith(flag + '='))) continue
+    clean.push(args[i])
   }
-  const stripped = command
-    .replace(/\s+--dangerously-bypass-approvals-and-sandbox\b/g, '')
-    .replace(/\s+--dangerously-skip-permissions\b/g, '')
-    .replace(/\s+--auto\b/g, '')
-    .replace(/\s+--sandbox\s+(?:read-only|workspace-write|danger-full-access)\b/g, '')
-    .replace(/\s+--ask-for-approval\s+(?:untrusted|on-request|never)\b/g, '')
-    .replace(/\s+--permission-mode\s+(?:acceptEdits|auto|bypassPermissions|manual|dontAsk|plan)\b/g, '')
-  return `${stripped.trim()} ${permissionArgs(agent, mode).join(' ')}`.trim()
+  return [...clean, ...permissionArgs(agent, mode)]
 }
 
 /** Converts provider TUI/hook output into small, secret-free status events. */
@@ -55,7 +63,7 @@ export function parseAgentOutput(agent: AgentKind, chunk: string): ParsedAgentEv
   const events: ParsedAgentEvent[] = []
   for (const line of lines.slice(-30)) {
     const lower = line.toLowerCase()
-    if (/permission|approval|required|allow this|do you want to proceed/.test(lower)) {
+    if (/approval required|waiting for (?:permission|approval)|permission (?:required|request)|allow this|do you want to proceed/.test(lower)) {
       events.push({ kind: 'approval', title: 'Waiting for approval', detail: safeDetail(line) })
     } else if (/waiting for (your )?(input|answer)|answer the question|select an option/.test(lower)) {
       events.push({ kind: 'question', title: 'Waiting for input', detail: safeDetail(line) })

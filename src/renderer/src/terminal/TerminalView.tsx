@@ -20,6 +20,8 @@ import { redactApiKeys } from '../../../shared/secretRedaction'
 import { agentKindForCommand, parseAgentOutput } from '../../../shared/agentEvents'
 import { mergeProfiles, providerFromProfileId } from '../../../shared/profiles'
 import { useAgentEventStore } from '../store/agentEventStore'
+import { useSavedCommandStore } from '../store/savedCommandStore'
+import { useHandoverStore } from '../store/handoverStore'
 
 interface Props {
   tabId: string
@@ -88,11 +90,14 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
   /** Last cell size pushed to xterm/PTY — re-asserted after a PTY restart. */
   const lastSizeRef = useRef({ cols: 0, rows: 0 })
   const [exited, setExited] = useState<ExitInfo | null>(null)
+  const [startError, setStartError] = useState('')
+  const [retryNonce, setRetryNonce] = useState(0)
 
   const profileId = useTerminalStore((s) => s.tabs.find((t) => t.id === tabId)?.profileId)
   const resumeSession = useTerminalStore((s) => s.tabs.find((t) => t.id === tabId)?.resumeSession)
   const launchCwd = useTerminalStore((s) => s.tabs.find((t) => t.id === tabId)?.launchCwd)
   const launchCommand = useTerminalStore((s) => s.tabs.find((t) => t.id === tabId)?.launchCommand)
+  const model = useTerminalStore((s) => s.tabs.find((t) => t.id === tabId)?.model)
   const settings = useSettingsStore((s) => s.settings)
   const permissionMode = useTerminalStore((s) => s.tabs.find((t) => t.id === tabId)?.permissionMode) ?? settings.defaultAgentPermissionMode
   const uiSearchTabId = useSettingsStore((s) => s.uiSearchTabId)
@@ -242,6 +247,7 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
       // Sarımsı mesaj terminal içine, butonlar overlay'de (PRD §74).
       term.write(`\r\n\x1b[33mProcess exited with code ${exitCode}\x1b[0m\r\n`)
       setExited({ exitCode, durationMs })
+      if (exitCode !== 0) useHandoverStore.getState().failed(tabId)
       useTerminalStore.getState().setTabActivity(tabId, exitCode === 0 ? 'completed' : 'error')
       const profile = mergeProfiles(settings.profiles).find((item) => item.id === profileId)
       const provider = providerFromProfileId(settings, profileId)
@@ -291,9 +297,10 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
       }
       createdPtys.add(tabId)
       void window.termflow.pty
-        .create(tabId, profileId, lastSizeRef.current.cols, lastSizeRef.current.rows, launchCwd, resumeSession, launchCommand, permissionMode)
+        .create(tabId, profileId, lastSizeRef.current.cols, lastSizeRef.current.rows, launchCwd, resumeSession, launchCommand, permissionMode, model)
         .then(() => {
           if (disposed) return
+          useHandoverStore.getState().started(tabId)
           // Re-assert the current cell size so a size change that landed while
           // the PTY was spawning is not lost (main no-ops when identical).
           window.termflow.pty.resize(tabId, lastSizeRef.current.cols, lastSizeRef.current.rows)
@@ -310,6 +317,13 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
           queue.length = 0
           ready = true
         })
+      }).catch((error: unknown) => {
+        createdPtys.delete(tabId)
+        if (disposed) return
+        setStartError(redactApiKeys(error instanceof Error ? error.message : 'Terminal could not start.'))
+        useTerminalStore.getState().setTabActivity(tabId, 'error')
+        useSavedCommandStore.getState().finishRun(tabId, -1, 0, 'Could not start. Check the profile and folder.')
+        useHandoverStore.getState().failed(tabId)
       })
     }
 
@@ -512,7 +526,7 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
       fitRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tabId, profileId, launchCwd, resumeSession, launchCommand])
+  }, [tabId, profileId, launchCwd, resumeSession, launchCommand, retryNonce])
 
   // Focus + re-measure when this tab becomes active. Tüm tab'lar mount kaldığı
   // için render modunu da burada güncelliyoruz: aktif olan canlı stream alır,
@@ -584,6 +598,8 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
   }, [settings.fontLigatures])
 
   const handleRestart = (): void => {
+    setStartError('')
+    if (!createdPtys.has(tabId)) { setRetryNonce(value => value + 1); return }
     setExited(null)
     const term = termRef.current
     void window.termflow.pty.restart(tabId).then((res) => {
@@ -591,7 +607,7 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
       useTerminalStore.getState().setTabActivity(tabId, 'running')
       term?.reset() // clear the view; fresh output streams through the handlers
       window.termflow.pty.resize(tabId, lastSizeRef.current.cols, lastSizeRef.current.rows)
-    })
+    }).catch(error => setStartError(redactApiKeys(error instanceof Error ? error.message : 'Restart failed.')))
   }
 
   const handleChangeCwd = async (cwd: string): Promise<boolean> => {
@@ -735,10 +751,11 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
           onSettings={handleSettings}
         />
       )}
-      {exited !== null && (
+      {(exited !== null || startError) && (
         <div className="exit-overlay">
-          <span>Process exited with code {exited.exitCode}</span>
+          <span role={startError ? 'alert' : undefined}>{startError || `Process exited with code ${exited?.exitCode}`}</span>
           <div className="exit-overlay-actions">
+            {startError && <button className="exit-overlay-btn" onClick={handleSettings}>Edit profile</button>}
             <button className="exit-overlay-btn" onClick={handleRestart}>
               Restart
             </button>

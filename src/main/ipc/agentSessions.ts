@@ -1,12 +1,13 @@
 import { ipcMain } from 'electron'
 import { IPC, type AgentSessionsQuery } from '../../shared/ipc'
 import type { AgentKind } from '../../shared/types'
-import { buildAgentHandoverPrompt, listAgentSessions } from '../agentSessions'
+import { buildAgentHandoverPrompt, listAgentSessions, getSessionWarnings } from '../agentSessions'
 import type { AgentSessionOwnershipStore } from '../storage/AgentSessionOwnershipStore'
 
 const AGENTS: AgentKind[] = ['claude', 'codex', 'opencode']
 
 export function registerAgentSessionsIpc(ownership: AgentSessionOwnershipStore): void {
+  ipcMain.handle(IPC.AGENT_SESSION_WARNINGS, () => getSessionWarnings())
   ipcMain.handle(IPC.AGENT_SESSIONS_LIST, async (_event, query: AgentSessionsQuery = {}) => {
     const agents = Array.isArray(query.agents)
       ? query.agents.filter((agent): agent is AgentKind => AGENTS.includes(agent as AgentKind))

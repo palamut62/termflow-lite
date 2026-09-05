@@ -18,6 +18,8 @@ export const IPC = {
   SETTINGS_GET: 'settings:get', // -> AppSettings
   SETTINGS_SET: 'settings:set', // (patch) -> AppSettings
   PROVIDER_SECRET_STATUS: 'provider-secret:status', // (providerId) -> boolean
+  PROVIDER_SECRET_HEALTH: 'provider-secret:health',
+  PROFILE_HEALTH: 'profile:health',
   PROVIDER_SECRET_SET: 'provider-secret:set', // (providerId, secret) -> boolean
   PROVIDER_SECRET_DELETE: 'provider-secret:delete', // (providerId) -> void
   SESSION_GET: 'session:get', // -> PersistedSession | null
@@ -37,6 +39,7 @@ export const IPC = {
   TASKS_DISCOVER: 'tasks:discover',
   PROJECT_DETECT: 'project:detect',
   AGENT_SESSIONS_LIST: 'agent-sessions:list',
+  AGENT_SESSION_WARNINGS: 'agent-sessions:warnings',
   AGENT_SESSION_HANDOVER: 'agent-sessions:handover',
   AGENT_EVENTS_LIST: 'agent-events:list',
   AGENT_EVENTS_APPEND: 'agent-events:append',

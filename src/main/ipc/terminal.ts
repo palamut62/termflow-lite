@@ -50,11 +50,12 @@ function validPermissionMode(value: unknown): AgentPermissionMode | undefined {
  * (the renderer awaits a result); write/resize/kill/mode are fire-and-forget.
  */
 export function registerTerminalIpc(manager: TerminalManager): void {
-  ipcMain.handle(IPC.PTY_CREATE, (_event, tabId: unknown, profileId: unknown, cols: unknown, rows: unknown, cwd: unknown, resumeSession: unknown, launchCommand: unknown, permissionMode: unknown) => {
+  ipcMain.handle(IPC.PTY_CREATE, (_event, tabId: unknown, profileId: unknown, cols: unknown, rows: unknown, cwd: unknown, resumeSession: unknown, launchCommand: unknown, permissionMode: unknown, model: unknown) => {
     if (!validId(tabId) || !validId(profileId)) throw new Error('invalid tab id')
     const c = validSize(cols, 2) || 120
     const r = validSize(rows, 1) || 30
-    return manager.create(tabId, profileId, c, r, validCwd(cwd), validResumeSession(resumeSession), validLaunchCommand(launchCommand), validPermissionMode(permissionMode))
+    if (model !== undefined && (typeof model !== 'string' || !/^[a-zA-Z0-9_./:@+-]{1,200}$/.test(model))) throw new Error('Invalid model id')
+    return manager.create(tabId, profileId, c, r, validCwd(cwd), validResumeSession(resumeSession), validLaunchCommand(launchCommand), validPermissionMode(permissionMode), model as string | undefined)
   })
 
   ipcMain.on(IPC.PTY_WRITE, (_event, tabId: unknown, data: unknown) => {

@@ -4,6 +4,7 @@ import type { AgentKind, AgentSession } from '../../../shared/types'
 import { useSettingsStore } from '../store/settingsStore'
 import { useAgentSessionStore } from '../store/agentSessionStore'
 import { agentProfileOptions, continueAgentSession } from '../agentHandover'
+import { useHandoverStore } from '../store/handoverStore'
 
 const LABELS: Record<AgentKind, string> = { claude: 'Claude', codex: 'Codex', opencode: 'OpenCode' }
 
@@ -25,14 +26,16 @@ export function AgentSessions(): React.JSX.Element {
   const [agent, setAgent] = useState<AgentKind | 'all'>('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [warnings, setWarnings] = useState<string[]>([])
   const [selectedProfiles, setSelectedProfiles] = useState<Record<string, string>>({})
   const [continuing, setContinuing] = useState('')
+  const handoverResult = useHandoverStore(s => s.result)
   const profiles = useMemo(() => agentProfileOptions(settings), [settings])
 
   const refresh = (): void => {
     setLoading(true)
     setError('')
-    void window.termflow.agentSessions.list({ limit: 100 }).then(setSessions).catch(() => {
+    void window.termflow.agentSessions.list({ limit: 100 }).then(async sessions => { setSessions(sessions); setWarnings(await window.termflow.agentSessions.warnings()) }).catch(() => {
       setError('Sessions could not be read')
     }).finally(() => setLoading(false))
   }
@@ -53,8 +56,8 @@ export function AgentSessions(): React.JSX.Element {
     if (!target) return
     setContinuing(key)
     try {
-      await continueAgentSession(session, target, session.cwd, settings.defaultAgentPermissionMode)
-      hide()
+      const id = await continueAgentSession(session, target, session.cwd, settings.defaultAgentPermissionMode)
+      if (id) hide()
     } catch {
       setError('Session could not be continued')
     } finally {
@@ -78,6 +81,8 @@ export function AgentSessions(): React.JSX.Element {
       </select>
     </div>
     <div className="agent-session-list">
+      {handoverResult && <p role="status">{handoverResult}</p>}
+      {warnings.map(warning => <p role="status" key={warning}>{warning}</p>)}
       {loading && <div className="history-empty"><LoaderCircle className="session-spinner" size={17} /> Loading sessions...</div>}
       {!loading && error && <div className="history-empty">{error}</div>}
       {!loading && !error && filtered.length === 0 && <div className="history-empty">No saved agent sessions</div>}

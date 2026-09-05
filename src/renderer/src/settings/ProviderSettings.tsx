@@ -33,6 +33,8 @@ export function ProviderSettings(): React.JSX.Element {
     setApiKey('')
     setSecretError('')
     setHasApiKey(await window.termflow.providerSecrets.has(provider.id))
+    const status = await window.termflow.providerSecrets.status(provider.id)
+    if (status === 'recovery-required' || status === 'unavailable') setSecretError('The saved key cannot be decrypted. Re-enter the key on this computer.')
   }
 
   const save = async (): Promise<void> => {
@@ -114,7 +116,7 @@ export function ProviderSettings(): React.JSX.Element {
           <Field label="Model Variable"><TextInput className="settings-input-wide" value={draft.modelEnv ?? ''} onChange={(e) => setDraft({ ...draft, modelEnv: e.target.value })} placeholder="PROVIDER_MODEL" /></Field>
           <Field label="Base URL Variable"><TextInput className="settings-input-wide" value={draft.baseUrlEnv ?? ''} onChange={(e) => setDraft({ ...draft, baseUrlEnv: e.target.value })} placeholder="PROVIDER_BASE_URL" /></Field>
           <Field label="Color"><TextInput className="settings-input-narrow" value={draft.color ?? ''} onChange={(e) => setDraft({ ...draft, color: e.target.value })} placeholder="#6467f2" /></Field>
-          <Field label="Full Permissions" hint="launch without approval prompts"><Toggle checked={draft.fullPermissions !== false} onChange={(fullPermissions) => setDraft({ ...draft, fullPermissions })} label="Provider full permissions" /></Field>
+          <Field label="Full Permissions" hint="Legacy custom CLI option; supported agents use the session security mode in Agent Security"><Toggle checked={draft.fullPermissions !== false} onChange={(fullPermissions) => setDraft({ ...draft, fullPermissions })} label="Provider full permissions" /></Field>
           <Field label="Permission Arguments" hint="CLI-specific bypass flags"><TextInput className="settings-input-wide" value={draft.fullPermissionArgs ?? ''} onChange={(e) => setDraft({ ...draft, fullPermissionArgs: e.target.value })} placeholder="--dangerously-skip-permissions" /></Field>
           <div className="profile-form-actions">
             <button className="settings-btn settings-btn-primary" disabled={!draft.name.trim() || !draft.command.trim()} onClick={() => void save()}>Save</button>

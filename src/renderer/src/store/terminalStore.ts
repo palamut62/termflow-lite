@@ -4,6 +4,7 @@ import type { SearchAddon } from '@xterm/addon-search'
 import type { AgentPermissionMode, AgentSessionRef, PersistedSession, TabActivity, TerminalTab } from '../../../shared/types'
 import { mergeProfiles, providerFromProfileId, sshFromProfileId } from '../../../shared/profiles'
 import { resolveDefaultProfileId, useSettingsStore } from './settingsStore'
+import { useSavedCommandStore } from './savedCommandStore'
 import { buildTiledPane, closePane, isValidPaneTree, paneTerminalIds, replacePaneTerminal, setPaneRatio, splitPane, type PaneNode } from '../paneUtils'
 
 /**
@@ -42,7 +43,9 @@ export function broadcastTargetIds(tabId: string, splitTabIds: string[] | null, 
 }
 
 function makeTab(profileId: string, cwd?: string, resumeSession?: AgentSessionRef, launchCommand?: string, permissionMode?: AgentPermissionMode): TerminalTab {
-  return { id: nanoid(10), title: tabTitleFor(profileId), profileId, running: true, activity: 'running', startedAt: Date.now(), cwd, launchCwd: cwd, resumeSession, launchCommand, permissionMode: permissionMode ?? useSettingsStore.getState().settings.defaultAgentPermissionMode }
+  const settings = useSettingsStore.getState().settings
+  const model = providerFromProfileId(settings, profileId)?.model ?? mergeProfiles(settings.profiles).find(p => p.id === profileId)?.model
+  return { id: nanoid(10), title: tabTitleFor(profileId), profileId, model, running: true, activity: 'running', startedAt: Date.now(), cwd, launchCwd: cwd, resumeSession, launchCommand, permissionMode: permissionMode ?? settings.defaultAgentPermissionMode }
 }
 
 /** Fresh shells and agents share one configured startup directory. */
@@ -123,7 +126,9 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
       startedAt: Date.now(),
       cwd: overrideCwd ? startupCwd : startupCwd || tab.cwd,
       launchCwd: overrideCwd ? startupCwd : startupCwd || tab.cwd,
-      permissionMode: useSettingsStore.getState().settings.defaultAgentPermissionMode
+      permissionMode: tab.permissionMode ?? useSettingsStore.getState().settings.defaultAgentPermissionMode,
+      model: tab.model,
+      resumeSession: tab.resumeSession
     }))
     const ids = new Set(tabs.map((tab) => tab.id))
     // Bozuk dosyaya karşı savunma: ağaçtaki her id gerçekten bir sekme olmalı.
@@ -155,10 +160,9 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
   },
 
   resumeAgentSession(profileId, session, cwd, permissionMode) {
-    const effectiveCwd = cwd || get().workspaceCwd || resolveStartupCwd()
-    const tab = makeTab(profileId, effectiveCwd, session, undefined, permissionMode)
-    set((state) => ({ tabs: [...state.tabs, tab], activeTabId: tab.id, workspaceCwd: cwd || state.workspaceCwd }))
-    return tab.id
+    const id = get().addTab(profileId, true, cwd, undefined, permissionMode)
+    set(state => ({ tabs: state.tabs.map(tab => tab.id === id ? { ...tab, resumeSession: session } : tab) }))
+    return id
   },
 
   pendingCloseTabId: null,
@@ -191,6 +195,7 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
 
     // Tear the PTY down and drop the stream handlers for this tab.
     window.termflow.pty.kill(id)
+    useSavedCommandStore.getState().finishRun(id, -1, 0, 'Terminal closed before completion.')
     dataHandlers.delete(id)
     exitHandlers.delete(id)
 

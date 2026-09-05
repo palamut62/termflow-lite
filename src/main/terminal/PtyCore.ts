@@ -2,13 +2,12 @@ import * as pty from '@lydell/node-pty'
 import type { CreateTerminalInput, PtyEvent, RenderMode } from '../../shared/types'
 import { TerminalSecretRedactor } from '../../shared/secretRedaction'
 import { resolveShell } from './ShellDiscovery'
+import { executablePath, isWindowsExecutable } from './cli'
 
 const ACTIVE_INTERVAL_MS = 16 // PRD §11.6 IPC batching for the focused terminal
 const DEFAULT_SCROLLBACK_LINES = 10000 // PRD §10.9.1
 /** Kabuk prompt'u hazır olsun diye startupCommand'dan önce beklenen süre. */
 const STARTUP_COMMAND_DELAY_MS = 400
-/** Agent profili başladıktan sonra kayıtlı girdinin prompt'a gönderilmesi için bekleme. */
-const LAUNCH_COMMAND_AFTER_STARTUP_DELAY_MS = 2500
 
 // OSC 7 "current working directory" escape sequence, emitted by most modern
 // shells on every prompt redraw: ESC ] 7 ; file://<host>/<path> BEL|ST
@@ -62,10 +61,15 @@ export class PtyCore {
    * never needs a startup resize/rewrap.
    */
   create(id: string, input: CreateTerminalInput): { pid: number } {
+    if (input.startupCommand && input.launchCommand) throw new Error('Agent input must be passed to the CLI as an argument, never to a delayed shell prompt.')
     const existing = this.terminals.get(id)
     if (existing) this.kill(id)
 
     const resolved = resolveShell(input)
+    if (process.platform === 'win32') {
+      resolved.shell = executablePath(resolved.shell)
+      if (!isWindowsExecutable(resolved.shell)) throw new Error('Select a Windows executable or a supported CLI profile. This file cannot be started directly.')
+    }
     const cols = input.cols && input.cols > 0 ? Math.floor(input.cols) : 120
     const rows = input.rows && input.rows > 0 ? Math.floor(input.rows) : 30
     const proc = pty.spawn(resolved.shell, resolved.args, {
@@ -108,6 +112,8 @@ export class PtyCore {
       if (this.terminals.get(id) !== managed) return
       managed.exited = true
       managed.exitCode = exitCode
+      const tail = managed.secretRedactor.finish()
+      if (tail) { managed.buffer.push(tail); managed.pending += tail }
       this.flush(managed, true)
       this.emit({ kind: 'exit', ptyId: id, exitCode, durationMs: Date.now() - managed.createdAt })
     })
@@ -135,16 +141,7 @@ export class PtyCore {
           }
           return
         }
-        managed.startupTimer = setTimeout(() => {
-          managed.startupTimer = null
-          if (managed.exited) return
-          try {
-            managed.proc.write(`${launchCommand}\r`)
-            managed.input.launchCommand = undefined
-          } catch {
-            /* pty may have exited in the meantime */
-          }
-        }, LAUNCH_COMMAND_AFTER_STARTUP_DELAY_MS)
+
       }, STARTUP_COMMAND_DELAY_MS)
     }
 

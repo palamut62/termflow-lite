@@ -49,6 +49,7 @@ export interface TerminalTab {
   launchCommand?: string
   /** Ajan başlatılırken sabitlenen güvenlik profili. */
   permissionMode?: AgentPermissionMode
+  model?: string
 }
 
 export interface TerminalProfile {
@@ -302,7 +303,7 @@ export interface UpdateStatus {
  */
 export interface PersistedSession {
   version: 1
-  tabs: { id: string; title: string; profileId: string; cwd?: string }[]
+  tabs: { id: string; title: string; profileId: string; cwd?: string; permissionMode?: AgentPermissionMode; model?: string; resumeSession?: AgentSessionRef }[]
   activeTabId: string | null
   paneTree: unknown | null
   splitDirection: 'vertical' | 'horizontal' | null

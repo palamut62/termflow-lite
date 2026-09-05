@@ -71,20 +71,10 @@ describe('PtyCore lifecycle', () => {
     }
   })
 
-  it('starts an agent before sending the saved prompt', () => {
-    vi.useFakeTimers()
-    try {
-      const core = new PtyCore(() => undefined)
-      core.create('t1', { ...input, startupCommand: 'claude', launchCommand: 'review this repo' })
-      vi.advanceTimersByTime(400)
-      expect(registry[0].writes).toEqual(['claude\r'])
-      vi.advanceTimersByTime(2499)
-      expect(registry[0].writes).toEqual(['claude\r'])
-      vi.advanceTimersByTime(1)
-      expect(registry[0].writes).toEqual(['claude\r', 'review this repo\r'])
-    } finally {
-      vi.useRealTimers()
-    }
+  it('rejects delayed agent input before spawning a shell', () => {
+    const core = new PtyCore(() => undefined)
+    expect(() => core.create('t1', { ...input, startupCommand: 'claude', launchCommand: 'review this repo' })).toThrow('never to a delayed shell')
+    expect(registry).toHaveLength(0)
   })
 
   it('keeps a bounded scrollback buffer', () => {

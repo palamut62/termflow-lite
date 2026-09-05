@@ -89,11 +89,9 @@ export function StatusBar(): React.JSX.Element {
   const [profileSwitchError, setProfileSwitchError] = useState(false)
   const agentProfiles = useMemo(() => agentProfileOptions(settings), [settings])
   const activeAgent = active ? agentForProfile(settings, active.profileId) : null
-  const permissionMode = settings.defaultAgentPermissionMode
+  const permissionMode = active?.permissionMode ?? settings.defaultAgentPermissionMode
   const cyclePermissionMode = (): void => {
-    const currentIndex = PERMISSION_MODES.indexOf(permissionMode)
-    const next = PERMISSION_MODES[(currentIndex + 1) % PERMISSION_MODES.length]
-    void useSettingsStore.getState().update({ defaultAgentPermissionMode: next })
+    useSettingsStore.getState().openSettings()
   }
   const changeAgentProfile = async (profileId: string): Promise<void> => {
     if (!active || !activeAgent || profileId === active.profileId) return
@@ -187,7 +185,7 @@ export function StatusBar(): React.JSX.Element {
       <button
         className={`status-action status-security status-security-${permissionMode}`}
         onClick={cyclePermissionMode}
-        title={`Agent security profile: ${PERMISSION_LABELS[permissionMode]}. Click to change.`}
+        title={`Active session: ${PERMISSION_LABELS[permissionMode]}. Settings changes apply to new sessions.`}
         aria-label={`Agent security profile: ${PERMISSION_LABELS[permissionMode]}`}
       >
         <ShieldCheck size={12} />{PERMISSION_LABELS[permissionMode]}

@@ -20,6 +20,8 @@ import { useSavedCommandStore } from './store/savedCommandStore'
 import { useCommandScheduler } from './store/useCommandScheduler'
 import { AgentInbox } from './components/AgentInbox'
 import { useAgentEventStore } from './store/agentEventStore'
+import { useHandoverStore } from './store/handoverStore'
+import { HandoverDialog } from './components/HandoverDialog'
 
 // StrictMode double-mounts effects in dev — the boot sequence must run once.
 let bootStarted = false
@@ -41,6 +43,7 @@ export default function App(): React.JSX.Element {
   const agentSessionsOpen = useAgentSessionStore((s) => s.open)
   const savedCommandsOpen = useSavedCommandStore((s) => s.open)
   const agentInboxOpen = useAgentEventStore((s) => s.open)
+  const handover = useHandoverStore(s => s.pending)
 
   useCommandScheduler()
 
@@ -60,7 +63,7 @@ export default function App(): React.JSX.Element {
       let restored = false
       if (settings.restoreSession) {
         const session = await window.termflow.session.get()
-        if (session) restored = useTerminalStore.getState().hydrateSession(session, resolveStartupCwd(), true)
+        if (session) restored = useTerminalStore.getState().hydrateSession(session)
       }
       if (!restored || request) {
         useTerminalStore.getState().addTab(resolveLaunchProfile(request, settings, shells), true, request?.cwd)
@@ -73,7 +76,7 @@ export default function App(): React.JSX.Element {
     if (!useSettingsStore.getState().settings.restoreSession) return
     window.termflow.session.save({
       version: 1,
-      tabs: state.tabs.map((tab) => ({ id: tab.id, title: tab.title, profileId: tab.profileId, cwd: tab.cwd || tab.launchCwd })),
+      tabs: state.tabs.map((tab) => ({ id: tab.id, title: tab.title, profileId: tab.profileId, cwd: tab.cwd || tab.launchCwd, model: tab.model, permissionMode: tab.permissionMode, resumeSession: tab.resumeSession })),
       activeTabId: state.activeTabId,
       paneTree: state.paneTree,
       splitDirection: state.splitDirection,
@@ -96,6 +99,7 @@ export default function App(): React.JSX.Element {
       // bağlamalar ayarları düzenlerken tab kapatabilir (KeyboardSettings
       // kayıt modu zaten document capture'da yakalayıp yutar).
       if (useSettingsStore.getState().settingsOpen) return
+      if (useHandoverStore.getState().pending) return
       if (e.ctrlKey && !e.altKey && !e.metaKey && e.key === '\\') {
         useTerminalStore.getState().splitActive(e.shiftKey ? 'horizontal' : 'vertical')
         e.preventDefault()
@@ -202,9 +206,10 @@ export default function App(): React.JSX.Element {
   // handler'lara dağıtım (TerminalView kendi handler'ını kaydeder).
   useEffect(() => {
     const unData = window.termflow.pty.onData(({ ptyId, data }) => dataHandlers.get(ptyId)?.(data))
-    const unExit = window.termflow.pty.onExit(({ ptyId, exitCode, durationMs }) =>
+    const unExit = window.termflow.pty.onExit(({ ptyId, exitCode, durationMs }) => {
       exitHandlers.get(ptyId)?.(exitCode, durationMs)
-    )
+      useSavedCommandStore.getState().finishRun(ptyId, exitCode, durationMs)
+    })
     // cwd her prompt'ta gelebilir; son kullanılan dizini en fazla 2s'de 1 kez
     // persist et (PRD §38 — startupDirectory 'last' için settings.lastCwd).
     let lastCwdWrite = 0
@@ -261,6 +266,7 @@ export default function App(): React.JSX.Element {
       {taskPaletteOpen && <TaskPalette />}
       {settingsOpen && <Settings />}
       {pendingCloseTabId && <CloseTabConfirm />}
+      {handover && <HandoverDialog />}
     </div>
   )
 }

@@ -37,16 +37,37 @@ export function redactApiKeys(value: string, knownKeys: Iterable<string> = findA
 /** Keeps pasted keys in memory only for the lifetime of one terminal process. */
 export class TerminalSecretRedactor {
   private readonly keys = new Set<string>()
+  private pending = ''
+  private input = ''
 
   register(value: string): void {
     if (value) this.keys.add(value)
   }
 
   registerInput(value: string): void {
-    for (const key of findApiKeys(value)) this.keys.add(key)
+    this.input = (this.input + value).slice(-8192)
+    for (const key of findApiKeys(this.input)) this.keys.add(key)
+    if (/[\r\n]/.test(value)) this.input = ''
   }
 
   redact(value: string): string {
-    return redactApiKeys(value, this.keys)
+    const data = this.pending + value
+    this.pending = ''
+    if (!this.keys.size) return data
+    let output = '', i = 0
+    while (i < data.length) {
+      const key = [...this.keys].find(key => data.startsWith(key, i))
+      if (key) { output += MASK; i += key.length; continue }
+      const rest = data.slice(i)
+      if ([...this.keys].some(key => key.startsWith(rest))) { this.pending = rest; break }
+      output += data[i++]
+    }
+    return output
+  }
+
+  finish(): string {
+    const tail = this.pending ? MASK : ''
+    this.pending = ''
+    return tail
   }
 }

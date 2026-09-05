@@ -16,6 +16,8 @@ export function SavedCommands(): React.JSX.Element {
   const [command, setCommand] = useState('')
   const [profileId, setProfileId] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [cwd, setCwd] = useState('')
+  const [enabled, setEnabled] = useState(true)
   const [scheduleKind, setScheduleKind] = useState<'none' | CommandSchedule['kind']>('none')
   const [scheduleTime, setScheduleTime] = useState('09:00')
   const [scheduleWeekday, setScheduleWeekday] = useState(1)
@@ -36,6 +38,7 @@ export function SavedCommands(): React.JSX.Element {
     setCommand('')
     setProfileId('')
     setEditingId(null)
+    setCwd(''); setEnabled(true)
     setScheduleKind('none')
     setScheduleTime('09:00')
     setScheduleWeekday(1)
@@ -55,7 +58,11 @@ export function SavedCommands(): React.JSX.Element {
     const saved = editingId
       ? useSavedCommandStore.getState().update(editingId, name, command, profileId, schedule)
       : useSavedCommandStore.getState().add(name, command, profileId, schedule)
-    if (saved) resetForm()
+    if (saved) {
+      const id = editingId ?? useSavedCommandStore.getState().commands.at(-1)!.id
+      useSavedCommandStore.getState().configure(id, cwd, enabled)
+      resetForm()
+    }
   }
 
   const edit = (id: string): void => {
@@ -65,16 +72,18 @@ export function SavedCommands(): React.JSX.Element {
     setName(item.name)
     setCommand(item.command)
     setProfileId(item.profileId)
+    setCwd(item.cwd ?? ''); setEnabled(item.enabled !== false)
     setScheduleKind(item.schedule?.kind ?? 'none')
     if (item.schedule?.kind === 'daily' || item.schedule?.kind === 'weekly') setScheduleTime(item.schedule.time)
     if (item.schedule?.kind === 'weekly') setScheduleWeekday(item.schedule.weekday)
     if (item.schedule?.kind === 'interval') setScheduleMinutes(item.schedule.minutes)
   }
 
-  const run = (value: string, targetProfileId: string): void => {
+  const run = (value: string, targetProfileId: string, id: string, cwd?: string): void => {
     if (!targetProfileId || !targetNames.has(targetProfileId)) return
-    useTerminalStore.getState().addTab(targetProfileId, true, undefined, value)
-    hide()
+    if (commands.find(item => item.id === id)?.activeTabId) return
+    const tabId = useTerminalStore.getState().addTab(targetProfileId, true, cwd, value)
+    useSavedCommandStore.getState().startRun(id, tabId, Date.now())
   }
 
   return (
@@ -84,6 +93,11 @@ export function SavedCommands(): React.JSX.Element {
         <button className="history-icon-btn" onClick={hide} aria-label="Close saved commands"><X size={15} /></button>
       </header>
       <form className="saved-command-form" onSubmit={save}>
+        <div className="saved-command-input-row">
+          <input value={cwd} onChange={event => setCwd(event.target.value)} placeholder="Working folder (required for schedules)" aria-label="Command working folder" />
+          <button type="button" onClick={async () => { const path = await window.termflow.dialog.openDir(); if (path) setCwd(path) }}>Browse...</button>
+        </div>
+        <label><input type="checkbox" checked={enabled} onChange={event => setEnabled(event.target.checked)} /> Schedule enabled</label>
         <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Name (for example: Claude update)" aria-label="Command name" />
         <select value={profileId} onChange={(event) => setProfileId(event.target.value)} aria-label="Run command in">
           <option value="">Select shell or agent...</option>
@@ -112,7 +126,7 @@ export function SavedCommands(): React.JSX.Element {
         </div>
         <div className="saved-command-input-row">
           <input autoFocus value={command} onChange={(event) => setCommand(event.target.value)} placeholder="Command (for example: claude update)" aria-label="Command" />
-          <button type="submit" disabled={!command.trim() || !profileId} title={editingId ? 'Save changes' : 'Add command'}>
+          <button type="submit" disabled={!command.trim() || !profileId || (scheduleKind !== 'none' && !cwd.trim())} title={editingId ? 'Save changes' : 'Add command'}>
             {editingId ? <Check size={14} /> : <Plus size={14} />}{editingId ? 'Save' : 'Add'}
           </button>
           {editingId && <button type="button" onClick={resetForm}>Cancel</button>}
@@ -125,9 +139,14 @@ export function SavedCommands(): React.JSX.Element {
           <article className="saved-command-entry" key={item.id}>
             <div className="saved-command-copy"><strong>{item.name}</strong><code title={item.command}>{item.command}</code><small>{targetNames.get(item.profileId) ?? 'Select a target to run'}</small>{item.schedule && <small className="saved-command-schedule">{describeSchedule(item.schedule)} · Next: {new Date(nextRunAt(item.schedule, item.lastRunAt ?? item.scheduleAnchor ?? Date.now(), Date.now())).toLocaleString()}</small>}</div>
             <div className="saved-command-actions">
-              <button onClick={() => run(item.command, item.profileId)} disabled={!targetNames.has(item.profileId)} title="Run in a new terminal" aria-label={`Run ${item.name}`}><Play size={14} /></button>
+              <button onClick={() => run(item.command, item.profileId, item.id, item.cwd)} disabled={!!item.activeTabId || !targetNames.has(item.profileId)} title="Run or retry in a new terminal" aria-label={`Run ${item.name}`}><Play size={14} /></button>
               <button onClick={() => edit(item.id)} title="Edit command" aria-label={`Edit ${item.name}`}><Pencil size={13} /></button>
               <button onClick={() => useSavedCommandStore.getState().remove(item.id)} title="Delete command" aria-label={`Delete ${item.name}`}><Trash2 size={13} /></button>
+            </div>
+            <div className="saved-command-results">
+              <small>{item.cwd || (item.schedule ? 'Choose a folder to enable scheduling' : 'Current workspace')}{item.enabled === false ? ' · Paused' : ''}{item.activeTabId ? ' · Running' : ''}</small>
+              {item.schedule && <button onClick={() => useSavedCommandStore.getState().configure(item.id, item.cwd ?? '', item.enabled === false)}>{item.enabled === false ? 'Enable schedule' : 'Pause schedule'}</button>}
+              {!!item.results?.length && <details><summary>Last result: exit {item.results.at(-1)!.exitCode}</summary>{item.results.slice().reverse().map((result, index) => <div key={index}><time>{new Date(result.at).toLocaleString()}</time> · Exit {result.exitCode} · {Math.round(result.durationMs / 1000)}s {result.message}</div>)}</details>}
             </div>
           </article>
         ))}

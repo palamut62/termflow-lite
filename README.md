@@ -17,7 +17,7 @@ TermFlow Lite opens straight into a terminal — no welcome screens, no setup wi
 - **Open at folder** - choose any shell, agent, custom profile, or provider and start it directly in a selected path
 - **Clickable terminal paths** - open real files and folders from terminal output, including paths with spaces; executable files are revealed in Explorer instead of being run
 - **Explorer context menu** - the Windows installer adds “Open in TermFlow Lite” for folders, folder backgrounds, and drive backgrounds, opening a tab at the clicked path
-- **Controlled full permissions** - command profiles launch with full access by default while provider profiles start approval-gated; permission mode and CLI-specific flags remain editable in Settings
+- **Pinned permissions** - the security mode in Settings controls new agent sessions; existing tabs keep their launch mode. Unsupported OpenCode sandbox modes are rejected before launch.
 - **Smart status bar** - see process activity, provider model, Git branch and changes, full-access state, current directory, and tab count without visual clutter
 - **Command history** - search commands across folders and profiles, rerun them in the active terminal, or clear saved history with `Ctrl+Shift+H`
 - **Task and command palette** - discover `package.json` scripts and run project, Git, npm, or Docker tasks with `Ctrl+Shift+P`
@@ -42,14 +42,22 @@ TermFlow Lite opens straight into a terminal — no welcome screens, no setup wi
 - **Right-click menu & copy-paste** - context menu with copy/paste (or configure right-click to paste directly)
 - **Live settings** - appearance and behavior changes apply instantly; no restart needed
 
+## Project workflows
+
+- **Workspaces** in Settings save folders, split panes, profiles, models and matching tasks. Opening a workspace keeps existing terminals alive.
+- **Profile Health** checks the installed CLI, version, permission support and credential availability. Provider connection checks are explicit.
+- **Saved commands** support working folders, paused schedules, overlap prevention and recent exit results. Scheduled tasks run while TermFlow is open.
+- **Backup & Restore** exports settings, workspaces and tasks with environment variables and encrypted credentials excluded. Preview imports before applying; imported schedules start paused. Review command text before sharing backups.
+- **Handover review** lets you edit transferred context and add remaining work before starting the target agent. The source tab remains available.
+
 ## Installation
 
 Download the latest release from [GitHub Releases](https://github.com/palamut62/termflow-lite/releases):
 
 | Platform | Artifacts |
 | --- | --- |
-| Windows | `TermFlow-Lite-1.6.0-x64.exe` (installer) · `TermFlow-Lite-1.6.0-x64.zip` (portable) |
-| Linux | `TermFlow-Lite-1.6.0-x86_64.AppImage` · `TermFlow-Lite-1.6.0-amd64.deb` |
+| Windows | `TermFlow-Lite-1.6.1-x64.exe` (installer) · `TermFlow-Lite-1.6.1-x64.zip` (portable) |
+| Linux | `TermFlow-Lite-1.6.1-x86_64.AppImage` · `TermFlow-Lite-1.6.1-amd64.deb` |
 
 **Automatic updates:** the installed Windows build (`.exe`) and the Linux AppImage can update
 themselves — see *Settings → About → Updates* (checking on startup can be turned off there).

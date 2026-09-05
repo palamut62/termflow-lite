@@ -13,7 +13,7 @@ describe('agent permission adapters', () => {
       .toBe('codex --sandbox workspace-write --ask-for-approval on-request')
     expect(applyAgentPermission('claude --dangerously-skip-permissions', 'safe'))
       .toBe('claude --permission-mode plan')
-    expect(applyAgentPermission('opencode --auto', 'workspace')).toContain('modes are unavailable')
+    expect(() => applyAgentPermission('opencode --auto', 'workspace')).toThrow('does not support')
   })
 })
 

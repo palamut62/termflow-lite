@@ -2,8 +2,9 @@ import type { BrowserWindow } from 'electron'
 import type { AgentPermissionMode, AgentSessionRef, AppSettings, CreateTerminalInput, PtyEvent, RenderMode, ShellInfo } from '../../shared/types'
 import { IPC } from '../../shared/ipc'
 import { PtyCore } from './PtyCore'
-import { agentForProfile } from '../../shared/profiles'
+import { agentForProfile, mergeProfiles } from '../../shared/profiles'
 import { profileToInput, resolveProfileId } from './profileResolver'
+import { prepareLaunch } from './cli'
 
 export function applyProviderSecret(
   input: CreateTerminalInput,
@@ -46,8 +47,11 @@ export class TerminalManager {
   }
 
   /** Resolve a profile id + create the PTY at the measured cell size. */
-  create(tabId: string, profileId: string, cols: number, rows: number, cwd?: string, resumeSession?: AgentSessionRef, launchCommand?: string, permissionMode?: AgentPermissionMode): { pid: number } {
-    const settings = this.getSettings()
+  create(tabId: string, profileId: string, cols: number, rows: number, cwd?: string, resumeSession?: AgentSessionRef, launchCommand?: string, permissionMode?: AgentPermissionMode, model?: string): { pid: number } {
+    let settings = this.getSettings()
+    if (model) settings = { ...settings,
+      profiles: mergeProfiles(settings.profiles).map(p => p.id === profileId ? { ...p, model } : p),
+      providerProfiles: settings.providerProfiles.map(p => `provider:${p.id}` === profileId ? { ...p, model } : p) }
     const resolvedId = resolveProfileId(profileId, settings, this.shells)
     const input = applyProviderSecret(
       { ...profileToInput(resolvedId, settings, this.shells, { cols, rows, cwd, resumeSession, permissionMode }), launchCommand },
@@ -58,7 +62,7 @@ export class TerminalManager {
     // Keep the ring buffer limit in sync with the current setting on every
     // spawn so a settings change applies even to terminals created later.
     this.core.setScrollback(settings.scrollback)
-    const result = this.core.create(tabId, input)
+    const result = this.core.create(tabId, prepareLaunch(input))
     const agent = agentForProfile(settings, resolvedId)
     if (agent) this.onAgentLaunch({ agent, profileId: resolvedId, cwd: input.cwd, startedAt: Date.now(), resumeSession })
     return result

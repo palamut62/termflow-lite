@@ -5,6 +5,7 @@ import type { TerminalProfile } from '../../../shared/types'
 import { BUILTIN_PROFILES, defaultFullPermissionArgs } from '../../../shared/profiles'
 import { useSettingsStore } from '../store/settingsStore'
 import { Field, TextInput, Toggle } from './Settings'
+import { splitCommandLine, formatArguments } from '../../../shared/commandLine'
 
 interface EnvRow {
   key: string
@@ -43,7 +44,7 @@ function toDraft(p: TerminalProfile): ProfileDraft {
   return {
     name: p.name,
     command: p.command,
-    args: (p.args ?? []).join(' '),
+    args: formatArguments(p.args ?? []),
     cwd: p.cwd ?? '',
     icon: p.icon ?? '',
     startupCommand: p.startupCommand ?? '',
@@ -56,7 +57,7 @@ function toDraft(p: TerminalProfile): ProfileDraft {
 }
 
 function fromDraft(d: ProfileDraft, id: string): TerminalProfile {
-  const args = d.args.trim() ? d.args.trim().split(/\s+/) : undefined
+  const args = d.args.trim() ? splitCommandLine(d.args) : undefined
   const env: Record<string, string> = {}
   for (const row of d.env) {
     const key = row.key.trim()
@@ -95,6 +96,7 @@ export function ProfileSettings(): React.JSX.Element {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [draft, setDraft] = useState<ProfileDraft>(emptyDraft())
+  const [error, setError] = useState('')
 
   const editing = editingId !== null || creating
 
@@ -118,7 +120,8 @@ export function ProfileSettings(): React.JSX.Element {
   const save = (): void => {
     if (!isValid(draft)) return
     const id = editingId ?? nanoid(10)
-    const payload = fromDraft(draft, id)
+    let payload: TerminalProfile
+    try { payload = fromDraft(draft, id); setError('') } catch (error) { setError((error as Error).message); return }
     const exists = editingId ? settings.profiles.some((p) => p.id === editingId) : false
     const profiles = exists
       ? settings.profiles.map((p) => (p.id === editingId ? payload : p))
@@ -158,7 +161,7 @@ export function ProfileSettings(): React.JSX.Element {
             <span className="menu-item-dot" style={{ background: p.color || '#6467f2' }} />
             <span className="profile-row-info">
               <span className="profile-row-name">{p.name}</span>
-              <span className="profile-row-command">{p.startupCommand}{p.model ? ` · ${p.model}` : ''} · {p.fullPermissions !== false ? 'Full permissions' : 'Standard permissions'}</span>
+              <span className="profile-row-command">{p.startupCommand}{p.model ? ` · ${p.model}` : ''} · {'Uses session security mode'}</span>
             </span>
             <button className="settings-btn settings-btn-small" onClick={() => startEdit(p)}>Edit</button>
             {isOverridden && (
@@ -193,6 +196,7 @@ export function ProfileSettings(): React.JSX.Element {
 
       {editing && (
         <div className="profile-form">
+          {error && <p role="alert">{error}</p>}
           <Field label="Name">
             <TextInput value={draft.name} placeholder="My Terminal" onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
           </Field>
@@ -252,10 +256,10 @@ export function ProfileSettings(): React.JSX.Element {
               onChange={(e) => setDraft({ ...draft, model: e.target.value })}
             />
           </Field>
-          <Field label="Full Permissions" hint="approval/sandbox kontrollerini CLI argümanıyla kapatır">
+          <Field label="Full Permissions" hint="Legacy custom CLI option; supported agents use the session security mode in Agent Security">
             <Toggle checked={draft.fullPermissions} onChange={(fullPermissions) => setDraft({ ...draft, fullPermissions })} label="Command profile full permissions" />
           </Field>
-          <Field label="Permission Arguments" hint="Claude, Codex ve OpenCode için varsayılan gelir">
+          <Field label="Permission Arguments" hint="Supported agent permission flags are normalized to the session security mode">
             <TextInput
               className="settings-input-wide"
               value={draft.fullPermissionArgs}

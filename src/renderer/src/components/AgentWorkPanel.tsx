@@ -69,7 +69,7 @@ export function AgentWorkPanel({ tabId, onChangeCwd }: Props): React.JSX.Element
   return (
     <section className="agent-work-panel" aria-label={isAgent ? 'Agent work session' : 'Terminal work session'}>
       <span className="agent-work-primary"><strong>{name}</strong></span>
-      {isAgent && (provider?.model || profile?.model) && <span title="Active model"><Sparkles size={12} />{provider?.model || profile?.model}</span>}
+      {isAgent && tab.model && <span title="Active model"><Sparkles size={12} />{tab.model}</span>}
       <span className={`agent-work-state status-process agent-work-${tab.activity}`}>{activityLabels[tab.activity]}</span>
       <span title="Session duration"><Clock3 size={12} />{formatDuration(now - tab.startedAt)}</span>
       {isAgent && <span className={permissionMode === 'full' ? 'agent-work-full' : ''} title="Permission mode"><ShieldCheck size={12} />{permissionMode === 'safe' ? 'Safe' : permissionMode === 'workspace' ? 'Workspace' : 'Full access'}</span>}

@@ -327,19 +327,24 @@ export function resolveShell(input: CreateTerminalInput): ResolvedShell {
   const pwsh = pwshPath()
   const wsl = join(winDir, 'System32', 'wsl.exe')
 
+  // Boş args ("varsayılan interaktif kabuk") ile prepareLaunch'ın ürettiği
+  // gerçek argüman listesi ayrı şeylerdir: yalnızca dolu bir liste
+  // varsayılanları geçersiz kılar, aksi halde -NoLogo gibi bayraklar düşer.
+  const launchArgs = input.args?.length ? input.args : undefined
+
   switch (input.kind) {
     case 'powershell':
-      return { shell: psPath, args: ['-NoLogo'], cwd, env }
+      return { shell: psPath, args: launchArgs ?? ['-NoLogo'], cwd, env }
     case 'pwsh':
-      return { shell: pwsh ?? psPath, args: ['-NoLogo'], cwd, env }
+      return { shell: pwsh ?? psPath, args: launchArgs ?? ['-NoLogo'], cwd, env }
     case 'cmd':
-      return { shell: cmdPath, args: [], cwd, env }
+      return { shell: cmdPath, args: launchArgs ?? [], cwd, env }
     case 'wsl':
       return { shell: wsl, args: input.args ?? [], cwd, env }
     case 'gitbash':
       return {
         shell: gitBash ?? psPath,
-        args: gitBash ? ['--login', '-i'] : ['-NoLogo'],
+        args: launchArgs ?? (gitBash ? ['--login', '-i'] : ['-NoLogo']),
         cwd,
         env
       }

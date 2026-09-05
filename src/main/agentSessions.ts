@@ -3,13 +3,13 @@ import { readdir, stat } from 'fs/promises'
 import { homedir } from 'os'
 import { basename, join } from 'path'
 import { createInterface } from 'readline'
-import { execFile } from 'child_process'
-import { promisify } from 'util'
 import { redactApiKeys } from '../shared/secretRedaction'
 import type { AgentKind, AgentSession, AgentSessionRef } from '../shared/types'
+import { runCli } from './terminal/cli'
 
-const execFileAsync = promisify(execFile)
 const sessionFiles = new Map<string, string>()
+let sessionWarnings: string[] = []
+export const getSessionWarnings = (): string[] => [...sessionWarnings]
 
 function textFromContent(value: unknown): string {
   if (typeof value === 'string') return value.trim()
@@ -103,11 +103,7 @@ export async function listJsonlSessions(agent: 'claude' | 'codex', limit: number
 export async function listOpenCodeSessions(limit: number): Promise<AgentSession[]> {
   try {
     const executable = process.platform === 'win32' ? 'opencode.cmd' : 'opencode'
-    const { stdout } = await execFileAsync(executable, ['session', 'list', '--format', 'json', '--max-count', String(limit)], {
-      timeout: 8000,
-      windowsHide: true,
-      maxBuffer: 2 * 1024 * 1024
-    })
+    const stdout = await runCli(executable, ['session', 'list', '--format', 'json', '--max-count', String(limit)])
     const parsed = JSON.parse(stdout || '[]') as unknown
     if (!Array.isArray(parsed)) return []
     return parsed.flatMap((value): AgentSession[] => {
@@ -128,7 +124,7 @@ export async function listOpenCodeSessions(limit: number): Promise<AgentSession[
       }]
     }).slice(0, limit)
   } catch {
-    return []
+    throw new Error('OpenCode sessions could not be read. Check the installed CLI in Profile Health.')
   }
 }
 
@@ -217,14 +213,10 @@ export async function buildAgentHandoverPrompt(session: AgentSessionRef): Promis
   if (session.agent === 'opencode') {
     try {
       const executable = process.platform === 'win32' ? 'opencode.cmd' : 'opencode'
-      const { stdout } = await execFileAsync(executable, ['export', session.id], {
-        timeout: 8000,
-        windowsHide: true,
-        maxBuffer: 4 * 1024 * 1024
-      })
+      const stdout = await runCli(executable, ['export', session.id], 4 * 1024 * 1024)
       return handoverPromptFromOpenCodeExport(JSON.parse(stdout))
     } catch {
-      return FALLBACK_HANDOVER
+      throw new Error('OpenCode session export failed. Check the CLI in Profile Health before retrying.')
     }
   }
   let file = sessionFiles.get(`${session.agent}:${session.id}`)
@@ -234,13 +226,14 @@ export async function buildAgentHandoverPrompt(session: AgentSessionRef): Promis
   }
   return file
     ? handoverPromptFromFile(file, session.agent)
-    : FALLBACK_HANDOVER
+    : Promise.reject(new Error('Session transcript was not found. Refresh sessions and try again.'))
 }
 
 export async function listAgentSessions(agents: AgentKind[] = ['claude', 'codex', 'opencode'], limit = 80): Promise<AgentSession[]> {
   const safeLimit = Math.max(1, Math.min(200, Math.floor(limit)))
-  const results = await Promise.all(agents.map((agent) => agent === 'opencode'
+  const results = await Promise.allSettled(agents.map((agent) => agent === 'opencode'
     ? listOpenCodeSessions(safeLimit)
     : listJsonlSessions(agent, safeLimit)))
-  return results.flat().sort((a, b) => b.updatedAt - a.updatedAt).slice(0, safeLimit)
+  sessionWarnings = results.flatMap((r, index) => r.status === 'rejected' ? [`${agents[index]} sessions could not be read. Check Profile Health.`] : [])
+  return results.flatMap(r => r.status === 'fulfilled' ? r.value : []).sort((a, b) => b.updatedAt - a.updatedAt).slice(0, safeLimit)
 }

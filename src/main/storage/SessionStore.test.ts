@@ -73,11 +73,11 @@ describe('SessionStore', () => {
     expect(existsSync(file())).toBe(false)
   })
 
-  it('never persists non-serializable extras such as resumeSession', () => {
+  it('persists validated native session references', () => {
     const store = new SessionStore(file())
     store.save({ ...SESSION, tabs: [{ ...SESSION.tabs[0], resumeSession: { agent: 'codex', id: 'x' } } as PersistedSession['tabs'][number]] })
     store.flush()
-    expect(readFileSync(file(), 'utf-8')).not.toContain('resumeSession')
+    expect(new SessionStore(file()).get()?.tabs[0].resumeSession).toEqual({ agent: 'codex', id: 'x' })
   })
 })
 
