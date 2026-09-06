@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { FolderOpen, Settings as SettingsIcon } from 'lucide-react'
+import { FolderOpen, GitBranch, Github, Settings as SettingsIcon } from 'lucide-react'
 import { mergeProfiles, providerProfileId, sshProfileId } from '../../../shared/profiles'
 import { sshTarget } from '../../../shared/sshArgs'
 import { resolveDefaultProfileId, useSettingsStore } from '../store/settingsStore'
@@ -13,6 +13,10 @@ interface NewTabMenuProps {
   /** Called after a row was picked or when the menu should close itself. */
   onClose: () => void
   onOpenAtPath: () => void
+  /** Opens the dialog that starts a session in its own git worktree. */
+  onOpenWorktree: () => void
+  /** Opens the GitHub panel (pull requests and repositories). */
+  onOpenGithub: () => void
 }
 
 const VIEWPORT_MARGIN = 8
@@ -25,7 +29,7 @@ const ANCHOR_GAP = 4
  * ekran koordinatlarından fixed konumlandırılır (TerminalContextMenu ile aynı
  * measure-after-paint + viewport clamp deseni). Closes on outside click / Escape.
  */
-export function NewTabMenu({ anchor, onClose, onOpenAtPath }: NewTabMenuProps): React.JSX.Element {
+export function NewTabMenu({ anchor, onClose, onOpenAtPath, onOpenWorktree, onOpenGithub }: NewTabMenuProps): React.JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
   const shells = useSettingsStore((s) => s.shells)
   const userProfiles = useSettingsStore((s) => s.settings.profiles)
@@ -92,6 +96,14 @@ export function NewTabMenu({ anchor, onClose, onOpenAtPath }: NewTabMenuProps): 
       <button className="menu-item" role="menuitem" onClick={onOpenAtPath}>
         <FolderOpen size={14} />
         <span className="menu-item-label">Open at folder...</span>
+      </button>
+      <button className="menu-item" role="menuitem" onClick={onOpenWorktree}>
+        <GitBranch size={14} />
+        <span className="menu-item-label">New worktree session...</span>
+      </button>
+      <button className="menu-item" role="menuitem" onClick={onOpenGithub}>
+        <Github size={14} />
+        <span className="menu-item-label">GitHub...</span>
       </button>
       <div className="menu-divider" />
       {shells.map((shell) => (

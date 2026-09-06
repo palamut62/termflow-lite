@@ -16,6 +16,9 @@ interface SshDraft {
   remoteCwd: string
   remoteCommand: string
   forwardAgent: boolean
+  persistentSession: boolean
+  multiplexer: 'tmux' | 'screen'
+  sessionName: string
   extraArgs: string
   color: string
 }
@@ -30,6 +33,9 @@ const emptyDraft = (): SshDraft => ({
   remoteCwd: '',
   remoteCommand: '',
   forwardAgent: false,
+  persistentSession: false,
+  multiplexer: 'tmux',
+  sessionName: '',
   extraArgs: '',
   color: ''
 })
@@ -45,6 +51,9 @@ function toDraft(c: SshConnection): SshDraft {
     remoteCwd: c.remoteCwd ?? '',
     remoteCommand: c.remoteCommand ?? '',
     forwardAgent: c.forwardAgent === true,
+    persistentSession: c.persistentSession === true,
+    multiplexer: c.multiplexer ?? 'tmux',
+    sessionName: c.sessionName ?? '',
     extraArgs: c.extraArgs ?? '',
     color: c.color ?? ''
   }
@@ -63,6 +72,9 @@ function fromDraft(d: SshDraft, id: string): SshConnection {
     remoteCwd: d.remoteCwd.trim() || undefined,
     remoteCommand: d.remoteCommand.trim() || undefined,
     forwardAgent: d.forwardAgent || undefined,
+    persistentSession: d.persistentSession || undefined,
+    multiplexer: d.persistentSession ? d.multiplexer : undefined,
+    sessionName: d.persistentSession ? d.sessionName.trim() || undefined : undefined,
     extraArgs: d.extraArgs.trim() || undefined,
     color: d.color.trim() || undefined
   }
@@ -235,6 +247,36 @@ export function SshSettings(): React.JSX.Element {
               onChange={(e) => setDraft({ ...draft, remoteCommand: e.target.value })}
             />
           </Field>
+          <Field label="Persistent Session" hint="uzak makinede tmux/screen oturumuna bağlanır — bağlantı koparsa işler çalışmaya devam eder">
+            <Toggle
+              checked={draft.persistentSession}
+              onChange={(persistentSession) => setDraft({ ...draft, persistentSession })}
+              label="Keep the remote session alive"
+            />
+          </Field>
+          {draft.persistentSession && (
+            <>
+              <Field label="Multiplexer" hint="uzak makinede kurulu olmalı">
+                <select
+                  id="ssh-multiplexer"
+                  className="settings-input settings-select settings-input-narrow"
+                  value={draft.multiplexer}
+                  onChange={(e) => setDraft({ ...draft, multiplexer: e.target.value as 'tmux' | 'screen' })}
+                >
+                  <option value="tmux">tmux</option>
+                  <option value="screen">screen</option>
+                </select>
+              </Field>
+              <Field label="Session Name" hint="boşsa 'termflow' — harf, rakam, - ve _">
+                <TextInput
+                  className="settings-input-narrow"
+                  value={draft.sessionName}
+                  placeholder="termflow"
+                  onChange={(e) => setDraft({ ...draft, sessionName: e.target.value })}
+                />
+              </Field>
+            </>
+          )}
           <Field label="Forward Agent" hint="ssh-agent'ı uzak makineye iletir — yalnızca güvendiğiniz sunucularda açın">
             <Toggle
               checked={draft.forwardAgent}

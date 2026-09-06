@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
-import { IPC, type AgentSessionsQuery, type AppLaunchRequest, type GitStatus, type ProjectInfo, type ProjectTask, type ResolvedPath, type TitleBarOverlayPayload } from '../shared/ipc'
+import { IPC, type AgentSessionsQuery, type AppLaunchRequest, type GhOutcome, type GitHubPullRequest, type GitHubRepo, type GitHubStatus, type GitRepoInfo, type GitStatus, type ProjectInfo, type ProjectTask, type ResolvedPath, type TitleBarOverlayPayload, type WorktreeCreateRequest, type WorktreeEntry, type WorktreeOutcome, type WorktreeRemoveOutcome, type WorktreeRemoveRequest } from '../shared/ipc'
 import type { AgentEvent, AgentPermissionMode, AgentSession, AgentSessionRef, AppSettings, PersistedSession, RenderMode, ShellInfo, UpdateStatus } from '../shared/types'
 
 // Windows OS build number (e.g. 26200 for current Win11). xterm's windowsPty
@@ -110,6 +110,22 @@ const api = {
   },
   git: {
     status: (cwd: string): Promise<GitStatus | null> => ipcRenderer.invoke(IPC.GIT_STATUS, cwd)
+  },
+  /** Per-agent git worktree isolation. */
+  worktree: {
+    repoInfo: (cwd: string): Promise<GitRepoInfo | null> => ipcRenderer.invoke(IPC.WORKTREE_REPO_INFO, cwd),
+    list: (repoRoot: string): Promise<WorktreeEntry[]> => ipcRenderer.invoke(IPC.WORKTREE_LIST, repoRoot),
+    create: (request: WorktreeCreateRequest): Promise<WorktreeOutcome> => ipcRenderer.invoke(IPC.WORKTREE_CREATE, request),
+    remove: (request: WorktreeRemoveRequest): Promise<WorktreeRemoveOutcome> => ipcRenderer.invoke(IPC.WORKTREE_REMOVE, request)
+  },
+  /** GitHub through the user's own gh CLI; TermFlow stores no token. */
+  github: {
+    status: (): Promise<GitHubStatus> => ipcRenderer.invoke(IPC.GITHUB_STATUS),
+    repos: (limit = 50): Promise<GitHubRepo[]> => ipcRenderer.invoke(IPC.GITHUB_REPOS, limit),
+    currentRepo: (cwd: string): Promise<string> => ipcRenderer.invoke(IPC.GITHUB_CURRENT_REPO, cwd),
+    pullRequests: (repo: string, cwd?: string): Promise<GitHubPullRequest[]> => ipcRenderer.invoke(IPC.GITHUB_PULL_REQUESTS, repo, cwd),
+    checkoutPr: (worktreePath: string, number: number, repo?: string): Promise<GhOutcome> => ipcRenderer.invoke(IPC.GITHUB_PR_CHECKOUT, worktreePath, number, repo),
+    clone: (nameWithOwner: string, targetPath: string): Promise<GhOutcome> => ipcRenderer.invoke(IPC.GITHUB_CLONE, nameWithOwner, targetPath)
   },
   tasks: {
     discover: (cwd: string): Promise<ProjectTask[]> => ipcRenderer.invoke(IPC.TASKS_DISCOVER, cwd)

@@ -3,7 +3,10 @@ import { DEFAULT_SETTINGS } from '../../shared/types'
 import { resolveDefaultProfileId, useSettingsStore } from './store/settingsStore'
 import { dataHandlers, exitHandlers, resolveStartupCwd, useTerminalStore } from './store/terminalStore'
 import { TabBar } from './tabs/TabBar'
+import { WorktreeCleanupDialog } from './tabs/WorktreeCleanupDialog'
+import { SessionRail } from './components/SessionRail'
 import { TerminalView } from './terminal/TerminalView'
+import { PaneLeaf } from './terminal/PaneLeaf'
 import { Settings } from './settings/Settings'
 import { StatusBar } from './components/StatusBar'
 import { CommandHistory } from './components/CommandHistory'
@@ -29,6 +32,7 @@ let bootStarted = false
 export default function App(): React.JSX.Element {
   const loaded = useSettingsStore((s) => s.loaded)
   const tabHeight = useSettingsStore((s) => s.settings.tabHeight)
+  const showSessionRail = useSettingsStore((s) => s.settings.showSessionRail)
   const themeId = useSettingsStore((s) => s.settings.themeId)
   const settingsOpen = useSettingsStore((s) => s.settingsOpen)
   const tabs = useTerminalStore((s) => s.tabs)
@@ -76,7 +80,7 @@ export default function App(): React.JSX.Element {
     if (!useSettingsStore.getState().settings.restoreSession) return
     window.termflow.session.save({
       version: 1,
-      tabs: state.tabs.map((tab) => ({ id: tab.id, title: tab.title, profileId: tab.profileId, cwd: tab.cwd || tab.launchCwd, model: tab.model, permissionMode: tab.permissionMode, resumeSession: tab.resumeSession })),
+      tabs: state.tabs.map((tab) => ({ id: tab.id, title: tab.title, profileId: tab.profileId, cwd: tab.cwd || tab.launchCwd, model: tab.model, permissionMode: tab.permissionMode, resumeSession: tab.resumeSession, worktree: tab.worktree })),
       activeTabId: state.activeTabId,
       paneTree: state.paneTree,
       splitDirection: state.splitDirection,
@@ -244,6 +248,8 @@ export default function App(): React.JSX.Element {
   return (
     <div className="app">
       <TabBar height={tabHeight} />
+      <div className="app-body">
+      {showSessionRail && <SessionRail />}
       <div className="terminal-area" style={{ '--split-percent': `${splitRatio * 100}%` } as React.CSSProperties}>
         {/* Tüm tab'lar mount kalır (mount = PTY create); aktif olmayanlar CSS ile
             gizlenir ama layout boyutunu korur, böylece arka plandaki process
@@ -258,6 +264,7 @@ export default function App(): React.JSX.Element {
           </>
         ) : tabs.map((tab) => <TerminalView key={tab.id} tabId={tab.id} active={tab.id === activeTabId} />)}
       </div>
+      </div>
       <StatusBar />
       {historyOpen && <CommandHistory />}
       {savedCommandsOpen && <SavedCommands />}
@@ -267,6 +274,7 @@ export default function App(): React.JSX.Element {
       {settingsOpen && <Settings />}
       {pendingCloseTabId && <CloseTabConfirm />}
       {handover && <HandoverDialog />}
+      <WorktreeCleanupDialog />
     </div>
   )
 }
@@ -282,7 +290,7 @@ function resolveLaunchProfile(request: AppLaunchRequest | null, settings: typeof
 
 function PaneRenderer({ pane, path, activeTabId }: { pane: PaneNode; path: number[]; activeTabId: string | null }): React.JSX.Element {
   if (pane.type === 'leaf') {
-    return <div className={`pane-leaf${pane.terminalId === activeTabId ? ' pane-leaf-active' : ''}`}><TerminalView tabId={pane.terminalId} active={pane.terminalId === activeTabId} visible /></div>
+    return <PaneLeaf terminalId={pane.terminalId} active={pane.terminalId === activeTabId} />
   }
   const basis = (ratio: number): React.CSSProperties => ({ flex: `${ratio} 1 0`, minWidth: 0, minHeight: 0, position: 'relative', overflow: 'hidden' })
   return <div className={`pane-tree-split pane-tree-${pane.dir}`}>

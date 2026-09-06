@@ -39,32 +39,32 @@ describe('buildSshArgs', () => {
       buildSshArgs(
         conn({ user: 'u', port: 2200, identityFile: '/k', jumpHost: 'b', forwardAgent: true, extraArgs: '-o X=1', remoteCommand: 'htop' })
       )
-    ).toEqual(['-p', '2200', '-i', '/k', '-J', 'b', '-A', '-o', 'X=1', 'u@example.com', 'htop'])
+    ).toEqual(['-p', '2200', '-i', '/k', '-J', 'b', '-A', '-o', 'X=1', '-t', 'u@example.com', 'htop'])
   })
 
   it('remoteCwd tek başına login kabuğu açar', () => {
     expect(buildSshArgs(conn({ remoteCwd: '/srv/app' })))
-      .toEqual(['example.com', "cd '/srv/app' && exec $SHELL -l"])
+      .toEqual(['-t', 'example.com', "cd '/srv/app' && exec $SHELL -l"])
   })
 
   it('remoteCwd + remoteCommand birleştirilir', () => {
     expect(buildSshArgs(conn({ remoteCwd: '/srv/app', remoteCommand: 'npm run dev' })))
-      .toEqual(['example.com', "cd '/srv/app' && npm run dev"])
+      .toEqual(['-t', 'example.com', "cd '/srv/app' && npm run dev"])
   })
 
   it('boşluklu remoteCwd tırnaklanır', () => {
     expect(buildSshArgs(conn({ remoteCwd: '/srv/my app' })))
-      .toEqual(['example.com', "cd '/srv/my app' && exec $SHELL -l"])
+      .toEqual(['-t', 'example.com', "cd '/srv/my app' && exec $SHELL -l"])
   })
 
   it('tek tırnak içeren remoteCwd POSIX kaçışıyla üretilir', () => {
     expect(buildSshArgs(conn({ remoteCwd: "/srv/o'brien" })))
-      .toEqual(['example.com', "cd '/srv/o'\\''brien' && exec $SHELL -l"])
+      .toEqual(['-t', 'example.com', "cd '/srv/o'\\''brien' && exec $SHELL -l"])
   })
 
   it('boşluklu remoteCwd + remoteCommand birlikte', () => {
     expect(buildSshArgs(conn({ remoteCwd: '/srv/my app', remoteCommand: 'npm run dev' })))
-      .toEqual(['example.com', "cd '/srv/my app' && npm run dev"])
+      .toEqual(['-t', 'example.com', "cd '/srv/my app' && npm run dev"])
   })
 
   it('uzak komut yoksa hiç ek argüman eklenmez (interaktif kabuk)', () => {

@@ -153,7 +153,7 @@ describe('profileToInput', () => {
     const input = profileToInput('ssh:srv1', settings(SSH_SETTINGS), SHELLS, { cols: 80, rows: 24, cwd: '/local/work' })
     expect(input.kind).toBe('custom')
     expect(input.shell).toBe(sshBinary())
-    expect(input.args).toEqual(['-p', '2222', 'deploy@prod.example.com', "cd '/srv/app' && exec $SHELL -l"])
+    expect(input.args).toEqual(['-p', '2222', '-t', 'deploy@prod.example.com', "cd '/srv/app' && exec $SHELL -l"])
     // SSH sekmesinde cwd yereldir ve PTY'nin açıldığı dizindir.
     expect(input.cwd).toBe('/local/work')
     expect(input.startupCommand).toBeUndefined()

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.7.0 - 2026-09-06
+
+- SSH connections can now keep a persistent remote session: the connection attaches to a tmux (or screen) session on the host, so agents and long builds keep running when the link drops or the window closes, and reconnecting returns to the same session.
+- Fixed SSH connections with a remote directory or command not allocating a remote TTY, which left the remote shell without a prompt.
+- Added a GitHub panel: browse your repositories, list a repository's open pull requests, and open any pull request directly in its own worktree with the agent of your choice. It uses your existing GitHub CLI (`gh`) session — TermFlow never asks for or stores a token.
+- Panes can now be rearranged by dragging: grab a pane by its grip and drop it on another pane's edge to re-tile the split, or on its center to swap the two.
+- Added a session rail: an optional left sidebar that lists terminals as a repository -> session tree with live activity, worktree branches, collapsible groups and a drag-to-resize edge. Toggle it from the tab bar; the tab bar stays available.
+- Added per-agent git worktrees: "New worktree session..." starts an agent or shell in its own isolated checkout of a repository, so several agents can work on the same project in parallel without overwriting each other. Closing the last tab of a worktree offers to remove the checkout, optionally with its branch; nothing is deleted without confirmation.
+
 ## 1.6.1 - 2026-09-01
 
 - Added provider-independent agent handover: Claude Code, Codex, OpenCode, and compatible provider profiles can continue one another's work from the status bar.

@@ -1,11 +1,11 @@
 import { create } from 'zustand'
 import { nanoid } from 'nanoid'
 import type { SearchAddon } from '@xterm/addon-search'
-import type { AgentPermissionMode, AgentSessionRef, PersistedSession, TabActivity, TerminalTab } from '../../../shared/types'
+import type { AgentPermissionMode, AgentSessionRef, PersistedSession, TabActivity, TabWorktree, TerminalTab } from '../../../shared/types'
 import { mergeProfiles, providerFromProfileId, sshFromProfileId } from '../../../shared/profiles'
 import { resolveDefaultProfileId, useSettingsStore } from './settingsStore'
 import { useSavedCommandStore } from './savedCommandStore'
-import { buildTiledPane, closePane, isValidPaneTree, paneTerminalIds, replacePaneTerminal, setPaneRatio, splitPane, type PaneNode } from '../paneUtils'
+import { buildTiledPane, closePane, isValidPaneTree, movePane, paneTerminalIds, replacePaneTerminal, setPaneRatio, splitPane, type PaneDropEdge, type PaneNode } from '../paneUtils'
 
 /**
  * Global per-tab stream listeners. App registers exactly ONE preload onData /
@@ -42,10 +42,10 @@ export function broadcastTargetIds(tabId: string, splitTabIds: string[] | null, 
   return splitTabIds.includes(tabId) ? [...splitTabIds] : [tabId]
 }
 
-function makeTab(profileId: string, cwd?: string, resumeSession?: AgentSessionRef, launchCommand?: string, permissionMode?: AgentPermissionMode): TerminalTab {
+function makeTab(profileId: string, cwd?: string, resumeSession?: AgentSessionRef, launchCommand?: string, permissionMode?: AgentPermissionMode, worktree?: TabWorktree): TerminalTab {
   const settings = useSettingsStore.getState().settings
   const model = providerFromProfileId(settings, profileId)?.model ?? mergeProfiles(settings.profiles).find(p => p.id === profileId)?.model
-  return { id: nanoid(10), title: tabTitleFor(profileId), profileId, model, running: true, activity: 'running', startedAt: Date.now(), cwd, launchCwd: cwd, resumeSession, launchCommand, permissionMode: permissionMode ?? settings.defaultAgentPermissionMode }
+  return { id: nanoid(10), title: tabTitleFor(profileId), profileId, model, running: true, activity: 'running', startedAt: Date.now(), cwd, launchCwd: cwd, resumeSession, launchCommand, permissionMode: permissionMode ?? settings.defaultAgentPermissionMode, worktree }
 }
 
 /** Fresh shells and agents share one configured startup directory. */
@@ -69,7 +69,13 @@ interface TerminalState {
   broadcastInput: boolean
   toggleBroadcastInput(): void
   /** id nanoid(10); title = profile adı. activate=false ile arka planda açar (sonraki fazlar). */
-  addTab(profileId: string, activate?: boolean, cwd?: string, launchCommand?: string, permissionMode?: AgentPermissionMode): string
+  addTab(profileId: string, activate?: boolean, cwd?: string, launchCommand?: string, permissionMode?: AgentPermissionMode, worktree?: TabWorktree): string
+  /**
+   * Worktree'si TermFlow tarafından oluşturulmuş, kapanmış bir sekme; kullanıcı
+   * checkout'u silmeyi seçene kadar burada bekler. null = temizlik sorulmuyor.
+   */
+  pendingWorktreeCleanup: TabWorktree | null
+  dismissWorktreeCleanup(): void
   /** Kayıtlı oturumu (sekmeler + pane düzeni) geri yükler; bozuk ağaç reddedilir. */
   hydrateSession(session: PersistedSession, startupCwd?: string, overrideCwd?: boolean): boolean
   resumeAgentSession(profileId: string, session: AgentSessionRef, cwd?: string, permissionMode?: AgentPermissionMode): string
@@ -97,6 +103,11 @@ interface TerminalState {
   setSplitRatio(ratio: number): void
   focusSplitPane(pane: 'first' | 'second'): void
   setPaneRatio(path: number[], ratio: number): void
+  /**
+   * Bir paneli başka bir panelin kenarına taşır (tmux join-pane'in fare ile
+   * yapılan hali); 'center' iki paneli yer değiştirir.
+   */
+  movePaneTo(sourceId: string, targetId: string, edge: PaneDropEdge): void
 }
 
 export const useTerminalStore = create<TerminalState>()((set, get) => ({
@@ -124,11 +135,14 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
       running: true,
       activity: 'running',
       startedAt: Date.now(),
-      cwd: overrideCwd ? startupCwd : startupCwd || tab.cwd,
-      launchCwd: overrideCwd ? startupCwd : startupCwd || tab.cwd,
+      // A worktree tab is pinned to its own checkout: a workspace/startup path
+      // must never relocate it into another repository.
+      cwd: tab.worktree?.path ?? (overrideCwd ? startupCwd : startupCwd || tab.cwd),
+      launchCwd: tab.worktree?.path ?? (overrideCwd ? startupCwd : startupCwd || tab.cwd),
       permissionMode: tab.permissionMode ?? useSettingsStore.getState().settings.defaultAgentPermissionMode,
       model: tab.model,
-      resumeSession: tab.resumeSession
+      resumeSession: tab.resumeSession,
+      worktree: tab.worktree
     }))
     const ids = new Set(tabs.map((tab) => tab.id))
     // Bozuk dosyaya karşı savunma: ağaçtaki her id gerçekten bir sekme olmalı.
@@ -146,12 +160,14 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
     return true
   },
 
-  addTab(profileId, activate = true, cwd, launchCommand, permissionMode) {
-    const effectiveCwd = cwd || get().workspaceCwd || resolveStartupCwd()
-    const tab = makeTab(profileId, effectiveCwd, undefined, launchCommand, permissionMode)
+  addTab(profileId, activate = true, cwd, launchCommand, permissionMode, worktree) {
+    const effectiveCwd = worktree?.path || cwd || get().workspaceCwd || resolveStartupCwd()
+    const tab = makeTab(profileId, effectiveCwd, undefined, launchCommand, permissionMode, worktree)
     set((s) => ({
       tabs: [...s.tabs, tab],
-      workspaceCwd: cwd || s.workspaceCwd,
+      // An isolated checkout is this tab's cwd only; it must not become the
+      // inherited workspace path for every future shell.
+      workspaceCwd: worktree ? s.workspaceCwd : cwd || s.workspaceCwd,
       activeTabId: activate ? tab.id : s.activeTabId,
       paneTree: activate && s.paneTree && s.activeTabId ? splitPane(s.paneTree, s.activeTabId, tab.id, s.splitDirection ?? 'vertical') : s.paneTree,
       splitTabIds: activate && s.splitTabIds ? [...s.splitTabIds, tab.id] : s.splitTabIds
@@ -188,10 +204,24 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
     set({ pendingCloseTabId: null })
   },
 
+  pendingWorktreeCleanup: null,
+
+  dismissWorktreeCleanup() {
+    set({ pendingWorktreeCleanup: null })
+  },
+
   closeTab(id) {
     const { tabs, activeTabId, splitTabIds } = get()
     const idx = tabs.findIndex((t) => t.id === id)
     if (idx < 0) return
+
+    // Offer to clean up an isolated checkout we created — but only once the
+    // last tab using it is gone, otherwise a sibling pane would lose its cwd.
+    const worktree = tabs[idx].worktree
+    const stillInUse = worktree
+      ? tabs.some((t) => t.id !== id && t.worktree?.path === worktree.path)
+      : false
+    if (worktree?.createdByApp && !stillInUse) set({ pendingWorktreeCleanup: worktree })
 
     // Tear the PTY down and drop the stream handlers for this tab.
     window.termflow.pty.kill(id)
@@ -315,6 +345,15 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
   focusSplitPane(pane) {
     const ids = get().splitTabIds
     if (ids) get().setActiveTab(ids[pane === 'first' ? 0 : 1])
+  },
+
+  movePaneTo(sourceId, targetId, edge) {
+    const tree = get().paneTree
+    if (!tree) return
+    const next = movePane(tree, sourceId, targetId, edge)
+    // movePane returns the same object for a no-op; skip the re-render then.
+    if (next === tree) return
+    set({ paneTree: next, splitTabIds: paneTerminalIds(next), activeTabId: sourceId })
   },
 
   setPaneRatio(path, ratio) {

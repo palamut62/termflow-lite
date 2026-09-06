@@ -27,12 +27,17 @@ TermFlow Lite opens straight into a terminal — no welcome screens, no setup wi
 - **Persistent agent event log** - keep a local JSONL audit trail without storing raw terminal input or API keys
 - **Agent session browser** - search saved Claude Code, Codex, and OpenCode conversations and resume with the profile/provider that created the session, or explicitly choose another compatible profile
 - **Project detection** - recognize Node.js, Python, Rust, Go, Docker, and Git projects and suggest matching tasks automatically
+- **GitHub** - browse repositories, review open pull requests, and open a pull request in its own worktree with any agent; authentication comes from your own `gh` CLI session and no token is ever stored
+- **Pane drag & drop** - grab a pane by its grip and drop it on another pane's edge to re-tile the split, or on its center to swap the two
+- **Session rail** - optional left sidebar grouping terminals by repository, with live activity, worktree branches and collapsible groups for when the tab bar runs out of room
+- **Per-agent worktrees** - start a session in its own git worktree so parallel agents never overwrite each other in the same repository; closing the tab offers to remove the checkout and, optionally, its branch
 - **Split terminals** - tile multiple live terminals side by side or stacked, resize them by dragging dividers, and move focus by click or keyboard
 - **GPU rendering** - WebGL renderer for fast-scrolling output, with an automatic fallback to the DOM renderer on context loss
 - **Programming ligatures** - `=>`, `!==`, `->` and friends render as single glyphs with a ligature-capable font
 - **Inline images** - Sixel and the iTerm2 inline image protocol
 - **Session restore** - reopen your tabs, working directories, and split layout on the next launch
 - **SSH connections** - save hosts and open them in a tab; the system OpenSSH client handles keys, `~/.ssh/config`, and host verification (no passwords are ever stored)
+- **Persistent remote sessions** - attach an SSH connection to a tmux or screen session on the host so agents and builds survive a dropped link; reconnecting returns to the same session
 - **Broadcast input** - type once into every pane of a split with `Ctrl+Alt+B`
 - **Quake mode** - drop the window down from the top of the screen with a global hotkey
 - **Close to tray** - closing the window keeps terminals and agent sessions alive in the system tray; quit for real from the tray menu
@@ -56,8 +61,8 @@ Download the latest release from [GitHub Releases](https://github.com/palamut62/
 
 | Platform | Artifacts |
 | --- | --- |
-| Windows | `TermFlow-Lite-1.6.1-x64.exe` (installer) · `TermFlow-Lite-1.6.1-x64.zip` (portable) |
-| Linux | `TermFlow-Lite-1.6.1-x86_64.AppImage` · `TermFlow-Lite-1.6.1-amd64.deb` |
+| Windows | `TermFlow-Lite-1.7.0-x64.exe` (installer) · `TermFlow-Lite-1.7.0-x64.zip` (portable) |
+| Linux | `TermFlow-Lite-1.7.0-x86_64.AppImage` · `TermFlow-Lite-1.7.0-amd64.deb` |
 
 **Automatic updates:** the installed Windows build (`.exe`) and the Linux AppImage can update
 themselves — see *Settings → About → Updates* (checking on startup can be turned off there).

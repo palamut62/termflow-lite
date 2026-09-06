@@ -221,3 +221,56 @@
 .exit-overlay-btn:hover {
   background: var(--button-hover-background);
 }
+
+/* --- Pane drag & drop (join-pane with the mouse) --- */
+
+/* The grip is the drag handle: xterm owns the pointer over the terminal body,
+   so the pane itself must not be draggable. */
+.pane-grip {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  color: var(--menu-foreground, inherit);
+  background: color-mix(in srgb, var(--panel-background) 80%, transparent);
+  opacity: 0;
+  cursor: grab;
+  transition: opacity 0.12s ease;
+}
+
+.pane-leaf:hover .pane-grip {
+  opacity: 0.55;
+}
+
+.pane-grip:hover {
+  opacity: 1;
+}
+
+.pane-grip:active {
+  cursor: grabbing;
+}
+
+.pane-leaf-dragging {
+  opacity: 0.6;
+}
+
+/* Preview of where the dragged pane lands; 'center' means swap. */
+.pane-drop-hint {
+  position: absolute;
+  z-index: 7;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--focus-border) 28%, transparent);
+  border: 1px solid var(--focus-border);
+}
+
+.pane-drop-left { inset: 0 50% 0 0; }
+.pane-drop-right { inset: 0 0 0 50%; }
+.pane-drop-top { inset: 0 0 50% 0; }
+.pane-drop-bottom { inset: 50% 0 0 0; }
+.pane-drop-center { inset: 0; }

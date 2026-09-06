@@ -12,6 +12,8 @@ import { registerClipboardIpc } from './ipc/clipboard'
 import { registerWindowIpc } from './ipc/window'
 import { registerDialogIpc } from './ipc/dialog'
 import { registerGitIpc } from './ipc/git'
+import { registerWorktreeIpc } from './ipc/worktree'
+import { registerGithubIpc } from './ipc/github'
 import { registerTasksIpc } from './ipc/tasks'
 import { registerProjectIpc } from './ipc/project'
 import { registerAgentSessionsIpc } from './ipc/agentSessions'
@@ -338,6 +340,8 @@ app.whenReady().then(() => {
   registerWindowIpc(() => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null))
   registerDialogIpc(() => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null))
   registerGitIpc()
+  registerWorktreeIpc()
+  registerGithubIpc()
   registerTasksIpc()
   registerProjectIpc()
   registerAgentSessionsIpc(agentSessionOwnership)

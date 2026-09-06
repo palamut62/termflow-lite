@@ -36,6 +36,16 @@ export const IPC = {
   UPDATE_INSTALL: 'update:install', // () — uygulamayı kapatıp kurar
   UPDATE_STATUS: 'update:status', // main -> renderer UpdateStatus
   GIT_STATUS: 'git:status',
+  WORKTREE_REPO_INFO: 'worktree:repo-info', // (cwd) -> GitRepoInfo | null
+  WORKTREE_LIST: 'worktree:list', // (repoRoot) -> WorktreeEntry[]
+  WORKTREE_CREATE: 'worktree:create', // (WorktreeCreateRequest) -> WorktreeOutcome
+  WORKTREE_REMOVE: 'worktree:remove', // (WorktreeRemoveRequest) -> { ok } | { ok: false, error }
+  GITHUB_STATUS: 'github:status', // () -> GitHubStatus
+  GITHUB_REPOS: 'github:repos', // (limit) -> GitHubRepo[]
+  GITHUB_CURRENT_REPO: 'github:current-repo', // (cwd) -> 'owner/name' | ''
+  GITHUB_PULL_REQUESTS: 'github:pull-requests', // (repo, cwd?) -> GitHubPullRequest[]
+  GITHUB_PR_CHECKOUT: 'github:pr-checkout', // (worktreePath, number, repo?) -> GhOutcome
+  GITHUB_CLONE: 'github:clone', // (nameWithOwner, targetPath) -> GhOutcome
   TASKS_DISCOVER: 'tasks:discover',
   PROJECT_DETECT: 'project:detect',
   AGENT_SESSIONS_LIST: 'agent-sessions:list',
@@ -123,6 +133,75 @@ export interface GitStatus {
   branch: string
   changedFiles: number
 }
+
+/** Repository root plus the branch currently checked out there. */
+export interface GitRepoInfo {
+  root: string
+  branch: string
+}
+
+/** One entry of `git worktree list --porcelain`. */
+export interface WorktreeEntry {
+  path: string
+  head: string
+  /** null while the worktree is on a detached HEAD. */
+  branch: string | null
+  detached: boolean
+  bare: boolean
+  locked: boolean
+}
+
+export interface WorktreeCreateRequest {
+  repoRoot: string
+  branch: string
+  baseRef?: string
+  path?: string
+  /** Check out detached, leaving the branch choice to a later step. */
+  detach?: boolean
+}
+
+export interface WorktreeRemoveRequest {
+  repoRoot: string
+  path: string
+  force?: boolean
+  deleteBranch?: boolean
+  branch?: string
+}
+
+export type WorktreeOutcome = { ok: true; worktree: WorktreeEntry } | { ok: false; error: string }
+export type WorktreeRemoveOutcome = { ok: true } | { ok: false; error: string }
+
+/**
+ * Availability of the user's GitHub CLI. TermFlow stores no token of its own:
+ * `gh` owns the credentials, exactly as OpenSSH owns SSH keys.
+ */
+export interface GitHubStatus {
+  installed: boolean
+  authenticated: boolean
+  /** Logged-in account login, when `gh auth status` reported one. */
+  account: string
+  /** Human-readable reason the integration is unavailable, else ''. */
+  error: string
+}
+
+export interface GitHubRepo {
+  nameWithOwner: string
+  name: string
+  description: string
+  isPrivate: boolean
+  updatedAt: string
+}
+
+export interface GitHubPullRequest {
+  number: number
+  title: string
+  author: string
+  headRefName: string
+  isDraft: boolean
+  updatedAt: string
+}
+
+export type GhOutcome = { ok: true } | { ok: false; error: string }
 
 export interface ProjectTask {
   id: string

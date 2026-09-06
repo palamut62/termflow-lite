@@ -347,3 +347,147 @@
   padding: 12px 18px;
   border-top: 1px solid var(--widget-border);
 }
+
+/* --- Worktree session dialogs --- */
+
+.path-launch-hint {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  opacity: 0.72;
+}
+
+.path-launch-mono {
+  font-family: var(--terminal-font-family, monospace);
+  word-break: break-all;
+  opacity: 0.9;
+}
+
+.path-launch-error {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--error-foreground, #f14c4c);
+}
+
+/* Busy spinner shared by the worktree dialogs. */
+@keyframes termflow-spin {
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: termflow-spin 0.9s linear infinite;
+}
+
+/* Branch badge shown on tabs running in an isolated checkout. */
+.tab-worktree-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 92px;
+  overflow: hidden;
+  flex: 0 0 auto;
+  font-size: 10px;
+  opacity: 0.65;
+}
+
+.tab-worktree-badge span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- GitHub panel --- */
+
+.github-panel {
+  width: min(640px, calc(100vw - 32px));
+}
+
+.github-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px 0;
+}
+
+.github-tabs-spacer {
+  flex: 1 1 auto;
+}
+
+.github-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 4px 4px 0 0;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.github-tab:hover {
+  opacity: 1;
+}
+
+.github-tab-active {
+  opacity: 1;
+  box-shadow: inset 0 -2px 0 var(--focus-border);
+}
+
+.github-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 40vh;
+  margin: 4px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.github-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 6px;
+  border-radius: 4px;
+}
+
+.github-row:hover {
+  background: var(--list-hover-background, rgba(127, 127, 127, 0.12));
+}
+
+.github-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.github-row-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.github-row-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10.5px;
+  opacity: 0.6;
+}
+
+.github-empty {
+  padding: 10px 6px;
+  font-size: 11.5px;
+  opacity: 0.65;
+}

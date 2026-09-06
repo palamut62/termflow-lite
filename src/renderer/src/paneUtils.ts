@@ -59,6 +59,67 @@ export function replacePaneTerminal(pane: PaneNode, from: string, to: string): P
   return a === pane.a && b === pane.b ? pane : { ...pane, a, b }
 }
 
+/**
+ * Where a dragged pane is dropped relative to the pane under the cursor.
+ * 'center' swaps the two panes instead of re-tiling the tree.
+ */
+export type PaneDropEdge = 'left' | 'right' | 'top' | 'bottom' | 'center'
+
+/** Edge for a pointer at (x, y) inside a `rect`-sized pane; center is the inner 50%. */
+export function dropEdgeFor(x: number, y: number, width: number, height: number): PaneDropEdge {
+  if (width <= 0 || height <= 0) return 'center'
+  const fx = x / width
+  const fy = y / height
+  if (fx >= 0.25 && fx <= 0.75 && fy >= 0.25 && fy <= 0.75) return 'center'
+  // Outside the center square the nearest border wins, so a corner resolves to
+  // whichever axis the pointer is closer to.
+  const distances: [PaneDropEdge, number][] = [['left', fx], ['right', 1 - fx], ['top', fy], ['bottom', 1 - fy]]
+  return distances.reduce((best, entry) => (entry[1] < best[1] ? entry : best))[0]
+}
+
+/** Exchange the positions of two terminals without reshaping the tree. */
+export function swapPaneTerminals(pane: PaneNode, first: string, second: string): PaneNode {
+  if (pane.type === 'leaf') {
+    if (pane.terminalId === first) return { ...pane, terminalId: second }
+    if (pane.terminalId === second) return { ...pane, terminalId: first }
+    return pane
+  }
+  return { ...pane, a: swapPaneTerminals(pane.a, first, second), b: swapPaneTerminals(pane.b, first, second) }
+}
+
+/** Replace the `targetId` leaf with a split that also holds `newId`. */
+function insertBeside(pane: PaneNode, targetId: string, newId: string, dir: 'vertical' | 'horizontal', before: boolean): PaneNode {
+  if (pane.type === 'leaf') {
+    if (pane.terminalId !== targetId) return pane
+    const fresh: PaneNode = { type: 'leaf', terminalId: newId }
+    return { type: 'split', dir, ratio: 0.5, a: before ? fresh : pane, b: before ? pane : fresh }
+  }
+  return { ...pane, a: insertBeside(pane.a, targetId, newId, dir, before), b: insertBeside(pane.b, targetId, newId, dir, before) }
+}
+
+/**
+ * Move `sourceId` next to `targetId` (tmux's join-pane, driven by the mouse):
+ * the source is lifted out of the tree — collapsing whatever split it leaves
+ * behind — and re-inserted on the requested edge of the target.
+ *
+ * The tree is returned unchanged when the move is a no-op or the ids are not
+ * both in the tree, so callers can apply the result unconditionally.
+ */
+export function movePane(pane: PaneNode, sourceId: string, targetId: string, edge: PaneDropEdge): PaneNode {
+  if (sourceId === targetId) return pane
+  const ids = paneTerminalIds(pane)
+  if (!ids.includes(sourceId) || !ids.includes(targetId)) return pane
+  if (edge === 'center') return swapPaneTerminals(pane, sourceId, targetId)
+
+  const without = closePane(pane, sourceId)
+  // Only reachable if the tree held nothing but the source, which the id check
+  // above already rules out; kept so the return type stays non-null.
+  if (!without) return pane
+
+  const dir = edge === 'left' || edge === 'right' ? 'vertical' : 'horizontal'
+  return insertBeside(without, targetId, sourceId, dir, edge === 'left' || edge === 'top')
+}
+
 export function setPaneRatio(pane: PaneNode, path: number[], ratio: number): PaneNode {
   if (path.length === 0) return pane.type === 'split' ? { ...pane, ratio: Math.max(0.15, Math.min(0.85, ratio)) } : pane
   if (pane.type === 'leaf') return pane

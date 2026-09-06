@@ -44,7 +44,43 @@ export function validateSshConnection(conn: SshConnection): string | null {
   const remoteCwd = conn.remoteCwd?.trim() ?? ''
   if (remoteCwd && UNSAFE_REMOTE_CWD.test(remoteCwd)) return 'Remote directory contains invalid characters.'
 
+  const sessionName = conn.sessionName?.trim() ?? ''
+  // tmux treats '.' and ':' as target separators, so the allowed set is kept
+  // narrow rather than merely shell-safe.
+  if (sessionName && !/^[A-Za-z0-9_-]+$/.test(sessionName)) {
+    return 'Session name may only contain letters, digits, dashes and underscores.'
+  }
+
   return null
+}
+
+export const DEFAULT_REMOTE_SESSION_NAME = 'termflow'
+
+/** Multiplexer session name for a connection, sanitized to a safe default. */
+export function remoteSessionName(conn: SshConnection): string {
+  const name = conn.sessionName?.trim() ?? ''
+  return /^[A-Za-z0-9_-]+$/.test(name) ? name : DEFAULT_REMOTE_SESSION_NAME
+}
+
+/**
+ * Wrap a remote payload in a multiplexer attach so the work survives a dropped
+ * connection or a closed window.
+ *
+ * tmux: `new-session -A` attaches to `name` if it exists and creates it
+ * otherwise, which is exactly the reconnect semantics we want.
+ * screen: `-D -R` detaches an existing session elsewhere and reattaches here.
+ */
+function multiplexerCommand(conn: SshConnection, cwd: string, command: string): string {
+  const name = remoteSessionName(conn)
+  if ((conn.multiplexer ?? 'tmux') === 'screen') {
+    // screen has no working-directory flag, so the cd happens around it.
+    const screen = command ? `screen -D -R ${name} ${command}` : `screen -D -R ${name}`
+    return cwd ? `cd ${singleQuote(cwd)} && ${screen}` : screen
+  }
+  const parts = ['tmux', 'new-session', '-A', '-s', name]
+  if (cwd) parts.push('-c', singleQuote(cwd))
+  if (command) parts.push(command)
+  return parts.join(' ')
 }
 
 /**
@@ -57,8 +93,9 @@ function singleQuote(value: string): string {
 
 /** `cd <dir> && exec $SHELL -l` / kullanıcı komutu — tek uzak komut argümanı. */
 function remoteCommandArg(conn: SshConnection): string | undefined {
-  const cwd = conn.remoteCwd?.trim()
-  const command = conn.remoteCommand?.trim()
+  const cwd = conn.remoteCwd?.trim() ?? ''
+  const command = conn.remoteCommand?.trim() ?? ''
+  if (conn.persistentSession) return multiplexerCommand(conn, cwd, command)
   if (!cwd && !command) return undefined
   if (cwd && command) return `cd ${singleQuote(cwd)} && ${command}`
   if (cwd) return `cd ${singleQuote(cwd)} && exec $SHELL -l`
@@ -87,11 +124,16 @@ export function buildSshArgs(conn: SshConnection): string[] {
   const extra = conn.extraArgs?.trim()
   if (extra) args.push(...extra.split(/\s+/).filter(Boolean))
 
+  const remote = remoteCommandArg(conn)
+  // `ssh host <command>` allocates no remote TTY, which leaves an interactive
+  // shell without a prompt and stops tmux/screen from starting at all. -t must
+  // therefore precede the destination whenever a remote command is sent.
+  if (remote) args.push('-t')
+
   const host = conn.host.trim()
   const user = conn.user?.trim()
   args.push(user ? `${user}@${host}` : host)
 
-  const remote = remoteCommandArg(conn)
   if (remote) args.push(remote)
 
   return args

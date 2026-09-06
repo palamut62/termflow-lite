@@ -1,10 +1,12 @@
 import { useRef, useState } from 'react'
 import type { CSSProperties, DragEvent } from 'react'
-import { ChevronDown, Columns2, PanelTopClose, Plus, Rows2 } from 'lucide-react'
+import { ChevronDown, Columns2, PanelTopClose, Plus, Rows2, PanelLeft } from 'lucide-react'
 import { resolveDefaultProfileId, useSettingsStore } from '../store/settingsStore'
 import { useTerminalStore } from '../store/terminalStore'
 import { NewTabMenu } from './NewTabMenu'
 import { PathLauncherModal } from './PathLauncherModal'
+import { WorktreeLauncherModal } from './WorktreeLauncherModal'
+import { GitHubPanel } from '../components/GitHubPanel'
 import { TerminalTab } from './TerminalTab'
 
 interface TabBarProps {
@@ -24,8 +26,11 @@ export function TabBar({ height }: TabBarProps): React.JSX.Element {
   const tabs = useTerminalStore((s) => s.tabs)
   const activeTabId = useTerminalStore((s) => s.activeTabId)
   const splitDirection = useTerminalStore((s) => s.splitDirection)
+  const showSessionRail = useSettingsStore((s) => s.settings.showSessionRail)
   const [menuOpen, setMenuOpen] = useState(false)
   const [pathLauncherOpen, setPathLauncherOpen] = useState(false)
+  const [worktreeLauncherOpen, setWorktreeLauncherOpen] = useState(false)
+  const [githubOpen, setGithubOpen] = useState(false)
   const caretRef = useRef<HTMLButtonElement>(null)
   // Native HTML5 DnD reorder (PRD §14): dragged tab + insertion indicator.
   const [draggedId, setDraggedId] = useState<string | null>(null)
@@ -95,6 +100,13 @@ export function TabBar({ height }: TabBarProps): React.JSX.Element {
         ))}
       </div>
       <div className="new-tab-area">
+        <button
+          className={`split-tab-btn${showSessionRail ? ' split-tab-btn-active' : ''}`}
+          onClick={() => useSettingsStore.getState().update({ showSessionRail: !showSessionRail })}
+          title="Toggle session rail"
+          aria-label="Toggle session rail"
+          aria-pressed={showSessionRail}
+        ><PanelLeft size={14} /></button>
         <button className={`split-tab-btn${splitDirection === 'vertical' ? ' split-tab-btn-active' : ''}`} onClick={() => useTerminalStore.getState().splitActive('vertical')} title="Split terminal right" aria-label="Split terminal right"><Columns2 size={14} /></button>
         <button className={`split-tab-btn${splitDirection === 'horizontal' ? ' split-tab-btn-active' : ''}`} onClick={() => useTerminalStore.getState().splitActive('horizontal')} title="Split terminal down" aria-label="Split terminal down"><Rows2 size={14} /></button>
         {splitDirection && <button className="split-tab-btn" onClick={() => useTerminalStore.getState().closeSplit()} title="Close split view" aria-label="Close split view"><PanelTopClose size={14} /></button>}
@@ -116,10 +128,14 @@ export function TabBar({ height }: TabBarProps): React.JSX.Element {
             anchor={caretRef.current}
             onClose={() => setMenuOpen(false)}
             onOpenAtPath={() => { setMenuOpen(false); setPathLauncherOpen(true) }}
+            onOpenWorktree={() => { setMenuOpen(false); setWorktreeLauncherOpen(true) }}
+            onOpenGithub={() => { setMenuOpen(false); setGithubOpen(true) }}
           />
         )}
       </div>
       {pathLauncherOpen && <PathLauncherModal onClose={() => setPathLauncherOpen(false)} />}
+      {worktreeLauncherOpen && <WorktreeLauncherModal onClose={() => setWorktreeLauncherOpen(false)} />}
+      {githubOpen && <GitHubPanel onClose={() => setGithubOpen(false)} />}
     </div>
   )
 }

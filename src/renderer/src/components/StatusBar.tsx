@@ -3,7 +3,7 @@ import { AlertCircle, Bookmark, Bot, Braces, Clock3, Command, Download, GitBranc
 import type { AgentPermissionMode } from '../../../shared/types'
 import type { GitStatus, ProjectInfo } from '../../../shared/ipc'
 import { agentForProfile, sshFromProfileId } from '../../../shared/profiles'
-import { sshTarget } from '../../../shared/sshArgs'
+import { remoteSessionName, sshTarget } from '../../../shared/sshArgs'
 import { useSettingsStore } from '../store/settingsStore'
 import { useTerminalStore } from '../store/terminalStore'
 import { useCommandHistoryStore } from '../store/commandHistoryStore'
@@ -163,8 +163,22 @@ export function StatusBar(): React.JSX.Element {
           <Radio size={12} />BROADCAST
         </button>
       )}
-      {ssh && <span className="status-item status-ssh" title={`SSH connection: ${ssh.name}`}><Server size={12} />{sshTarget(ssh)}</span>}
+      {ssh && (
+        <span
+          className="status-item status-ssh"
+          title={ssh.persistentSession
+            ? `SSH connection: ${ssh.name}\nPersistent ${ssh.multiplexer ?? 'tmux'} session "${remoteSessionName(ssh)}" — remote work survives a disconnect`
+            : `SSH connection: ${ssh.name}`}
+        >
+          <Server size={12} />{sshTarget(ssh)}{ssh.persistentSession ? ' · persistent' : ''}
+        </span>
+      )}
       {project && <span className="status-item status-project" title={`Detected project: ${project.technologies.join(', ')}`}><Braces size={12} />{project.technologies.join(' · ')}</span>}
+      {active?.worktree && (
+        <span className="status-item status-worktree" title={`Isolated worktree of ${active.worktree.repoRoot}\n${active.worktree.path}`}>
+          <GitBranch size={12} />worktree
+        </span>
+      )}
       {git && <span className="status-item status-git" title={`${git.changedFiles} changed file${git.changedFiles === 1 ? '' : 's'}`}><GitBranch size={12} />{git.branch}{git.changedFiles > 0 ? ` (${git.changedFiles})` : ''}</span>}
       <span className="status-item">{tabs.length} tab{tabs.length === 1 ? '' : 's'}</span>
       <UpdateBadge />

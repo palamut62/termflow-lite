@@ -32,6 +32,20 @@ export interface AgentSession extends AgentSessionRef {
   profileId?: string
 }
 
+/**
+ * Isolated git checkout backing a tab. Agents that each get their own worktree
+ * can work in the same repository without overwriting each other's files.
+ */
+export interface TabWorktree {
+  /** Main working tree the worktree belongs to. */
+  repoRoot: string
+  /** Absolute path of the isolated checkout (the tab's cwd). */
+  path: string
+  branch: string
+  /** True when TermFlow created it, so closing the tab may offer cleanup. */
+  createdByApp: boolean
+}
+
 export interface TerminalTab {
   id: string
   title: string
@@ -50,6 +64,8 @@ export interface TerminalTab {
   /** Ajan başlatılırken sabitlenen güvenlik profili. */
   permissionMode?: AgentPermissionMode
   model?: string
+  /** Isolated git checkout this tab runs in, when one was requested. */
+  worktree?: TabWorktree
 }
 
 export interface TerminalProfile {
@@ -116,6 +132,17 @@ export interface SshConnection {
   /** Ek ham ssh argümanları (boşlukla ayrılmış). */
   extraArgs?: string
   color?: string
+  /**
+   * Kalıcı uzak oturum: bağlantı uzak makinede bir terminal çoklayıcı (tmux /
+   * screen) oturumuna bağlanır. Bağlantı koparsa ya da pencere kapanırsa uzak
+   * işler ÇALIŞMAYA DEVAM EDER; yeniden bağlanınca aynı oturuma dönülür.
+   * Çoklayıcının uzak makinede kurulu olması gerekir.
+   */
+  persistentSession?: boolean
+  /** Kullanılacak çoklayıcı; varsayılan 'tmux'. */
+  multiplexer?: 'tmux' | 'screen'
+  /** Uzak oturum adı; boşsa 'termflow'. Yalnızca [A-Za-z0-9_-]. */
+  sessionName?: string
 }
 
 export interface CreateTerminalInput {
@@ -266,6 +293,13 @@ export interface AppSettings {
   /** Açık sekmeler + split düzeni yeniden açılışta geri yüklenir (userData/session.json). */
   restoreSession: boolean
   /**
+   * Sol kenardaki oturum rail'i: sekmeleri depo -> oturum ağacı olarak listeler.
+   * Uzun ömürlü ajan oturumları tab bar'a sığmadığında okunabilirliği korur.
+   */
+  showSessionRail: boolean
+  /** Rail genişliği (px), sürüklenerek ayarlanır. */
+  sessionRailWidth: number
+  /**
    * Pencere kapatıldığında uygulama sistem tepsisinde çalışmaya devam eder;
    * gerçek çıkış yalnızca tepsi menüsündeki "Quit" ile yapılır.
    */
@@ -303,7 +337,7 @@ export interface UpdateStatus {
  */
 export interface PersistedSession {
   version: 1
-  tabs: { id: string; title: string; profileId: string; cwd?: string; permissionMode?: AgentPermissionMode; model?: string; resumeSession?: AgentSessionRef }[]
+  tabs: { id: string; title: string; profileId: string; cwd?: string; permissionMode?: AgentPermissionMode; model?: string; resumeSession?: AgentSessionRef; worktree?: TabWorktree }[]
   activeTabId: string | null
   paneTree: unknown | null
   splitDirection: 'vertical' | 'horizontal' | null
@@ -402,6 +436,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   windowWidth: 1100,
   windowHeight: 700,
   restoreSession: true,
+  showSessionRail: false,
+  sessionRailWidth: 220,
   closeToTray: true,
   quakeMode: false,
   quakeHotkey: 'F12',
