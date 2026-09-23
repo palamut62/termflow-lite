@@ -9,6 +9,12 @@ export function AgentInbox(): React.JSX.Element {
   const tabs = useTerminalStore((state) => state.tabs)
 
   useEffect(() => { void useAgentEventStore.getState().load() }, [])
+  // Esc closes the inbox like the other status bar panels.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => { if (event.key === 'Escape') hide() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [hide])
 
   const sessions = useMemo(() => {
     const byTab = new Map<string, typeof events>()

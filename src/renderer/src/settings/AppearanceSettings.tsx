@@ -205,12 +205,12 @@ export function AppearanceSettings(): React.JSX.Element {
         <Field label="Line Height" hint="0.8-2.0">
           <NumberInput value={settings.lineHeight} min={0.8} max={2} step={0.05} onChange={(v) => void update({ lineHeight: v })} />
         </Field>
-        <Field label="Letter Spacing" hint="px; terminal ve UI metinlerine uygulanır">
+        <Field label="Letter Spacing" hint="px; applies to terminal and UI text">
           <NumberInput value={settings.letterSpacing} min={-1} max={10} onChange={(v) => void update({ letterSpacing: v })} />
         </Field>
         <Field
           label="Ligatures"
-          hint="Uygulama arayüzü ve terminal çıktısı; ligature'lı bir font gerekir (Fira Code, Cascadia Code, JetBrains Mono)."
+          hint="App UI and terminal output; needs a font with ligatures (Fira Code, Cascadia Code, JetBrains Mono)."
         >
           <Toggle checked={settings.fontLigatures} onChange={(v) => void update({ fontLigatures: v })} label="Ligatures" />
         </Field>
@@ -220,7 +220,7 @@ export function AppearanceSettings(): React.JSX.Element {
         <div className="settings-section-title">Rendering</div>
         <Field
           label="GPU acceleration"
-          hint="WebGL renderer; hızlı akan çıktıda belirgin hızlanma. Sorun olursa Off yapın."
+          hint="WebGL renderer; noticeably faster with heavy output. Switch to Off if you see glitches."
         >
           <Select
             value={settings.gpuAcceleration}
@@ -232,7 +232,7 @@ export function AppearanceSettings(): React.JSX.Element {
             onChange={(v) => void update({ gpuAcceleration: v as 'auto' | 'on' | 'off' })}
           />
         </Field>
-        <Field label="Inline images" hint="Sixel ve iTerm2 satır içi görsel protokolü">
+        <Field label="Inline images" hint="Sixel and iTerm2 inline image protocols">
           <Toggle
             checked={settings.imageSupport}
             onChange={(v) => void update({ imageSupport: v })}
@@ -257,7 +257,7 @@ export function AppearanceSettings(): React.JSX.Element {
         <Field label="Blink">
           <Toggle checked={settings.cursorBlink} onChange={(v) => void update({ cursorBlink: v })} label="Cursor blink" />
         </Field>
-        <Field label="Color" hint="boş = tema default">
+        <Field label="Color" hint="empty = theme default">
           <ColorPicker
             value={settings.cursorColor}
             showReset
@@ -265,14 +265,14 @@ export function AppearanceSettings(): React.JSX.Element {
             onReset={() => void update({ cursorColor: '' })}
           />
         </Field>
-        <Field label="Width" hint="1-4 (bar cursor için)">
+        <Field label="Width" hint="1-4 (for the bar cursor)">
           <NumberInput value={settings.cursorWidth} min={1} max={4} onChange={(v) => void update({ cursorWidth: v })} />
         </Field>
       </section>
 
       <section>
         <div className="settings-section-title">Window</div>
-        <Field label="Opacity" hint={`%${settings.opacity} — pencerenin tamamına uygulanır (min %30)`}>
+        <Field label="Opacity" hint={`${settings.opacity}% — applies to the whole window (min 30%)`}>
           <input
             type="range"
             className="settings-range"
@@ -286,7 +286,7 @@ export function AppearanceSettings(): React.JSX.Element {
         </Field>
         <Field
           label="Blur"
-          hint={isWindows ? 'Windows 11 acrylic arka plan' : 'yalnızca Windows 11 üzerinde etkilidir'}
+          hint={isWindows ? 'Windows 11 acrylic background' : 'only has an effect on Windows 11'}
         >
           <Toggle
             checked={settings.blur}
@@ -295,14 +295,14 @@ export function AppearanceSettings(): React.JSX.Element {
             disabled={!isWindows}
           />
         </Field>
-        <Field label="Window Border" hint="pencere içeriğine 1px kenarlık ekler">
+        <Field label="Window Border" hint="adds a 1px border around the window content">
           <Toggle
             checked={settings.windowBorder}
             onChange={(v) => void update({ windowBorder: v })}
             label="Window border"
           />
         </Field>
-        <Field label="Corner Radius" hint="0-20; native çerçevede yalnızca iç yüzeyde görünür">
+        <Field label="Corner Radius" hint="0-20; with the native frame only the inner surface is rounded">
           <NumberInput
             value={settings.cornerRadius}
             min={0}

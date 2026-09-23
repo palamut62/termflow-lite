@@ -7,17 +7,17 @@ import { Field, Toggle } from './Settings'
 function statusText(status: UpdateStatus): string {
   switch (status.state) {
     case 'checking':
-      return 'Güncellemeler kontrol ediliyor…'
+      return 'Checking for updates…'
     case 'available':
-      return `Yeni sürüm bulundu: v${status.version ?? '?'}`
+      return `New version found: v${status.version ?? '?'}`
     case 'not-available':
-      return 'Uygulamanız güncel.'
+      return 'You are up to date.'
     case 'downloading':
-      return `İndiriliyor… %${status.percent ?? 0}`
+      return `Downloading… ${status.percent ?? 0}%`
     case 'downloaded':
-      return `v${status.version ?? '?'} indirildi — kurmak için yeniden başlatın.`
+      return `v${status.version ?? '?'} downloaded — restart to install.`
     case 'error':
-      return status.error ?? 'Güncelleme kontrolü başarısız oldu.'
+      return status.error ?? 'Update check failed.'
     default:
       return status.error ?? ''
   }
@@ -77,7 +77,7 @@ export function AboutSettings(): React.JSX.Element {
           </div>
         )}
       </div>
-      <Field label="Automatic Update Check" hint="açılışta sessizce yeni sürüm arar">
+      <Field label="Automatic Update Check" hint="quietly checks for a new version on startup">
         <Toggle
           checked={settings.autoCheckUpdates}
           onChange={(autoCheckUpdates) => void update({ autoCheckUpdates })}
@@ -86,16 +86,16 @@ export function AboutSettings(): React.JSX.Element {
       </Field>
 
       <p className="about-description">
-        Hafif, hızlı ve özelleştirilebilir bir Windows terminali. Çoklu sekmeler,
-        tam tema sistemi (custom theme editor dahil), özel profiller, provider profilleri ve
-        klavye kısayolları ile günlük iş akışınıza uyar.
+        A lightweight, fast and customizable terminal for developers. Tabs and splits,
+        a full theme system (including a custom theme editor), custom and provider profiles,
+        and keyboard shortcuts that fit your daily workflow.
       </p>
 
       <div className="settings-section-title">Tech Stack</div>
       <div className="about-stack">Electron · React · TypeScript · xterm.js · node-pty</div>
 
       <div className="settings-section-title">Product Owner</div>
-      <div className="about-owner">Ürün Sahibi: Umut Çelik</div>
+      <div className="about-owner">Umut Çelik (palamut62)</div>
       <div className="about-links">
         <a href="https://x.com/palamut62" target="_blank" rel="noopener noreferrer">
           X / Twitter

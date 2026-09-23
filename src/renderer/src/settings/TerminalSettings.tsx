@@ -70,7 +70,7 @@ export function TerminalSettings(): React.JSX.Element {
 
       <section>
         <div className="settings-section-title">Terminal</div>
-        <Field label="Scrollback" hint="mevcut oturumların ring buffer'ına da anında uygulanır">
+        <Field label="Scrollback" hint="also applies immediately to open sessions">
           <Select
             value={String(settings.scrollback)}
             options={SCROLLBACK_OPTIONS}
@@ -95,7 +95,7 @@ export function TerminalSettings(): React.JSX.Element {
         </Field>
         <Field
           label="Clickable Paths"
-          hint="Terminal çıktısındaki mevcut dosya/klasör yolları tıklanınca varsayılan uygulamayla açılır."
+          hint="Existing file/folder paths in terminal output open in the default app when clicked."
         >
           <Toggle
             checked={settings.clickablePaths}
@@ -105,7 +105,7 @@ export function TerminalSettings(): React.JSX.Element {
         </Field>
         <Field
           label="Path Menu on Right Click"
-          hint="Yol üzerinde sağ tık Open / Open File Location / Copy Path menüsü gösterir; kapalıysa global Right Click davranışı uygulanır."
+          hint="Right-clicking a path shows Open / Open File Location / Copy Path; when off, the global Right Click behavior applies."
         >
           <Toggle
             checked={settings.pathContextMenu}
@@ -118,7 +118,7 @@ export function TerminalSettings(): React.JSX.Element {
         </Field>
         <Field
           label="Restore Session on Startup"
-          hint="Açık sekmeler ve split düzeni yeniden açılışta geri yüklenir; process'ler yeniden başlatılır."
+          hint="Open tabs and the split layout are restored on relaunch; processes are restarted."
         >
           <Toggle
             checked={settings.restoreSession}
@@ -128,7 +128,7 @@ export function TerminalSettings(): React.JSX.Element {
         </Field>
         <Field
           label="Close to Tray"
-          hint="Pencere kapatılınca uygulama sistem tepsisinde çalışmaya devam eder; gerçek çıkış tepsi menüsündeki Quit ile yapılır."
+          hint="Closing the window keeps the app running in the system tray; use Quit in the tray menu to exit."
         >
           <Toggle
             checked={settings.closeToTray}
@@ -140,10 +140,10 @@ export function TerminalSettings(): React.JSX.Element {
 
       <section>
         <div className="settings-section-title">Quake Mode</div>
-        <Field label="Quake Mode" hint="Global kısayolla ekranın üstünden açılıp kapanan pencere.">
+        <Field label="Quake Mode" hint="A window that drops down from the top of the screen with a global hotkey.">
           <Toggle checked={settings.quakeMode} onChange={(v) => void update({ quakeMode: v })} label="Quake mode" />
         </Field>
-        <Field label="Hotkey" hint="Electron accelerator formatı (ör. F12, Ctrl+`)">
+        <Field label="Hotkey" hint="Electron accelerator format (e.g. F12, Ctrl+`)">
           <TextInput
             placeholder="F12"
             value={settings.quakeHotkey}
@@ -159,7 +159,7 @@ export function TerminalSettings(): React.JSX.Element {
             disabled={!settings.quakeMode}
           />
         </Field>
-        <Field label="Height" hint="çalışma alanının yüzdesi">
+        <Field label="Height" hint="percent of the work area">
           <NumberInput
             value={settings.quakeHeightPercent}
             min={20}

@@ -152,7 +152,7 @@ export function SshSettings(): React.JSX.Element {
       </p>
 
       {connections.length === 0 && !editing && (
-        <div className="settings-empty">Henüz SSH bağlantısı yok — aşağıdan ekleyebilirsiniz.</div>
+        <div className="settings-empty">No SSH connections yet — add one below.</div>
       )}
 
       {connections.map(
@@ -183,7 +183,7 @@ export function SshSettings(): React.JSX.Element {
       {editing && (
         <div className="profile-form">
           <Field label="Name">
-            <TextInput value={draft.name} placeholder="Production" onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+            <TextInput className="settings-input-wide" value={draft.name} placeholder="Production" onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
           </Field>
           <Field label="Host">
             <TextInput
@@ -193,10 +193,10 @@ export function SshSettings(): React.JSX.Element {
               onChange={(e) => setDraft({ ...draft, host: e.target.value })}
             />
           </Field>
-          <Field label="User" hint="boşsa ~/.ssh/config veya yerel kullanıcı">
-            <TextInput value={draft.user} placeholder="deploy" onChange={(e) => setDraft({ ...draft, user: e.target.value })} />
+          <Field label="User" hint="empty = ~/.ssh/config or local user">
+            <TextInput className="settings-input-wide" value={draft.user} placeholder="deploy" onChange={(e) => setDraft({ ...draft, user: e.target.value })} />
           </Field>
-          <Field label="Port" hint="boş = 22">
+          <Field label="Port" hint="empty = 22">
             <TextInput
               className="settings-input-narrow"
               value={draft.port}
@@ -204,7 +204,7 @@ export function SshSettings(): React.JSX.Element {
               onChange={(e) => setDraft({ ...draft, port: e.target.value })}
             />
           </Field>
-          <Field label="Identity File" hint="boşsa ssh-agent / ~/.ssh/config">
+          <Field label="Identity File" hint="empty = ssh-agent / ~/.ssh/config">
             <span className="settings-inline">
               <TextInput
                 className="settings-input-wide"
@@ -223,7 +223,7 @@ export function SshSettings(): React.JSX.Element {
               </button>
             </span>
           </Field>
-          <Field label="Jump Host" hint="ProxyJump (-J), ör. user@bastion">
+          <Field label="Jump Host" hint="ProxyJump (-J), e.g. user@bastion">
             <TextInput
               className="settings-input-wide"
               value={draft.jumpHost}
@@ -231,7 +231,7 @@ export function SshSettings(): React.JSX.Element {
               onChange={(e) => setDraft({ ...draft, jumpHost: e.target.value })}
             />
           </Field>
-          <Field label="Remote Directory" hint="bağlantı sonrası cd edilir">
+          <Field label="Remote Directory" hint="cd into this after connecting">
             <TextInput
               className="settings-input-wide"
               value={draft.remoteCwd}
@@ -239,7 +239,7 @@ export function SshSettings(): React.JSX.Element {
               onChange={(e) => setDraft({ ...draft, remoteCwd: e.target.value })}
             />
           </Field>
-          <Field label="Remote Command" hint="bağlanınca uzak kabukta çalışır">
+          <Field label="Remote Command" hint="runs in the remote shell after connecting">
             <TextInput
               className="settings-input-wide"
               value={draft.remoteCommand}
@@ -247,7 +247,7 @@ export function SshSettings(): React.JSX.Element {
               onChange={(e) => setDraft({ ...draft, remoteCommand: e.target.value })}
             />
           </Field>
-          <Field label="Persistent Session" hint="uzak makinede tmux/screen oturumuna bağlanır — bağlantı koparsa işler çalışmaya devam eder">
+          <Field label="Persistent Session" hint="attaches to a tmux/screen session on the remote host — work keeps running if the connection drops">
             <Toggle
               checked={draft.persistentSession}
               onChange={(persistentSession) => setDraft({ ...draft, persistentSession })}
@@ -256,7 +256,7 @@ export function SshSettings(): React.JSX.Element {
           </Field>
           {draft.persistentSession && (
             <>
-              <Field label="Multiplexer" hint="uzak makinede kurulu olmalı">
+              <Field label="Multiplexer" hint="must be installed on the remote host">
                 <select
                   id="ssh-multiplexer"
                   className="settings-input settings-select settings-input-narrow"
@@ -267,7 +267,7 @@ export function SshSettings(): React.JSX.Element {
                   <option value="screen">screen</option>
                 </select>
               </Field>
-              <Field label="Session Name" hint="boşsa 'termflow' — harf, rakam, - ve _">
+              <Field label="Session Name" hint="empty = 'termflow' — letters, digits, - and _">
                 <TextInput
                   className="settings-input-narrow"
                   value={draft.sessionName}
@@ -277,14 +277,14 @@ export function SshSettings(): React.JSX.Element {
               </Field>
             </>
           )}
-          <Field label="Forward Agent" hint="ssh-agent'ı uzak makineye iletir — yalnızca güvendiğiniz sunucularda açın">
+          <Field label="Forward Agent" hint="forwards your ssh-agent to the remote host — only enable on servers you trust">
             <Toggle
               checked={draft.forwardAgent}
               onChange={(forwardAgent) => setDraft({ ...draft, forwardAgent })}
               label="Forward ssh-agent"
             />
           </Field>
-          <Field label="Extra Arguments" hint="space-separated ssh argümanları">
+          <Field label="Extra Arguments" hint="space-separated ssh arguments">
             <TextInput
               className="settings-input-wide"
               value={draft.extraArgs}
@@ -292,7 +292,7 @@ export function SshSettings(): React.JSX.Element {
               onChange={(e) => setDraft({ ...draft, extraArgs: e.target.value })}
             />
           </Field>
-          <Field label="Color" hint="#rrggbb — sekme/menü noktası">
+          <Field label="Color" hint="#rrggbb — tab/menu dot">
             <TextInput
               className="settings-input-narrow"
               value={draft.color}

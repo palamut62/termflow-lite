@@ -33,7 +33,7 @@ function publish(status: UpdateStatus): void {
 /** Updater bu ortamda çalışabilir mi? Çalışamazsa nedeni durum olarak döner. */
 function unsupportedReason(): UpdateStatus | null {
   if (!app.isPackaged) {
-    return { state: 'idle', error: 'Güncelleme yalnızca kurulu sürümde çalışır.' }
+    return { state: 'idle', error: 'Updates only work in the installed version.' }
   }
   if (process.platform === 'linux' && !process.env.APPIMAGE) {
     return { state: 'idle', error: 'Bu Linux paketi (.deb) paket yöneticisiyle güncellenir.' }

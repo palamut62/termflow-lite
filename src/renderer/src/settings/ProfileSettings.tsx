@@ -172,7 +172,7 @@ export function ProfileSettings(): React.JSX.Element {
       })}
       <div className="settings-section-title">Custom Profiles</div>
       {customProfiles.length === 0 && !editing && (
-        <div className="settings-empty">Henüz özel profil yok — aşağıdan ekleyebilirsiniz.</div>
+        <div className="settings-empty">No custom profiles yet — add one below.</div>
       )}
 
       {customProfiles.map(
@@ -200,7 +200,7 @@ export function ProfileSettings(): React.JSX.Element {
           <Field label="Name">
             <TextInput value={draft.name} placeholder="My Terminal" onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
           </Field>
-          <Field label="Command" hint="boşsa varsayılan kabuk">
+          <Field label="Command" hint="empty = default shell">
             <TextInput
               className="settings-input-wide"
               value={draft.command}
@@ -224,7 +224,7 @@ export function ProfileSettings(): React.JSX.Element {
               onChange={(e) => setDraft({ ...draft, cwd: e.target.value })}
             />
           </Field>
-          <Field label="Icon" hint="emoji veya tek karakter">
+          <Field label="Icon" hint="emoji or a single character">
             <TextInput
               className="settings-input-narrow"
               value={draft.icon}
@@ -232,7 +232,7 @@ export function ProfileSettings(): React.JSX.Element {
               onChange={(e) => setDraft({ ...draft, icon: e.target.value })}
             />
           </Field>
-          <Field label="Startup Command" hint="kabuk hazır olunca yazılır">
+          <Field label="Startup Command" hint="typed once the shell is ready">
             <TextInput
               className="settings-input-wide"
               value={draft.startupCommand}
@@ -240,7 +240,7 @@ export function ProfileSettings(): React.JSX.Element {
               onChange={(e) => setDraft({ ...draft, startupCommand: e.target.value })}
             />
           </Field>
-          <Field label="Color" hint="#rrggbb — sekme/menü noktası">
+          <Field label="Color" hint="#rrggbb — tab/menu dot">
             <TextInput
               className="settings-input-narrow"
               value={draft.color}
@@ -248,7 +248,7 @@ export function ProfileSettings(): React.JSX.Element {
               onChange={(e) => setDraft({ ...draft, color: e.target.value })}
             />
           </Field>
-          <Field label="Default Model" hint="boşsa CLI varsayılanı; --model ile aktarılır">
+          <Field label="Default Model" hint="empty = CLI default; passed via --model">
             <TextInput
               className="settings-input-wide"
               value={draft.model}

@@ -65,7 +65,7 @@ export function KeyboardSettings(): React.JSX.Element {
     <section>
       <div className="settings-section-title">Shortcuts</div>
       <div className="settings-hint">
-        "Change"e tıklayıp kombinasyona basın. Esc iptal eder; Clear bağlamayı boşaltır.
+        Click "Change" and press a key combination. Esc cancels; Clear removes the binding.
       </div>
       {ACTIONS.map((action) => {
         const shortcut = Object.entries(settings.shortcuts).find(([, act]) => act === action.id)?.[0] ?? ''

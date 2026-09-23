@@ -16,18 +16,18 @@ import { BackupSettings } from './BackupSettings'
 
 type SectionId = 'appearance' | 'terminal' | 'profiles' | 'providers' | 'agent-security' | 'ssh' | 'keyboard' | 'about' | 'health' | 'workspaces' | 'backup'
 
-const SECTIONS: { id: SectionId; label: string; icon: ReactNode }[] = [
-  { id: 'appearance', label: 'Appearance', icon: <Palette size={14} /> },
-  { id: 'terminal', label: 'Terminal', icon: <SquareTerminal size={14} /> },
-  { id: 'profiles', label: 'Profiles', icon: <UserRound size={14} /> },
-  { id: 'health', label: 'Profile Health', icon: <ShieldCheck size={14} /> },
-  { id: 'workspaces', label: 'Workspaces', icon: <SquareTerminal size={14} /> },
-  { id: 'backup', label: 'Backup & Restore', icon: <Server size={14} /> },
-  { id: 'providers', label: 'Providers', icon: <Bot size={14} /> },
-  { id: 'agent-security', label: 'Agent Security', icon: <ShieldCheck size={14} /> },
-  { id: 'ssh', label: 'SSH', icon: <Server size={14} /> },
-  { id: 'keyboard', label: 'Keyboard', icon: <Keyboard size={14} /> },
-  { id: 'about', label: 'About', icon: <Info size={14} /> }
+const SECTIONS: { id: SectionId; label: string; icon: ReactNode; keywords: string }[] = [
+  { id: 'appearance', label: 'Appearance', icon: <Palette size={14} />, keywords: 'theme font size family weight ligatures line height letter spacing cursor blink gpu webgl rendering inline images opacity blur window border corner radius tab height padding custom theme' },
+  { id: 'terminal', label: 'Terminal', icon: <SquareTerminal size={14} />, keywords: 'default profile startup directory scrollback bell copy on select right click clickable paths confirm before close restore session tray quake hotkey hide on blur' },
+  { id: 'profiles', label: 'Profiles', icon: <UserRound size={14} />, keywords: 'custom command profiles arguments icon color startup command starting directory default model permissions environment variables' },
+  { id: 'health', label: 'Profile Health', icon: <ShieldCheck size={14} />, keywords: 'profile health check missing cli' },
+  { id: 'workspaces', label: 'Workspaces', icon: <SquareTerminal size={14} />, keywords: 'project workspaces folders' },
+  { id: 'backup', label: 'Backup & Restore', icon: <Server size={14} />, keywords: 'backup restore import export json' },
+  { id: 'providers', label: 'Providers', icon: <Bot size={14} />, keywords: 'ai providers api key base url model cli command permissions' },
+  { id: 'agent-security', label: 'Agent Security', icon: <ShieldCheck size={14} />, keywords: 'agent security permission mode safe workspace full access' },
+  { id: 'ssh', label: 'SSH', icon: <Server size={14} />, keywords: 'ssh connections host user port identity file key jump host proxyjump remote directory command persistent tmux screen multiplexer forward agent extra arguments' },
+  { id: 'keyboard', label: 'Keyboard', icon: <Keyboard size={14} />, keywords: 'keyboard shortcuts keybindings hotkeys' },
+  { id: 'about', label: 'About', icon: <Info size={14} />, keywords: 'about updates automatic update version license product owner' }
 ]
 
 /**
@@ -38,6 +38,13 @@ const SECTIONS: { id: SectionId; label: string; icon: ReactNode }[] = [
 export function Settings(): React.JSX.Element {
   const closeSettings = useSettingsStore((s) => s.closeSettings)
   const [section, setSection] = useState<SectionId>('appearance')
+  const [query, setQuery] = useState('')
+  // Every word must appear in the section label or its field keywords.
+  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean)
+  const visibleSections = SECTIONS.filter((s) => {
+    const haystack = `${s.label} ${s.keywords}`.toLowerCase()
+    return words.every((word) => haystack.includes(word))
+  })
   const panelRef = useRef<HTMLDivElement>(null)
 
   // Modal focus management: opening the modal does NOT blur the xterm
@@ -72,7 +79,23 @@ export function Settings(): React.JSX.Element {
         </header>
         <div className="settings-body">
           <nav className="settings-nav">
-            {SECTIONS.map((s) => (
+            <input
+              className="settings-input settings-search"
+              type="search"
+              value={query}
+              placeholder="Search settings"
+              aria-label="Search settings"
+              onChange={(e) => {
+                const next = e.target.value
+                setQuery(next)
+                // Jump to the first match so the result is visible immediately.
+                const nextWords = next.trim().toLowerCase().split(/\s+/).filter(Boolean)
+                const first = SECTIONS.find((s) => nextWords.every((word) => `${s.label} ${s.keywords}`.toLowerCase().includes(word)))
+                if (nextWords.length > 0 && first) setSection(first.id)
+              }}
+            />
+            {visibleSections.length === 0 && <div className="settings-search-empty">No matching settings</div>}
+            {visibleSections.map((s) => (
               <button
                 key={s.id}
                 className={`settings-nav-item${s.id === section ? ' settings-nav-item-active' : ''}`}
@@ -117,7 +140,9 @@ export function Field({ label, hint, children }: { label: string; hint?: string;
 }
 
 export function TextInput(props: InputHTMLAttributes<HTMLInputElement>): React.JSX.Element {
-  return <input type="text" className="settings-input" {...props} />
+  // Extra classes (e.g. settings-input-wide) extend the base style instead of replacing it.
+  const { className, ...rest } = props
+  return <input type="text" {...rest} className={className ? `settings-input ${className}` : 'settings-input'} />
 }
 
 interface NumberInputProps {
