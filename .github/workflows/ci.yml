@@ -35,3 +35,7 @@ jobs:
       - name: E2E tests (Windows only)
         if: runner.os == 'Windows'
         run: npm run test:e2e
+
+      - name: Package and verify installer (Windows only)
+        if: runner.os == 'Windows'
+        run: npm run package:verify
