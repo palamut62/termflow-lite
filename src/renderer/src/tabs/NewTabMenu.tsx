@@ -31,12 +31,14 @@ const ANCHOR_GAP = 4
  */
 export function NewTabMenu({ anchor, onClose, onOpenAtPath, onOpenWorktree, onOpenGithub }: NewTabMenuProps): React.JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
-  const shells = useSettingsStore((s) => s.shells)
+  const filterRef = useRef<HTMLInputElement>(null)
+  const allShells = useSettingsStore((s) => s.shells)
   const userProfiles = useSettingsStore((s) => s.settings.profiles)
   // Yerleşik CLI ajan profilleri + kullanıcı profilleri (tek liste).
-  const profiles = mergeProfiles(userProfiles)
-  const providers = useSettingsStore((s) => s.settings.providerProfiles)
-  const sshConnections = useSettingsStore((s) => s.settings.sshConnections) ?? []
+  const allProfiles = mergeProfiles(userProfiles)
+  const allProviders = useSettingsStore((s) => s.settings.providerProfiles)
+  const allSsh = useSettingsStore((s) => s.settings.sshConnections) ?? []
+  const [query, setQuery] = useState('')
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
 
   // Measure after paint: sağ kenarlar çakışacak şekilde hizala, taşarsa clamp'le.
@@ -56,7 +58,13 @@ export function NewTabMenu({ anchor, onClose, onOpenAtPath, onOpenWorktree, onOp
       )
     })
     // profiles her render'da yeniden türetildiği için bağımlılık userProfiles.
-  }, [anchor, shells, userProfiles])
+  }, [anchor, allShells, userProfiles])
+
+  // The menu stays visibility:hidden until measured, and hidden elements cannot
+  // take focus — so autoFocus is not enough; focus once it is positioned.
+  useEffect(() => {
+    if (pos) filterRef.current?.focus()
+  }, [pos])
 
   useEffect(() => {
     // mousedown (not click): the same press that opened the menu must not
@@ -82,7 +90,20 @@ export function NewTabMenu({ anchor, onClose, onOpenAtPath, onOpenWorktree, onOp
     onClose()
   }
 
-  const defaultProfileId = resolveDefaultProfileId(useSettingsStore.getState().settings, shells)
+  // Filter box: narrows every launchable list by name; the fixed actions and
+  // Settings are hidden while filtering so Enter always opens a profile.
+  const needle = query.trim().toLowerCase()
+  const matches = (name: string): boolean => !needle || name.toLowerCase().includes(needle)
+  const shells = allShells.filter((shell) => matches(shell.name))
+  const profiles = allProfiles.filter((profile) => matches(profile.name))
+  const providers = allProviders.filter((provider) => matches(provider.name))
+  const sshConnections = allSsh.filter((conn) => matches(conn.name) || matches(sshTarget(conn)))
+  const firstMatch = shells[0]?.id ?? profiles[0]?.id
+    ?? (providers[0] ? providerProfileId(providers[0].id) : undefined)
+    ?? (sshConnections[0] ? sshProfileId(sshConnections[0].id) : undefined)
+  const showFilter = allShells.length + allProfiles.length + allProviders.length + allSsh.length > 8
+
+  const defaultProfileId = resolveDefaultProfileId(useSettingsStore.getState().settings, allShells)
 
   return createPortal(
     <div
@@ -92,6 +113,18 @@ export function NewTabMenu({ anchor, onClose, onOpenAtPath, onOpenWorktree, onOp
       aria-label="New tab"
       style={{ left: pos?.x ?? 0, top: pos?.y ?? 0, visibility: pos ? undefined : 'hidden' }}
     >
+      {showFilter && (
+        <input
+          className="menu-filter"
+          ref={filterRef}
+          value={query}
+          placeholder="Filter profiles..."
+          aria-label="Filter profiles"
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && firstMatch) openTab(firstMatch) }}
+        />
+      )}
+      {!needle && (<>
       <div className="menu-section">Shells</div>
       <button className="menu-item" role="menuitem" onClick={onOpenAtPath}>
         <FolderOpen size={14} />
@@ -106,6 +139,7 @@ export function NewTabMenu({ anchor, onClose, onOpenAtPath, onOpenWorktree, onOp
         <span className="menu-item-label">GitHub...</span>
       </button>
       <div className="menu-divider" />
+      </>)}
       {shells.map((shell) => (
         <button
           key={shell.id}
@@ -171,6 +205,8 @@ export function NewTabMenu({ anchor, onClose, onOpenAtPath, onOpenWorktree, onOp
           ))}
         </>
       )}
+      {needle && !firstMatch && <div className="menu-empty">No matching profiles</div>}
+      {!needle && (<>
       <div className="menu-divider" />
       <button
         className="menu-item"
@@ -183,6 +219,7 @@ export function NewTabMenu({ anchor, onClose, onOpenAtPath, onOpenWorktree, onOp
         <SettingsIcon size={14} />
         <span className="menu-item-label">Settings</span>
       </button>
+      </>)}
     </div>,
     document.body
   )

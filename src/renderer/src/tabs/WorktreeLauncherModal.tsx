@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Bot, FolderOpen, GitBranch, Loader2, X } from 'lucide-react'
+import { Bot, FolderOpen, GitBranch, Loader2, Trash2, X } from 'lucide-react'
 import { mergeProfiles, providerProfileId } from '../../../shared/profiles'
 import { useSettingsStore } from '../store/settingsStore'
 import { useTerminalStore } from '../store/terminalStore'
 import type { AgentPermissionMode } from '../../../shared/types'
+import type { WorktreeEntry } from '../../../shared/ipc'
+
+/** Comparable path: forward slashes, case-insensitive (Windows). */
+function samePath(path: string): string {
+  return path.replace(/\\/g, '/').toLowerCase()
+}
 
 /** Short, collision-resistant suffix so parallel agents never share a branch. */
 function branchSuffix(): string {
@@ -35,6 +41,17 @@ export function WorktreeLauncherModal({ onClose }: { onClose: () => void }): Rea
   const [baseRef, setBaseRef] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [existing, setExisting] = useState<WorktreeEntry[]>([])
+  const [removing, setRemoving] = useState<string | null>(null)
+  const tabs = useTerminalStore((s) => s.tabs)
+  const openPaths = new Set(tabs.map((tab) => (tab.worktree ? samePath(tab.worktree.path) : '')).filter(Boolean))
+
+  // Only checkouts TermFlow created (under its container dir) are offered, so
+  // the user's own worktrees are never listed for removal here.
+  const refreshExisting = async (root: string): Promise<void> => {
+    const all = await window.termflow.worktree.list(root)
+    setExisting(all.filter((entry) => samePath(entry.path).includes('/.termflow-worktrees/')))
+  }
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => { if (event.key === 'Escape' && !busy) onClose() }
@@ -54,6 +71,8 @@ export function WorktreeLauncherModal({ onClose }: { onClose: () => void }): Rea
       setRepo(info)
       setRepoError(info ? '' : 'Not a git repository.')
       if (info && !baseRef.trim()) setBaseRef(info.branch)
+      if (info) void refreshExisting(info.root)
+      else setExisting([])
     }, 250)
     return () => { cancelled = true; clearTimeout(timer) }
     // baseRef is only seeded once; re-running on its change would fight the user.
@@ -83,6 +102,29 @@ export function WorktreeLauncherModal({ onClose }: { onClose: () => void }): Rea
     onClose()
   }
 
+  const openExisting = (entry: WorktreeEntry): void => {
+    if (!repo) return
+    useTerminalStore.getState().addTab(profileId, true, undefined, undefined, permissionMode, {
+      repoRoot: repo.root,
+      path: entry.path,
+      branch: entry.branch ?? '',
+      createdByApp: true
+    })
+    onClose()
+  }
+
+  // No force: git refuses to drop a checkout with uncommitted changes, and
+  // that refusal is shown instead of silently discarding work.
+  const removeExisting = async (entry: WorktreeEntry): Promise<void> => {
+    if (!repo || removing) return
+    setRemoving(entry.path)
+    setError('')
+    const result = await window.termflow.worktree.remove({ repoRoot: repo.root, path: entry.path, deleteBranch: false })
+    if (!result.ok) setError(result.error)
+    await refreshExisting(repo.root)
+    setRemoving(null)
+  }
+
   const canCreate = !!repo && branch.trim().length > 0 && !busy
 
   return createPortal(
@@ -100,7 +142,7 @@ export function WorktreeLauncherModal({ onClose }: { onClose: () => void }): Rea
               className="settings-input"
               value={repoPath}
               onChange={(event) => setRepoPath(event.target.value)}
-              placeholder="C:\\projects\\my-app"
+              placeholder={'C:\\projects\\my-app'}
               autoFocus
             />
             <button className="settings-btn" onClick={async () => { const path = await window.termflow.dialog.openDir(); if (path) setRepoPath(path) }}>
@@ -130,6 +172,34 @@ export function WorktreeLauncherModal({ onClose }: { onClose: () => void }): Rea
           <select id="worktree-permission" className="settings-input settings-select path-launch-select" value={permissionMode} onChange={(event) => setPermissionMode(event.target.value as AgentPermissionMode)}>
             <option value="safe">Safe - read only</option><option value="workspace">Workspace - project writes</option><option value="full">Full Access</option>
           </select>
+
+          {existing.length > 0 && (
+            <>
+              <div className="path-launch-label">Existing worktree sessions</div>
+              <ul className="github-list">
+                {existing.map((entry) => {
+                  const inUse = openPaths.has(samePath(entry.path))
+                  return (
+                    <li key={entry.path} className="github-row">
+                      <span className="github-row-main" title={entry.path}>
+                        <span className="worktree-row-title"><GitBranch size={13} /> {entry.branch ?? '(detached)'}{inUse ? ' — open' : ''}</span>
+                      </span>
+                      <button className="settings-btn" onClick={() => openExisting(entry)} disabled={busy || !!removing}>Open</button>
+                      <button
+                        className="settings-btn"
+                        onClick={() => void removeExisting(entry)}
+                        disabled={inUse || busy || !!removing}
+                        title={inUse ? 'Close its tab first' : 'Remove this checkout (the branch is kept)'}
+                        aria-label={`Remove worktree ${entry.branch ?? entry.path}`}
+                      >
+                        {removing === entry.path ? <Loader2 size={13} className="spin" /> : <Trash2 size={13} />}
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            </>
+          )}
 
           {error && <p className="path-launch-error" role="alert">{error}</p>}
         </div>

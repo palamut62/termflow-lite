@@ -8,6 +8,12 @@ import type { GitHubPullRequest, GitHubRepo, GitHubStatus } from '../../../share
 
 type Tab = 'prs' | 'repos'
 
+/** Electron wraps main-process errors as "Error invoking remote method '...': Error: <msg>". */
+function ipcErrorMessage(err: unknown): string {
+  const text = err instanceof Error ? err.message : String(err)
+  return text.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
+}
+
 /**
  * GitHub panel backed by the user's own `gh` CLI — TermFlow never asks for or
  * stores a token. Its one opinionated action is "open a PR in its own
@@ -63,21 +69,36 @@ export function GitHubPanel({ onClose }: { onClose: () => void }): React.JSX.Ele
   const loadPrs = async (): Promise<void> => {
     setLoading(true)
     setError('')
-    setPrs(await window.termflow.github.pullRequests(repo, activeCwd || workspaceCwd))
-    setLoading(false)
+    try {
+      setPrs(await window.termflow.github.pullRequests(repo, activeCwd || workspaceCwd))
+    } catch (err) {
+      setPrs([])
+      setError(ipcErrorMessage(err))
+    } finally {
+      setLoading(false)
+    }
   }
 
   const loadRepos = async (): Promise<void> => {
     setLoading(true)
     setError('')
-    setRepos(await window.termflow.github.repos(50))
-    setLoading(false)
+    try {
+      setRepos(await window.termflow.github.repos(50))
+    } catch (err) {
+      setRepos([])
+      setError(ipcErrorMessage(err))
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
     if (!status?.authenticated) return
-    if (tab === 'prs' && repo) void loadPrs()
     if (tab === 'repos' && repos.length === 0) void loadRepos()
+    if (tab !== 'prs' || !repo) return
+    // Debounced so typing "owner/name" does not spawn a gh call per keystroke.
+    const timer = setTimeout(() => void loadPrs(), 400)
+    return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, tab, repo])
 
@@ -176,7 +197,7 @@ export function GitHubPanel({ onClose }: { onClose: () => void }): React.JSX.Ele
               {loading && <p className="path-launch-hint"><Loader2 size={13} className="spin" /> Loading...</p>}
 
               <ul className="github-list">
-                {tab === 'prs' && !loading && prs.length === 0 && <li className="github-empty">No open pull requests.</li>}
+                {tab === 'prs' && !loading && !error && prs.length === 0 && <li className="github-empty">{repo ? 'No open pull requests.' : 'Enter a repository (owner/name) to list its pull requests.'}</li>}
                 {tab === 'prs' && prs.map((pr) => (
                   <li key={pr.number} className="github-row">
                     <span className="github-row-main">
@@ -191,7 +212,7 @@ export function GitHubPanel({ onClose }: { onClose: () => void }): React.JSX.Ele
                   </li>
                 ))}
 
-                {tab === 'repos' && !loading && repos.length === 0 && <li className="github-empty">No repositories found.</li>}
+                {tab === 'repos' && !loading && !error && repos.length === 0 && <li className="github-empty">No repositories found.</li>}
                 {tab === 'repos' && repos.map((item) => (
                   <li key={item.nameWithOwner} className="github-row">
                     <span className="github-row-main">
