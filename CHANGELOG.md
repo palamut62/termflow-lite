@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.8.0 - 2026-09-23
+
+- The new tab menu has a filter box: start typing to narrow shells, agents, providers and SSH connections, and press Enter to open the first match. The Settings entry at the bottom of the menu is no longer cut off.
+- Settings can now be searched: type a word such as "tmux", "font" or "tray" and the matching section opens.
+- "New worktree session..." now lists the worktrees TermFlow created earlier for the chosen repository, so you can reopen or remove them. A checkout with uncommitted changes is never removed silently, and branches are kept.
+- The GitHub panel now shows why loading failed (network, login) instead of an empty list, asks for a repository before listing pull requests, and no longer calls `gh` on every keystroke.
+- Security: SSH connections reject host, user or jump host values that start with "-" and extra arguments that would run local commands (ProxyCommand, LocalCommand, ...). Git and GitHub calls validate branch start points and repository names.
+- Fixed menu and settings headings rendering as "PROFİLES" / "LİCENSE" on Turkish-locale systems.
+- Settings text is now consistently English, and every text field in Settings uses the same style and width.
+- The Agent Inbox closes with Esc, and the worktree dialog shows a correct example path.
+
 ## 1.7.0 - 2026-09-06
 
 - SSH connections can now keep a persistent remote session: the connection attaches to a tmux (or screen) session on the host, so agents and long builds keep running when the link drops or the window closes, and reconnecting returns to the same session.

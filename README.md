@@ -61,8 +61,8 @@ Download the latest release from [GitHub Releases](https://github.com/palamut62/
 
 | Platform | Artifacts |
 | --- | --- |
-| Windows | `TermFlow-Lite-1.7.0-x64.exe` (installer) · `TermFlow-Lite-1.7.0-x64.zip` (portable) |
-| Linux | `TermFlow-Lite-1.7.0-x86_64.AppImage` · `TermFlow-Lite-1.7.0-amd64.deb` |
+| Windows | `TermFlow-Lite-1.8.0-x64.exe` (installer) · `TermFlow-Lite-1.8.0-x64.zip` (portable) |
+| Linux | `TermFlow-Lite-1.8.0-x86_64.AppImage` · `TermFlow-Lite-1.8.0-amd64.deb` |
 
 **Automatic updates:** the installed Windows build (`.exe`) and the Linux AppImage can update
 themselves — see *Settings → About → Updates* (checking on startup can be turned off there).
