@@ -36,7 +36,9 @@ describe('resolvePathCandidate', () => {
     const sub = join(dir, 'nested')
     await mkdir(sub)
     expect(resolvePathCandidate('..', sub)?.path).toBe(dir)
-    expect(resolvePathCandidate(`${sub}\\`, dir)).toEqual({ path: sub, isDirectory: true, canOpen: true })
+    // The trailing separator is platform specific: '\' is a plain filename character on POSIX.
+    const sep = process.platform === 'win32' ? '\\' : '/'
+    expect(resolvePathCandidate(`${sub}${sep}`, dir)).toEqual({ path: sub, isDirectory: true, canOpen: true })
   })
 
   it('expands ~ to the home directory', () => {

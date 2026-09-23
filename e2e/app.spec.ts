@@ -60,8 +60,20 @@ test('launches with a default terminal', async () => {
   await expect(win.locator('.tab-title').first()).not.toBeEmpty()
 })
 
+// Hosted CI runners have no WSL distribution, so the Ubuntu profile cannot be
+// discovered there; the case still runs on machines that have one.
+const hasWslUbuntu = (() => {
+  if (process.platform !== 'win32') return false
+  try {
+    return execFileSync('wsl.exe', ['-l', '-q'], { encoding: 'utf16le', timeout: 10_000 }).replace(/\0/g, '').toLowerCase().includes('ubuntu')
+  } catch {
+    return false
+  }
+})()
+
 for (const [profileId, title] of contextMenuCases) {
   test(`Explorer menu opens ${profileId}`, async () => {
+    test.skip(profileId === 'wsl-ubuntu' && !hasWslUbuntu, 'No WSL Ubuntu distribution on this machine')
     await expect(win.locator('.tab-title').first()).toHaveText(title)
     if (profileId === 'claude') {
       await expect(win.locator('.terminal-view').first()).toContainText(/Claude Code|Accessing workspace/, { timeout: 30_000 })
