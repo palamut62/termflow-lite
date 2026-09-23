@@ -131,17 +131,15 @@ export class PtyCore {
         } catch {
           /* pty may have exited in the meantime */
         }
-        if (!launchCommand) return
-        if (!startupCommand) {
-          try {
-            managed.proc.write(`${launchCommand}\r`)
-            managed.input.launchCommand = undefined
-          } catch {
-            /* pty may have exited in the meantime */
-          }
-          return
+        // cli.ts never pairs launchCommand with startupCommand; only plain
+        // shell input is typed here.
+        if (!launchCommand || startupCommand) return
+        try {
+          managed.proc.write(`${launchCommand}\r`)
+          managed.input.launchCommand = undefined
+        } catch {
+          /* pty may have exited in the meantime */
         }
-
       }, STARTUP_COMMAND_DELAY_MS)
     }
 

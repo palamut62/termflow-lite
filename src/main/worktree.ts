@@ -155,6 +155,10 @@ export async function createWorktree(input: WorktreeCreateInput): Promise<Worktr
   const branch = sanitizeBranchName(input.branch)
   if (!branch) return { ok: false, error: 'Branch name is empty after sanitizing.' }
 
+  const baseRef = input.baseRef?.trim() ?? ''
+  // A leading '-' would be parsed by git as an option, not a commit-ish.
+  if (baseRef.startsWith('-')) return { ok: false, error: 'Invalid base ref.' }
+
   const path = input.path?.trim() || defaultWorktreePath(repoRoot, branch)
   if (!isAbsolute(path)) return { ok: false, error: 'Worktree path must be absolute.' }
   if (existsSync(path)) return { ok: false, error: `Path already exists: ${path}` }
@@ -164,9 +168,9 @@ export async function createWorktree(input: WorktreeCreateInput): Promise<Worktr
       ? false
       : await git(repoRoot, ['branch', '--list', branch]).then((out) => out.trim().length > 0).catch(() => false)
     let args: string[]
-    if (input.detach) args = ['worktree', 'add', '--detach', path, ...(input.baseRef?.trim() ? [input.baseRef.trim()] : [])]
+    if (input.detach) args = ['worktree', 'add', '--detach', path, ...(baseRef ? [baseRef] : [])]
     else if (branchExists) args = ['worktree', 'add', path, branch]
-    else args = ['worktree', 'add', '-b', branch, path, ...(input.baseRef?.trim() ? [input.baseRef.trim()] : [])]
+    else args = ['worktree', 'add', '-b', branch, path, ...(baseRef ? [baseRef] : [])]
     await git(repoRoot, args)
   } catch (error) {
     return { ok: false, error: gitError(error) }

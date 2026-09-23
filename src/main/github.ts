@@ -16,6 +16,13 @@ const execFileAsync = promisify(execFile)
 const GH_TIMEOUT_MS = 20000
 const GH_MAX_BUFFER = 4 * 1024 * 1024
 
+/** `owner/name` — also rules out values `gh` would read as a flag. */
+const REPO_NAME = /^[\w.-]+\/[\w.-]+$/
+
+function isValidRepo(value: unknown): value is string {
+  return typeof value === 'string' && REPO_NAME.test(value) && !value.startsWith('-')
+}
+
 function isUsableDir(path: unknown): path is string {
   return typeof path === 'string' && isAbsolute(path) && existsSync(path) && statSync(path).isDirectory()
 }
@@ -131,8 +138,9 @@ export async function listRepos(limit = 50): Promise<GitHubRepo[]> {
   const bounded = Math.max(1, Math.min(200, Math.trunc(limit) || 50))
   try {
     return parseRepos(await gh(['repo', 'list', '--json', 'name,nameWithOwner,description,isPrivate,updatedAt', '--limit', String(bounded)]))
-  } catch {
-    return []
+  } catch (error) {
+    // Surfaced to the panel so a network/auth failure is not shown as "no repos".
+    throw new Error(ghError(error))
   }
 }
 
@@ -149,11 +157,14 @@ export async function currentRepo(cwd: string): Promise<string> {
 export async function listPullRequests(repo: string, cwd?: string, limit = 30): Promise<GitHubPullRequest[]> {
   const bounded = Math.max(1, Math.min(100, Math.trunc(limit) || 30))
   const args = ['pr', 'list', '--state', 'open', '--json', 'number,title,author,headRefName,isDraft,updatedAt', '--limit', String(bounded)]
-  if (repo) args.push('--repo', repo)
+  if (repo) {
+    if (!isValidRepo(repo)) throw new Error('Invalid repository name.')
+    args.push('--repo', repo)
+  }
   try {
     return parsePullRequests(await gh(args, cwd))
-  } catch {
-    return []
+  } catch (error) {
+    throw new Error(ghError(error))
   }
 }
 
@@ -167,7 +178,10 @@ export async function checkoutPullRequest(worktreePath: string, number: number, 
   if (!isUsableDir(worktreePath)) return { ok: false, error: 'Worktree path does not exist.' }
   if (!Number.isInteger(number) || number <= 0) return { ok: false, error: 'Invalid pull request number.' }
   const args = ['pr', 'checkout', String(number), '--branch', prBranchName(number)]
-  if (repo) args.push('--repo', repo)
+  if (repo) {
+    if (!isValidRepo(repo)) return { ok: false, error: 'Invalid repository name.' }
+    args.push('--repo', repo)
+  }
   try {
     await gh(args, worktreePath)
     return { ok: true }
@@ -178,7 +192,7 @@ export async function checkoutPullRequest(worktreePath: string, number: number, 
 
 /** Clone `nameWithOwner` into `targetPath`, which must not exist yet. */
 export async function cloneRepo(nameWithOwner: string, targetPath: string): Promise<GhOutcome> {
-  if (!/^[\w.-]+\/[\w.-]+$/.test(String(nameWithOwner ?? ''))) return { ok: false, error: 'Invalid repository name.' }
+  if (!isValidRepo(nameWithOwner)) return { ok: false, error: 'Invalid repository name.' }
   if (!isAbsolute(targetPath)) return { ok: false, error: 'Clone path must be absolute.' }
   if (existsSync(targetPath)) return { ok: false, error: `Path already exists: ${targetPath}` }
   try {

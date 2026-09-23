@@ -107,6 +107,15 @@ describe('validateSshConnection', () => {
 })
 
 describe('sshTarget', () => {
+  it('seçenek enjeksiyonunu reddeder', () => {
+    expect(validateSshConnection(conn({ host: '-oProxyCommand=calc.exe' }))).toMatch(/Host/)
+    expect(validateSshConnection(conn({ user: '-oProxyCommand=x' }))).toMatch(/User/)
+    expect(validateSshConnection(conn({ jumpHost: '-oProxyCommand=x' }))).toMatch(/Jump/)
+    expect(validateSshConnection(conn({ extraArgs: '-o ProxyCommand=calc' }))).toMatch(/Extra/)
+    expect(validateSshConnection(conn({ extraArgs: '-oLocalCommand=x -oPermitLocalCommand=yes' }))).toMatch(/Extra/)
+    expect(validateSshConnection(conn({ extraArgs: '-o ServerAliveInterval=30' }))).toBeNull()
+  })
+
   it('user@host / host', () => {
     expect(sshTarget(conn({ user: 'u' }))).toBe('u@example.com')
     expect(sshTarget(conn())).toBe('example.com')

@@ -21,15 +21,22 @@ const UNSAFE_LOOSE = /[;&|$`'"<>\n\r]/
  * singleQuote) tek tırnak serbesttir; diğer kabuk metakarakterleri yine yasak.
  */
 const UNSAFE_REMOTE_CWD = /[;&|$`"<>\n\r]/
+/** `-` ile başlayan değer ssh'a seçenek olarak geçer (ör. `-oProxyCommand=...`). */
+const LEADING_DASH = /^-/
+/**
+ * extraArgs içinde yerel komut çalıştırabilen OpenSSH seçenekleri. Ayarlar
+ * paylaşıldığında/içe aktarıldığında bunlar yerel kod çalıştırma demektir.
+ */
+const DANGEROUS_SSH_OPTION = /(proxycommand|localcommand|permitlocalcommand|knownhostscommand|pkcs11provider|securitykeyprovider)/i
 
 /** Hata mesajı döner, geçerliyse null. */
 export function validateSshConnection(conn: SshConnection): string | null {
   const host = conn.host?.trim() ?? ''
   if (!host) return 'Host is required.'
-  if (UNSAFE_STRICT.test(host)) return 'Host contains invalid characters.'
+  if (UNSAFE_STRICT.test(host) || LEADING_DASH.test(host)) return 'Host contains invalid characters.'
 
   const user = conn.user?.trim() ?? ''
-  if (user && UNSAFE_STRICT.test(user)) return 'User contains invalid characters.'
+  if (user && (UNSAFE_STRICT.test(user) || LEADING_DASH.test(user))) return 'User contains invalid characters.'
 
   if (conn.port !== undefined && conn.port !== null) {
     if (!Number.isInteger(conn.port) || conn.port < 1 || conn.port > 65535) return 'Port must be between 1 and 65535.'
@@ -39,7 +46,12 @@ export function validateSshConnection(conn: SshConnection): string | null {
   if (identityFile && UNSAFE_LOOSE.test(identityFile)) return 'Identity file contains invalid characters.'
 
   const jumpHost = conn.jumpHost?.trim() ?? ''
-  if (jumpHost && UNSAFE_STRICT.test(jumpHost)) return 'Jump host contains invalid characters.'
+  if (jumpHost && (UNSAFE_STRICT.test(jumpHost) || LEADING_DASH.test(jumpHost))) return 'Jump host contains invalid characters.'
+
+  const extraArgs = conn.extraArgs?.trim() ?? ''
+  if (extraArgs && DANGEROUS_SSH_OPTION.test(extraArgs)) {
+    return 'Extra arguments may not set options that run local commands (ProxyCommand, LocalCommand, ...). Use ~/.ssh/config instead.'
+  }
 
   const remoteCwd = conn.remoteCwd?.trim() ?? ''
   if (remoteCwd && UNSAFE_REMOTE_CWD.test(remoteCwd)) return 'Remote directory contains invalid characters.'
