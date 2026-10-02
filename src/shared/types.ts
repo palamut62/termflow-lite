@@ -336,6 +336,8 @@ export interface AppSettings {
   terminalEffect: TerminalEffect
   /** Test/build komutu başarıyla bitince konfeti (hareket açıkken). */
   celebrate: boolean
+  /** Tuş/zil sesleri (WebAudio sentezi); varsayılan kapalı. */
+  soundTheme: SoundTheme
   /** Konami koduyla açılan gizli retro temalar. */
   retroUnlocked: boolean
   /**
@@ -351,6 +353,7 @@ export type MotionLevel = 'off' | 'subtle' | 'full'
 export type BackdropMaterial = 'none' | 'mica' | 'acrylic' | 'tabbed'
 export type CursorEffect = 'none' | 'trail' | 'blaze'
 export type TerminalEffect = 'none' | 'scanlines' | 'crt'
+export type SoundTheme = 'off' | 'mechanical' | 'soft'
 
 /**
  * Otomatik güncelleme durumu (electron-updater). Main tarafından üretilir,
@@ -486,6 +489,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   terminalEffect: 'none',
   retroUnlocked: false,
   celebrate: false,
+  soundTheme: 'off',
   shellIntegration: true,
   commandNotifications: true
 }

@@ -51,6 +51,25 @@ describe('extractPathCandidates', () => {
     expect(extractPathCandidates(text)).toContainEqual({ value: 'folder/my file.txt', start: 7, end: 24 })
   })
 
+  it('splits gcc/eslint style line and column suffixes', () => {
+    expect(extractPathCandidates('src/app.ts:42:7 - error TS2345')[0]).toEqual({
+      value: 'src/app.ts', start: 1, end: 15, line: 42, column: 7
+    })
+    expect(extractPathCandidates('  at main.py:12:')[0]).toEqual({ value: 'main.py', start: 6, end: 15, line: 12, column: undefined })
+  })
+
+  it('splits tsc/MSBuild style (line,col) suffixes', () => {
+    expect(extractPathCandidates('src\\app.ts(42,7): error TS2345')[0]).toEqual({
+      value: 'src\\app.ts', start: 1, end: 16, line: 42, column: 7
+    })
+  })
+
+  it('does not mistake a Windows drive for a location', () => {
+    const [first] = extractPathCandidates('C:\\Users\\me\\a.ts')
+    expect(first.value).toBe('C:\\Users\\me\\a.ts')
+    expect(first.line).toBeUndefined()
+  })
+
   it('treats dotfiles and parent traversal as path-like', () => {
     expect(extractPathCandidates('.gitignore')).toEqual([{ value: '.gitignore', start: 1, end: 10 }])
     expect(extractPathCandidates('..')).toEqual([{ value: '..', start: 1, end: 2 }])

@@ -1,5 +1,6 @@
 import { resolveDefaultProfileId, useSettingsStore } from '../store/settingsStore'
 import { Field, NumberInput, Select, TextInput, Toggle } from './Settings'
+import type { SoundTheme } from '../../../shared/types'
 
 const SCROLLBACK_OPTIONS = [
   { value: '1000', label: '1,000 lines' },
@@ -93,6 +94,17 @@ export function TerminalSettings(): React.JSX.Element {
         </Field>
         <Field label="Bell">
           <Toggle checked={settings.bell} onChange={(v) => void update({ bell: v })} label="Bell" />
+        </Field>
+        <Field label="Sounds" hint="Synthesized key clicks, bell and failure tones">
+          <Select
+            value={settings.soundTheme}
+            options={[
+              { value: 'off', label: 'Off' },
+              { value: 'mechanical', label: 'Mechanical keyboard' },
+              { value: 'soft', label: 'Soft' }
+            ]}
+            onChange={(v) => void update({ soundTheme: v as SoundTheme })}
+          />
         </Field>
         <Field label="Copy on Select">
           <Toggle checked={settings.copyOnSelect} onChange={(v) => void update({ copyOnSelect: v })} label="Copy on select" />

@@ -80,7 +80,13 @@ export function TerminalContextMenu(props: TerminalContextMenuProps): React.JSX.
         <>
           <div className="ctx-menu-section" role="presentation">Path</div>
           <button className="ctx-menu-item" role="menuitem" onClick={props.onOpenPath}>
-            {!props.path.canOpen ? 'Show in Folder' : props.path.isDirectory ? 'Open Folder' : 'Open File'}
+            {!props.path.canOpen
+              ? 'Show in Folder'
+              : props.path.isDirectory
+                ? 'Open Folder'
+                : props.path.line
+                  ? `Open at Line ${props.path.line}`
+                  : 'Open File'}
           </button>
           {props.path.canOpen && (
             <button className="ctx-menu-item" role="menuitem" onClick={props.onRevealInFolder}>

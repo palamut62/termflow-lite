@@ -64,7 +64,8 @@ export const IPC = {
   // Terminaldeki tıklanabilir dosya/klasör yolları (PRD ek).
   SYSTEM_RESOLVE_PATH: 'system:resolve-path', // (candidate, cwd) -> ResolvedPath | null
   SYSTEM_OPEN_PATH: 'system:open-path', // (path) -> boolean — varsayılan uygulamayla aç
-  SYSTEM_REVEAL_IN_FOLDER: 'system:reveal-in-folder' // (path) -> boolean — Explorer'da konum
+  SYSTEM_REVEAL_IN_FOLDER: 'system:reveal-in-folder', // (path) -> boolean — Explorer'da konum
+  SYSTEM_OPEN_IN_EDITOR: 'system:open-in-editor' // (path, line, column?) -> boolean — editörde satırında aç
 } as const
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC]

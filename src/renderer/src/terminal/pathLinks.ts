@@ -22,6 +22,9 @@ export interface PathCandidate {
   start: number
   /** 1-based bitiş sütunu (kapsayıcı). */
   end: number
+  /** Derleyici/test konumu: `a.ts:42:7` ya da `a.ts(42,7)`. */
+  line?: number
+  column?: number
 }
 
 export interface PathMenuInfo {
@@ -29,6 +32,24 @@ export interface PathMenuInfo {
   isDirectory: boolean
   canOpen: boolean
   label: string
+  line?: number
+  column?: number
+}
+
+/**
+ * Yolun ardındaki satır/sütun eki: `:42`, `:42:7` (gcc, tsc --pretty, eslint,
+ * pytest, rustc) ya da `(42,7)` (tsc, MSBuild). Ekin ardındaki noktalama
+ * (`a.ts:42:7:` gibi) konuma dahil değildir.
+ */
+const LOCATION_RE = /^(.+?)(\((\d+)(?:,\s*(\d+))?\)|:(\d+)(?::(\d+))?)[)\]}>;:!?,.]*$/
+
+export function splitLocation(raw: string): { path: string; suffix: string; line: number; column?: number } | null {
+  const match = raw.match(LOCATION_RE)
+  if (!match) return null
+  const line = Number(match[3] ?? match[5])
+  const column = match[4] ?? match[6]
+  if (!Number.isFinite(line) || line < 1) return null
+  return { path: match[1], suffix: match[2], line, column: column ? Number(column) : undefined }
 }
 
 /** Boşluk + Windows geçersiz + tırnak + metin ayraçları dışındaki her karakter. */
@@ -88,6 +109,20 @@ export function extractPathCandidates(text: string): PathCandidate[] {
   const seen = new Set<string>()
   const quotedRanges: Array<{ start: number; end: number }> = []
   const addCandidate = (raw: string, index: number): void => {
+    // Konum ekli yol: link aralığı eki de kapsar, çözümlenen ise yalnızca yol.
+    const located = splitLocation(raw.trimEnd())
+    if (located) {
+      const { value, lead, trail } = stripEdges(located.path)
+      if (value && trail === 0 && isPathLike(value)) {
+        const start0 = index + lead
+        const end0 = index + located.path.length + located.suffix.length - 1
+        const key = `${start0}:${end0}:${value}`
+        if (seen.has(key)) return
+        seen.add(key)
+        results.push({ value, start: start0 + 1, end: end0 + 1, line: located.line, column: located.column })
+        return
+      }
+    }
     const { value, lead, trail } = stripEdges(raw.trimEnd())
     if (!value || !isPathLike(value)) return
     const start0 = index + lead
@@ -215,7 +250,8 @@ export function registerPathLinkProvider(
                 // (mousedown/mouseup dinleyicilerinde buton filtresi yok). Sağ
                 // tık yol menüsünü açmalı, dosyayı AÇMAMALI.
                 if (event && 'button' in event && (event as MouseEvent).button === 2) return
-                if (resolved.canOpen) void window.termflow.system.openPath(resolved.path)
+                if (cand.line && !resolved.isDirectory) void window.termflow.system.openInEditor(resolved.path, cand.line, cand.column)
+                else if (resolved.canOpen) void window.termflow.system.openPath(resolved.path)
                 else void window.termflow.system.revealInFolder(resolved.path)
               }
             })
@@ -239,7 +275,7 @@ export async function getPathAtMouse(term: Terminal, e: MouseEvent, cwd: string)
   for (const cand of extractPathCandidates(line.translateToString(false))) {
     if (col >= cand.start && col <= cand.end) {
       const resolved = await resolvePathCached(cand.value, cwd)
-      if (resolved) return { path: resolved.path, isDirectory: resolved.isDirectory, canOpen: resolved.canOpen, label: cand.value }
+      if (resolved) return { path: resolved.path, isDirectory: resolved.isDirectory, canOpen: resolved.canOpen, label: cand.value, line: cand.line, column: cand.column }
     }
   }
   return null

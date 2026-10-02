@@ -27,6 +27,8 @@ const api = {
     openPath: (path: string): Promise<boolean> => ipcRenderer.invoke(IPC.SYSTEM_OPEN_PATH, path),
     /** Dosyayı Explorer'da konumuyla göster (Open File Location). */
     revealInFolder: (path: string): Promise<boolean> => ipcRenderer.invoke(IPC.SYSTEM_REVEAL_IN_FOLDER, path),
+    openInEditor: (path: string, line: number, column?: number): Promise<boolean> =>
+      ipcRenderer.invoke(IPC.SYSTEM_OPEN_IN_EDITOR, path, line, column),
     // Blur (acrylic) yalnızca Windows'ta desteklenir — UI buna göre uyarlanır.
     platform: process.platform as NodeJS.Platform,
     /**

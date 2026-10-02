@@ -16,6 +16,7 @@ import { CursorFx } from './cursorFx'
 import { recordOutput } from '../fun/outputMeter'
 import { burstConfetti, shouldCelebrate } from '../fun/confetti'
 import { useStatsStore } from '../store/statsStore'
+import { playCue } from '../fun/sounds'
 import { ShellIntegration, formatDuration, type FinishedCommand } from './shellIntegration'
 import { motionEnabled } from '../motion'
 import { formatDroppedPaths } from './dropPaths'
@@ -237,6 +238,7 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
       useTerminalStore.getState().setTabLastCommand(tabId, cmd.exitCode, cmd.durationMs)
       useStatsStore.getState().finished(cmd.command, cmd.exitCode, cmd.durationMs)
       const current = useSettingsStore.getState().settings
+      if (cmd.exitCode !== 0 && activeRef.current) playCue(current.soundTheme, 'error')
       if (current.celebrate && activeRef.current && motionEnabled(current.motion) && shouldCelebrate(cmd.command, cmd.exitCode, cmd.durationMs)) {
         burstConfetti(host)
       }
@@ -420,6 +422,7 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
         }
       }
       if (data.includes('\r')) shellIntegration.noteEnter()
+      if (!data.startsWith('\x1b')) playCue(useSettingsStore.getState().settings.soundTheme, data.includes('\r') ? 'enter' : 'key')
       useTerminalStore.getState().setTabActivity(tabId, 'running')
       // Broadcast: yalnızca insan girdisi (ESC ile başlamayan) split'teki tüm
       // panellere gider; protokol yanıtları hep kendi PTY'sinde kalır. Komut
@@ -508,6 +511,7 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
     const bellSub = term.onBell(() => {
       useTerminalStore.getState().setTabActivity(tabId, activeRef.current ? 'waiting' : 'unread')
       if (!useSettingsStore.getState().settings.bell) return
+      if (activeRef.current) playCue(useSettingsStore.getState().settings.soundTheme, 'bell')
       host.classList.remove('bell-flash')
       // reflow: aynı sınıfın animasyonu üst üste gelen bell'lerde de yeniden başlasın
       void host.offsetWidth
@@ -748,7 +752,8 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
   const handleOpenPath = (): void => {
     const path = menu?.path
     closeMenu()
-    if (path?.canOpen) void window.termflow.system.openPath(path.path)
+    if (path?.canOpen && path.line && !path.isDirectory) void window.termflow.system.openInEditor(path.path, path.line, path.column)
+    else if (path?.canOpen) void window.termflow.system.openPath(path.path)
     else if (path) void window.termflow.system.revealInFolder(path.path)
   }
   const handleRevealInFolder = (): void => {
