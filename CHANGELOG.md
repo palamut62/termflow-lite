@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.10.0 - 2026-10-02
+
+- New widget view: the window turns into a compact 640 x 260 status widget in the top-right corner, with one terminal-style line per session (running, done, needs you, failed, idle), a sweeping character meter and the elapsed time. Drag it anywhere, keep it on top or not, collapse it to a single line, and click a line to jump back to that terminal. Running commands and agents keep going through the switch, and the full window comes back exactly where it was. Open it from the tab bar or the command palette.
+- Agent tabs get an optional animation panel on the right, drawn in the agent's own color (Claude Code orange, Codex blue). Choose the style in Settings > Appearance > Animation Style:
+  - ASCII face: one shaded ASCII character whose glowing eyes show what the agent is doing: focused, tired after a long run, waiting for you, surprised by new output, proud when done, angry on an error, asleep when the session ends.
+  - Pixel scenes: a pixel-art critter acts it out: a volcano erupting while tests run, laying bricks while it edits, digging while it explores, a flag and confetti when it is done, a storm on errors.
+  Turn it off in Settings or with the x on the panel.
+- Fixed idle shells showing as "Running" forever when shell integration is on. The status bar and widget now switch to "Waiting for input" when the prompt is back.
+- Fixed the CRT overlay drawing a second frame inside the terminal.
+- The built-in Codex profile color is now blue.
+
 ## 1.9.0 - 2026-10-02
 
 - Shell integration for PowerShell, pwsh, Git Bash, bash and zsh: every command gets a status line (running, passed, failed, cancelled) and slow or failed commands show their duration and exit code. `Ctrl+Up` / `Ctrl+Down` jumps between commands. Nothing is written to your profile or dotfiles; CMD and WSL are unchanged.
