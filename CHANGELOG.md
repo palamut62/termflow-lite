@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.11.0 - 2026-10-03
+
+- A new pixel-art critter for agent animations, drawn with proper shading: a hue-shifted five-tone ramp in the agent's own color (Claude Code orange, Codex blue), a selective outline, and walk, breathing, hop, cheer and sit poses.
+- The ASCII style now shows the same critter, rendered as shaded ASCII glyphs over a moving ASCII field. Its pose and eyes show what the agent is doing: walking and scanning while it works, tired after a long run, sitting and watching the terminal while it waits, hopping with wide eyes at new output, cheering when it is done, red with X eyes on an error, and asleep when the session ends.
+- The critter reacts to you and the agent: it turns to the terminal and says "Listening..." while you type, and it moves faster when output pours in.
+- Eyes now move toward where the critter is looking.
+
 ## 1.10.0 - 2026-10-02
 
 - New widget view: the window turns into a compact 640 x 260 status widget in the top-right corner, with one terminal-style line per session (running, done, needs you, failed, idle), a sweeping character meter and the elapsed time. Drag it anywhere, keep it on top or not, collapse it to a single line, and click a line to jump back to that terminal. Running commands and agents keep going through the switch, and the full window comes back exactly where it was. Open it from the tab bar or the command palette.
