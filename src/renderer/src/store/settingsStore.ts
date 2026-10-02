@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import { mergeProfiles } from '../../../shared/profiles'
 import { DEFAULT_SETTINGS, type AppSettings, type ShellInfo } from '../../../shared/types'
 import { applyThemeToDom, resolveTheme, tabBarSurface } from '../themes/themes'
+import { effectiveMotion, withViewTransition } from '../motion'
+import { backdropActive, backdropAlpha } from '../backdrop'
 
 /** .tab-bar'ın alt kenarlığı (tabs.css: border-bottom: 1px). */
 const TAB_BAR_BORDER = 1
@@ -76,9 +78,17 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   },
 
   async update(patch) {
+    const prev = get().settings
     const next = await window.termflow.settings.set(patch)
-    set({ settings: next })
-    get().applyTheme()
+    const themeChanged = next.themeId !== prev.themeId || next.customTheme !== prev.customTheme
+    const apply = (): void => {
+      set({ settings: next })
+      get().applyTheme()
+    }
+    // Tema değişimi anlık yerine kısa bir crossfade ile geçer; yeni görünüm
+    // canlı çizildiği için xterm canvas'ı da geçişe katılır.
+    if (themeChanged && patch.customTheme === undefined) withViewTransition(next.motion, apply)
+    else apply()
   },
 
   applyTheme() {
@@ -90,8 +100,10 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     // gelir; yükseklik ise .tab-bar'ın alt kenarlığı hariç tutularak verilir ki
     // sekme barının alt çizgisi overlay bölgesinde de kesintisiz görünsün.
     const surface = tabBarSurface(theme)
+    const backdrop = backdropActive(s)
     window.termflow?.window?.setTitleBarOverlay({
-      color: normalizeHex(surface.background, '#1e1e1e'),
+      // Backdrop açıkken native düğme şeridi de malzemeyi göstersin.
+      color: backdrop ? '#00000000' : normalizeHex(surface.background, '#1e1e1e'),
       symbolColor: normalizeHex(surface.foreground, '#cccccc'),
       height: Math.max(1, s.tabHeight - TAB_BAR_BORDER)
     })
@@ -104,5 +116,16 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     // Window border / corner radius (PRD §30) — .app üzerinde kullanılır.
     style.setProperty('--window-border', s.windowBorder ? '1px solid var(--border-color)' : 'none')
     style.setProperty('--window-corner-radius', `${s.cornerRadius}px`)
+    document.documentElement.dataset.motion = effectiveMotion(s.motion)
+    // Backdrop: kabuk yüzeyleri yarı saydam; terminal tonu tek katmanda (.terminal-area).
+    document.documentElement.dataset.backdrop = backdrop ? 'on' : 'off'
+    if (backdrop) {
+      const alpha = `${backdropAlpha(s)}%`
+      style.setProperty('--surface-alpha', alpha)
+      for (const name of ['--tab-background', '--tab-active-background', '--tab-inactive-background', '--status-bar-background']) {
+        const base = style.getPropertyValue(name).trim()
+        if (base) style.setProperty(name, `color-mix(in srgb, ${base} ${alpha}, transparent)`)
+      }
+    }
   }
 }))

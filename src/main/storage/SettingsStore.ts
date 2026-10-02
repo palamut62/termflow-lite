@@ -3,6 +3,7 @@ import { dirname } from 'path'
 import { DEFAULT_SETTINGS, type AppSettings } from '../../shared/types'
 
 const WRITE_DEBOUNCE_MS = 300
+const BACKDROPS: AppSettings['backdrop'][] = ['none', 'mica', 'acrylic', 'tabbed']
 
 /**
  * JSON-backed settings persistence (userData/settings.json). Reads are
@@ -37,6 +38,9 @@ export class SettingsStore {
       ? settings.providerProfiles
       : structuredClone(DEFAULT_SETTINGS.providerProfiles)
     merged.sshConnections = Array.isArray(settings.sshConnections) ? settings.sshConnections : []
+    // Eski "Blur" anahtarı: açıksa acrylic backdrop olarak devam eder.
+    if ((settings as Partial<AppSettings>).backdrop === undefined && settings.blur) merged.backdrop = 'acrylic'
+    if (!BACKDROPS.includes(merged.backdrop)) merged.backdrop = 'none'
     return merged
   }
 

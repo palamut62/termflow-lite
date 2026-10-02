@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Minus, Plus } from 'lucide-react'
 import { DEFAULT_THEME_ID, getTheme, THEMES } from '../themes/themes'
 import { useSettingsStore } from '../store/settingsStore'
-import type { ThemeColors } from '../../../shared/types'
+import type { BackdropMaterial, CursorEffect, MotionLevel, ThemeColors } from '../../../shared/types'
 import { ColorPicker, Field, NumberInput, Select, TextInput, Toggle } from './Settings'
 
 const FONT_SUGGESTIONS = [
@@ -254,6 +254,18 @@ export function AppearanceSettings(): React.JSX.Element {
             onChange={(v) => void update({ cursorStyle: v as 'block' | 'bar' | 'underline' })}
           />
         </Field>
+        <Field label="Effect" hint="Trail or glow when the cursor moves; pauses during heavy output">
+          <Select
+            value={settings.cursorEffect}
+            options={[
+              { value: 'none', label: 'None' },
+              { value: 'trail', label: 'Trail' },
+              { value: 'blaze', label: 'Blaze' }
+            ]}
+            onChange={(v) => void update({ cursorEffect: v as CursorEffect })}
+            disabled={settings.motion === 'off'}
+          />
+        </Field>
         <Field label="Blink">
           <Toggle checked={settings.cursorBlink} onChange={(v) => void update({ cursorBlink: v })} label="Cursor blink" />
         </Field>
@@ -267,6 +279,24 @@ export function AppearanceSettings(): React.JSX.Element {
         </Field>
         <Field label="Width" hint="1-4 (for the bar cursor)">
           <NumberInput value={settings.cursorWidth} min={1} max={4} onChange={(v) => void update({ cursorWidth: v })} />
+        </Field>
+      </section>
+
+      <section>
+        <div className="settings-section-title">Motion</div>
+        <Field
+          label="Animations"
+          hint="Tab, split, menu and theme transitions. The system 'reduce motion' preference always turns them off."
+        >
+          <Select
+            value={settings.motion}
+            options={[
+              { value: 'off', label: 'Off' },
+              { value: 'subtle', label: 'Subtle' },
+              { value: 'full', label: 'Full' }
+            ]}
+            onChange={(v) => void update({ motion: v as MotionLevel })}
+          />
         </Field>
       </section>
 
@@ -285,16 +315,35 @@ export function AppearanceSettings(): React.JSX.Element {
           />
         </Field>
         <Field
-          label="Blur"
-          hint={isWindows ? 'Windows 11 acrylic background' : 'only has an effect on Windows 11'}
+          label="Backdrop"
+          hint={isWindows ? 'Windows 11 system material behind the window (22H2 and later)' : 'only has an effect on Windows 11'}
         >
-          <Toggle
-            checked={settings.blur}
-            onChange={(v) => void update({ blur: v })}
-            label="Blur"
+          <Select
+            value={settings.backdrop}
+            options={[
+              { value: 'none', label: 'None' },
+              { value: 'mica', label: 'Mica' },
+              { value: 'acrylic', label: 'Acrylic' },
+              { value: 'tabbed', label: 'Mica Alt (tabbed)' }
+            ]}
+            onChange={(v) => void update({ backdrop: v as BackdropMaterial })}
             disabled={!isWindows}
           />
         </Field>
+        {isWindows && settings.backdrop !== 'none' && (
+          <Field label="Backdrop Tint" hint={`${settings.backdropTint}% surface opacity over the material`}>
+            <input
+              type="range"
+              className="settings-range"
+              min={20}
+              max={100}
+              step={1}
+              value={settings.backdropTint}
+              onChange={(e) => void update({ backdropTint: Number(e.target.value) })}
+              aria-label="Backdrop tint"
+            />
+          </Field>
+        )}
         <Field label="Window Border" hint="adds a 1px border around the window content">
           <Toggle
             checked={settings.windowBorder}

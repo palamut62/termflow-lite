@@ -11,6 +11,9 @@ import { resolveDefaultProfileId, useSettingsStore } from '../store/settingsStor
 import { broadcastTargetIds, dataHandlers, exitHandlers, searchAddons, useTerminalStore } from '../store/terminalStore'
 import { useCommandHistoryStore } from '../store/commandHistoryStore'
 import { resolveTheme } from '../themes/themes'
+import { backdropActive, terminalTheme } from '../backdrop'
+import { CursorFx } from './cursorFx'
+import { motionEnabled } from '../motion'
 import { formatDroppedPaths } from './dropPaths'
 import { getPathAtMouse, registerPathLinkProvider, type PathMenuInfo } from './pathLinks'
 import { TerminalContextMenu } from './TerminalContextMenu'
@@ -176,8 +179,9 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
       cursorWidth: settings.cursorWidth,
       letterSpacing: settings.letterSpacing,
       scrollback: settings.scrollback,
-      // cursorColor override: '' = tema default (PRD §32).
-      theme: settings.cursorColor ? { ...themeColors, cursor: settings.cursorColor } : themeColors,
+      // cursorColor override: '' = tema default (PRD §32); backdrop'ta saydam zemin.
+      theme: terminalTheme(themeColors, settings),
+      allowTransparency: backdropActive(settings),
       allowProposedApi: true,
       // Draw box-drawing / block glyphs procedurally instead of using the
       // font's own (often misaligned) glyphs — keeps TUI borders crisp.
@@ -203,6 +207,15 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
     syncLigatures(term, settings.fontLigatures)
     termRef.current = term
     fitRef.current = fit
+    // İmleç efekti yalnızca görünen/aktif sekmede ve hareket açıkken çizilir.
+    const cursorFx = new CursorFx(term, () => {
+      const current = useSettingsStore.getState().settings
+      return {
+        effect: current.cursorEffect,
+        color: current.cursorColor || resolveTheme(current).colors.cursor,
+        enabled: activeRef.current && motionEnabled(current.motion)
+      }
+    })
     // Terminaldeki tıklanabilir yollar (PRD ek). Ayarlar canlı okunur:
     // clickablePaths kapatılınca provider link üretmeyi bırakır.
     const pathLinksDisposable = registerPathLinkProvider(
@@ -507,6 +520,7 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
       selSub.dispose()
       bellSub.dispose()
       pathLinksDisposable.dispose()
+      cursorFx.dispose()
       host.removeEventListener('contextmenu', onCtxMenu)
       // Bu view'lar tabId ile anahtarlanır; unmount yalnızca kendi kaydını siler.
       dataHandlers.delete(tabId)
@@ -555,7 +569,7 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
     // değiştirdiği için aşağıdaki resize kanalı yeniden fit edecek.
     term.options.letterSpacing = settings.letterSpacing
     const themeColors = resolveTheme(settings).colors
-    term.options.theme = settings.cursorColor ? { ...themeColors, cursor: settings.cursorColor } : themeColors
+    term.options.theme = terminalTheme(themeColors, settings)
     // A font/size change alters the cell metrics, so the fit result may change;
     // route it through the single atomic resize channel.
     scheduleResizeRef.current?.()
@@ -572,8 +586,24 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
     settings.letterSpacing,
     settings.scrollback,
     settings.themeId,
-    settings.customTheme
+    settings.customTheme,
+    settings.backdrop
   ])
+
+  // Saydamlık değişince WebGL atlası yeniden kurulmalı (glif kenar yumuşatması
+  // opak/saydam zemine göre farklı hazırlanır).
+  useEffect(() => {
+    const term = termRef.current
+    if (!term) return
+    const transparent = backdropActive(settings)
+    if (term.options.allowTransparency === transparent) return
+    term.options.allowTransparency = transparent
+    webglRef.current?.dispose()
+    webglRef.current = null
+    syncWebgl(term, settings.gpuAcceleration)
+    term.refresh(0, term.rows - 1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.backdrop])
 
   // GPU / inline image / ligature ayarları terminali yeniden yaratmadan,
   // yalnızca ilgili addon'ı yükleyip atarak uygulanır.

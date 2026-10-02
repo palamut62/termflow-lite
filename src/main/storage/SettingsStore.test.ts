@@ -25,6 +25,18 @@ describe('SettingsStore', () => {
     expect(existsSync(file())).toBe(false) // nothing written until update/flush
   })
 
+  it('migrates the legacy blur toggle to an acrylic backdrop', () => {
+    const legacy: Partial<AppSettings> = { ...DEFAULT_SETTINGS, blur: true }
+    delete legacy.backdrop
+    writeFileSync(file(), JSON.stringify(legacy), 'utf-8')
+    expect(new SettingsStore(file()).get().backdrop).toBe('acrylic')
+  })
+
+  it('rejects an unknown backdrop material', () => {
+    writeFileSync(file(), JSON.stringify({ ...DEFAULT_SETTINGS, backdrop: 'glass' }), 'utf-8')
+    expect(new SettingsStore(file()).get().backdrop).toBe('none')
+  })
+
   it('loads an existing file', () => {
     writeFileSync(file(), JSON.stringify({ ...DEFAULT_SETTINGS, fontSize: 17, themeId: 'nord' }), 'utf-8')
     const store = new SettingsStore(file())

@@ -1,0 +1,166 @@
+/* Hareket sistemi: html[data-motion] = off | subtle | full (settingsStore.applyTheme).
+   Tüm animasyonlar transform/opacity ile sınırlıdır; xterm ölçümü (fit) etkilenmez. */
+
+:root {
+  --motion-fast: 110ms;
+  --motion-base: 170ms;
+  --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --motion-pop: cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+:root[data-motion='full'] {
+  --motion-fast: 150ms;
+  --motion-base: 240ms;
+}
+
+/* Kapalı mod ve sistem "reduce motion": tüm geçişler anında. */
+:root[data-motion='off'] *,
+:root[data-motion='off'] *::before,
+:root[data-motion='off'] *::after {
+  animation-duration: 0s !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0s !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0s !important;
+  }
+}
+
+/* ---- Tema crossfade (document.startViewTransition) ---- */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 220ms;
+  animation-timing-function: ease-out;
+}
+
+/* ---- Sekmeler ---- */
+.tab {
+  animation: tab-enter var(--motion-base) var(--motion-ease);
+}
+
+@keyframes tab-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+/* Aktif sekmenin üst vurgu çizgisi sekmeler arasında kayar. */
+.tab-list {
+  position: relative;
+}
+
+.tab-list .tab-active {
+  box-shadow: none;
+}
+
+.tab-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 1px;
+  width: 0;
+  background: var(--tab-active-top-border);
+  pointer-events: none;
+  z-index: 1;
+  transition:
+    transform var(--motion-base) var(--motion-ease),
+    width var(--motion-base) var(--motion-ease);
+}
+
+:root[data-motion='full'] .tab-indicator {
+  height: 2px;
+  box-shadow: 0 0 8px var(--tab-active-top-border);
+}
+
+.tab-indicator-instant {
+  transition: none;
+}
+
+/* ---- Split / pane ---- */
+.terminal-view.split-pane,
+.pane-leaf {
+  animation: pane-enter var(--motion-base) var(--motion-ease);
+}
+
+@keyframes pane-enter {
+  from {
+    opacity: 0.35;
+  }
+}
+
+:root[data-motion='full'] .terminal-view.split-pane-second,
+:root[data-motion='full'] .pane-leaf {
+  animation-name: pane-enter-full;
+}
+
+@keyframes pane-enter-full {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+}
+
+/* ---- Menüler, paletler, dialoglar ---- */
+.new-tab-menu,
+.ctx-menu {
+  animation: menu-pop var(--motion-fast) var(--motion-ease);
+  transform-origin: top left;
+}
+
+@keyframes menu-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+
+.settings-backdrop,
+.palette-backdrop {
+  animation: backdrop-in var(--motion-fast) ease-out;
+}
+
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.settings-panel,
+.task-palette,
+.confirm-dialog,
+.handover-dialog {
+  animation: dialog-in var(--motion-base) var(--motion-ease);
+}
+
+:root[data-motion='full'] .settings-panel,
+:root[data-motion='full'] .task-palette,
+:root[data-motion='full'] .confirm-dialog,
+:root[data-motion='full'] .handover-dialog {
+  animation-timing-function: var(--motion-pop);
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+/* Çıkış overlay'i (process exited) yumuşak gelsin; ortalama transform'u korunur. */
+.exit-overlay {
+  animation: exit-overlay-in var(--motion-base) var(--motion-ease);
+}
+
+@keyframes exit-overlay-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 8px)) scale(0.98);
+  }
+}

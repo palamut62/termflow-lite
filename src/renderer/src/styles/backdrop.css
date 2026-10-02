@@ -1,0 +1,19 @@
+/* Windows 11 backdrop (Mica / Acrylic / Tabbed): html[data-backdrop='on'].
+   Dış katmanlar saydam, terminal tonu yalnızca .terminal-area'da çizilir;
+   böylece iç içe yüzeyler arka planı katlanarak karartmaz. */
+:root[data-backdrop='on'],
+:root[data-backdrop='on'] body,
+:root[data-backdrop='on'] .app,
+:root[data-backdrop='on'] .pane-leaf,
+:root[data-backdrop='on'] .agent-work-panel,
+:root[data-backdrop='on'] .terminal-host .xterm .xterm-viewport {
+  background: transparent;
+}
+
+:root[data-backdrop='on'] .terminal-area {
+  background: color-mix(in srgb, var(--terminal-background) var(--surface-alpha, 78%), transparent);
+}
+
+:root[data-backdrop='on'] .session-rail {
+  background: color-mix(in srgb, var(--panel-background) var(--surface-alpha, 78%), transparent);
+}

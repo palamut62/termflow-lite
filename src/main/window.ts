@@ -6,7 +6,7 @@ import type { AppSettings } from '../shared/types'
 /** Windows overlay yüksekliği makul bir aralıkta tutulur. */
 const MIN_TITLEBAR_HEIGHT = 28
 const MAX_TITLEBAR_HEIGHT = 64
-const HEX_COLOR = /^#[0-9a-fA-F]{6}$/
+const HEX_COLOR = /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/
 
 /** Tema bilinmeden önceki makul varsayılan (renderer applyTheme'de günceller). */
 const FALLBACK_DARK = { color: '#1e1e1e', symbolColor: '#cccccc' }
@@ -58,19 +58,27 @@ export function applyTitleBarOverlay(win: BrowserWindow, payload: TitleBarOverla
 }
 
 /**
- * Gerçek pencere opaklığı + Windows 11 acrylic blur (PRD §30). `transparent:
- * true` bilinçli olarak kullanılmaz — stabilite görsel detaydan önce gelir
- * (PRD §68). Opaklık %30'un altına inmez ki pencere görünmez kalmasın.
+ * Gerçek pencere opaklığı + Windows 11 sistem backdrop'u (Mica / Acrylic /
+ * Tabbed). `transparent: true` bilinçli olarak kullanılmaz — stabilite görsel
+ * detaydan önce gelir (PRD §68); malzemenin görünmesi için yalnızca pencere arka
+ * plan rengi saydam yapılır, yüzeyleri renderer yarı saydam çizer. Opaklık
+ * %30'un altına inmez ki pencere görünmez kalmasın.
  */
 export function applyWindowAppearance(
   win: BrowserWindow,
-  settings: Pick<AppSettings, 'opacity' | 'blur'>
+  settings: Pick<AppSettings, 'opacity' | 'backdrop'>
 ): void {
   const raw = Number.isFinite(settings.opacity) ? settings.opacity / 100 : 1
   win.setOpacity(Math.min(1, Math.max(0.3, raw)))
-  // setBackgroundMaterial yalnızca Windows'ta (11+ acrylic) anlamlıdır.
+  // setBackgroundMaterial yalnızca Windows 11 22H2+ üzerinde anlamlıdır.
   if (process.platform === 'win32') {
-    win.setBackgroundMaterial(settings.blur ? 'acrylic' : 'none')
+    const material = settings.backdrop ?? 'none'
+    try {
+      win.setBackgroundColor(material === 'none' ? '#1e1e1e' : '#00000000')
+      win.setBackgroundMaterial(material)
+    } catch {
+      // Eski Windows: malzeme desteklenmiyor, opak pencere ile devam.
+    }
   }
 }
 

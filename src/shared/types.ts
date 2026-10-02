@@ -255,6 +255,8 @@ export interface AppSettings {
   letterSpacing: number
   cursorStyle: 'block' | 'bar' | 'underline'
   cursorBlink: boolean
+  /** İmleç hareket efekti (overlay canvas); hareket ayarı kapalıyken çizilmez. */
+  cursorEffect: CursorEffect
   scrollback: number
   /** WebGL renderer: 'auto'/'on' dener, 'off' DOM renderer'da kalır. */
   gpuAcceleration: 'auto' | 'on' | 'off'
@@ -263,7 +265,12 @@ export interface AppSettings {
   terminalPadding: number
   /** 0-100, 100 = opak */
   opacity: number
+  /** Eski acrylic anahtarı; normalize sırasında `backdrop: 'acrylic'`a taşınır. */
   blur: boolean
+  /** Windows 11 sistem arka plan malzemesi; 'none' dışındakiler yüzeyleri yarı saydam yapar. */
+  backdrop: BackdropMaterial
+  /** Backdrop açıkken uygulama yüzeylerinin opaklığı (%). */
+  backdropTint: number
   /** Pencere içeriğine 1px kenarlık çizer (PRD §30). */
   windowBorder: boolean
   /** İç yüzey köşe yuvarlaklığı, 0-20 px (PRD §30). */
@@ -316,7 +323,16 @@ export interface AppSettings {
   autoCheckUpdates: boolean
   /** Yeni ajan sekmelerinin varsayılan güvenlik profili. */
   defaultAgentPermissionMode: AgentPermissionMode
+  /**
+   * Arayüz animasyon yoğunluğu. 'off' tüm geçişleri kapatır; sistemin
+   * "reduce motion" tercihi her zaman 'off' gibi davranır.
+   */
+  motion: MotionLevel
 }
+
+export type MotionLevel = 'off' | 'subtle' | 'full'
+export type BackdropMaterial = 'none' | 'mica' | 'acrylic' | 'tabbed'
+export type CursorEffect = 'none' | 'trail' | 'blaze'
 
 /**
  * Otomatik güncelleme durumu (electron-updater). Main tarafından üretilir,
@@ -358,12 +374,15 @@ export const DEFAULT_SETTINGS: AppSettings = {
   letterSpacing: 0,
   cursorStyle: 'block',
   cursorBlink: true,
+  cursorEffect: 'none',
   scrollback: 10000,
   gpuAcceleration: 'auto',
   imageSupport: true,
   terminalPadding: 8,
   opacity: 100,
   blur: false,
+  backdrop: 'none',
+  backdropTint: 78,
   windowBorder: false,
   cornerRadius: 0,
   tabHeight: 36,
@@ -444,5 +463,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   quakeHideOnBlur: true,
   quakeHeightPercent: 50,
   autoCheckUpdates: true,
-  defaultAgentPermissionMode: 'workspace'
+  defaultAgentPermissionMode: 'workspace',
+  motion: 'subtle'
 }

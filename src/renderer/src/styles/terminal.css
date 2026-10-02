@@ -37,6 +37,16 @@
   }
 }
 
+/* İmleç efekti katmanı (cursorFx.ts): xterm ekranının üstünde, tıklamayı geçirir. */
+.terminal-host .cursor-fx {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+}
+
 /* xterm canvas'ları host'u doldursun, taşma olmasın. */
 .terminal-host .xterm {
   height: 100%;

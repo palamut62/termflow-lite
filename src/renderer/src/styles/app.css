@@ -2,6 +2,8 @@
 @import './terminal.css';
 @import './tabs.css';
 @import './settings.css';
+@import './motion.css';
+@import './backdrop.css';
 
 * {
   box-sizing: border-box;

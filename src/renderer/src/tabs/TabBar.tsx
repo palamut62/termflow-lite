@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, DragEvent } from 'react'
 import { ChevronDown, Columns2, PanelTopClose, Plus, Rows2, PanelLeft } from 'lucide-react'
 import { resolveDefaultProfileId, useSettingsStore } from '../store/settingsStore'
@@ -8,6 +8,7 @@ import { PathLauncherModal } from './PathLauncherModal'
 import { WorktreeLauncherModal } from './WorktreeLauncherModal'
 import { GitHubPanel } from '../components/GitHubPanel'
 import { TerminalTab } from './TerminalTab'
+import { effectiveMotion } from '../motion'
 
 interface TabBarProps {
   height: number
@@ -35,6 +36,49 @@ export function TabBar({ height }: TabBarProps): React.JSX.Element {
   // Native HTML5 DnD reorder (PRD §14): dragged tab + insertion indicator.
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [dropPos, setDropPos] = useState<{ tabId: string; before: boolean } | null>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+  const indicatorRef = useRef<HTMLDivElement>(null)
+  /** Önceki render'daki sekme x konumları (FLIP). */
+  const tabLefts = useRef(new Map<string, number>())
+
+  // FLIP: sekme açılıp kapanınca ya da yer değiştirince kalanlar yeni yerlerine
+  // kayar; aktif sekme çizgisi de hedef sekmeye süzülür. Sürüklerken FLIP
+  // yapılmaz, yoksa dönüştürülmüş dikdörtgen hover hesabını şaşırtır.
+  useLayoutEffect(() => {
+    const list = listRef.current
+    if (!list) return
+    const motion = effectiveMotion(useSettingsStore.getState().settings.motion)
+    const next = new Map<string, number>()
+    let activeEl: HTMLElement | null = null
+    for (const el of list.querySelectorAll<HTMLElement>('[data-tab-id]')) {
+      const id = el.dataset.tabId ?? ''
+      const left = el.offsetLeft
+      next.set(id, left)
+      if (id === activeTabId) activeEl = el
+      const prev = tabLefts.current.get(id)
+      if (motion !== 'off' && !draggedId && prev !== undefined && prev !== left) {
+        el.animate([{ transform: `translateX(${prev - left}px)` }, { transform: 'none' }], {
+          duration: motion === 'full' ? 240 : 170,
+          easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)'
+        })
+      }
+    }
+    tabLefts.current = next
+    const indicator = indicatorRef.current
+    if (!indicator) return
+    if (!activeEl) {
+      indicator.style.opacity = '0'
+      return
+    }
+    // İlk konumlandırma animasyonsuz olsun (soldan kayarak gelmesin).
+    const instant = indicator.style.opacity !== '1'
+    indicator.classList.toggle('tab-indicator-instant', instant)
+    indicator.style.transform = `translateX(${activeEl.offsetLeft}px)`
+    indicator.style.width = `${activeEl.offsetWidth}px`
+    indicator.style.opacity = '1'
+    if (instant) void indicator.offsetWidth
+    indicator.classList.remove('tab-indicator-instant')
+  }, [tabs, activeTabId, draggedId])
 
   // "+" opens a tab with the default profile (PRD §15); the caret beside it
   // opens the NewTabMenu with every shell + custom profile.
@@ -81,7 +125,8 @@ export function TabBar({ height }: TabBarProps): React.JSX.Element {
 
   return (
     <div className="tab-bar" style={{ height, ...titleBarInset } as CSSProperties}>
-      <div className="tab-list" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
+      <div ref={listRef} className="tab-list" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
+        <div ref={indicatorRef} className="tab-indicator" aria-hidden="true" />
         {tabs.map((tab) => (
           <TerminalTab
             key={tab.id}

@@ -25,7 +25,7 @@ export function registerSettingsIpc(
       manager.setScrollback(patch.scrollback)
     }
     // Opacity/blur pencere seviyesinde canlı uygulanır (PRD §30).
-    if (typeof patch.opacity === 'number' || typeof patch.blur === 'boolean') {
+    if (typeof patch.opacity === 'number' || typeof patch.backdrop === 'string') {
       const win = getWindow()
       if (win && !win.isDestroyed()) applyWindowAppearance(win, next)
     }
