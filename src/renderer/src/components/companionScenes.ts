@@ -197,9 +197,9 @@ class Pixels {
 // index-mapped poses in critterSprites.ts. Ramp tokens are recolored with the
 // agent's own color at runtime; eyes are drawn here so any pose shows any mood.
 
-type CritterPoseName = keyof typeof CRITTER
+export type CritterPoseName = keyof typeof CRITTER
 
-interface CritterPose {
+export interface CritterPose {
   frame: CritterPoseName
   eyes?: 'open' | 'closed' | 'happy' | 'dead' | 'wide'
   /** Where the eyes look: -1 left .. 1 right (the glint follows). */
@@ -208,18 +208,31 @@ interface CritterPose {
 
 const SPRITE_COLORS: Record<string, PixelColor> = { o: 'line', '0': 'r0', '1': 'r1', '2': 'r2', '3': 'r3', '4': 'r4' }
 
+/**
+ * The critter in one pose with its eyes, as a CRITTER_W x CRITTER_H grid of
+ * palette tokens (null = transparent). Shared by both animation styles: the
+ * pixel scenes blit it, the ASCII style turns it into shaded glyphs.
+ */
+export function critterImage(pose: CritterPose): (PixelColor | null)[][] {
+  const px = new Pixels(CRITTER_W, CRITTER_H)
+  critter(px, 0, 0, pose)
+  return Array.from({ length: CRITTER_H }, (_, y) => px.data.slice(y * CRITTER_W, (y + 1) * CRITTER_W))
+}
+
 /** Draws the critter with its sprite's top-left corner at (x, y). */
 function critter(px: Pixels, x: number, y: number, pose: CritterPose): void {
   const sprite = CRITTER[pose.frame]
   px.sprite(x, y, sprite.rows, SPRITE_COLORS)
   const [ex0, ey] = sprite.eyes
   const look = Math.max(-1, Math.min(1, Math.round(pose.look ?? 0)))
-  for (const ex of [x + ex0, x + ex0 + sprite.eyeGap]) {
+  for (const eyeX of [x + ex0, x + ex0 + sprite.eyeGap]) {
     const top = y + ey
+    // Looking left or right moves the open eyes a pixel that way.
+    const ex = eyeX + look
     switch (pose.eyes ?? 'open') {
       case 'open':
         px.rect(ex, top, 2, 3, 'ink')
-        px.set(ex + (look > 0 ? 1 : 0), top + (look === 0 ? 0 : 1), 'white')
+        px.set(ex + (look > 0 ? 1 : 0), top, 'white')
         break
       case 'wide':
         px.rect(ex, top - 1, 2, 4, 'ink')
@@ -243,12 +256,12 @@ function critter(px: Pixels, x: number, y: number, pose: CritterPose): void {
 }
 
 /** Walk cycle at ~140 ms per frame (contact - passing - contact - passing). */
-function walkFrame(t: number): CritterPoseName {
+export function walkFrame(t: number): CritterPoseName {
   return (['walk0', 'walk1', 'walk2', 'walk3'] as const)[Math.floor((t * 110) / 140) % 4]
 }
 
 /** Idle breathing, ping-pong at ~330 ms. */
-function idleFrame(t: number): CritterPoseName {
+export function idleFrame(t: number): CritterPoseName {
   return Math.floor(t / 3) % 2 ? 'idle1' : 'idle0'
 }
 
@@ -256,7 +269,7 @@ function idleFrame(t: number): CritterPoseName {
  * A hop with anticipation: crouch, launch into the air, land with a squash,
  * then rest. Returns the pose and how high the body is off the ground.
  */
-function hop(t: number, period: number, height: number, airPose: CritterPoseName = 'air'): { frame: CritterPoseName; lift: number } {
+export function hop(t: number, period: number, height: number, airPose: CritterPoseName = 'air'): { frame: CritterPoseName; lift: number } {
   const p = t % period
   if (p < 2) return { frame: 'crouch', lift: 0 }
   if (p < 6) return { frame: airPose, lift: Math.round(Math.sin(((p - 2) / 4) * Math.PI) * height) }
@@ -264,7 +277,7 @@ function hop(t: number, period: number, height: number, airPose: CritterPoseName
   return { frame: idleFrame(t), lift: 0 }
 }
 
-function blink(t: number): boolean {
+export function blink(t: number): boolean {
   return t % 37 < 2
 }
 

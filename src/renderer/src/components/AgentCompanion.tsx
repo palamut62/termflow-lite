@@ -47,15 +47,17 @@ function facePalette(canvas: HTMLCanvasElement): Record<CompanionColor, string> 
   const body = parseRgb(getComputedStyle(canvas).color)
   const bg = parseRgb(css('--terminal-background', '#1e1e1e'), [30, 30, 30])
   const muted = parseRgb(css('--tab-inactive-foreground', '#8b8b8b'), [139, 139, 139])
+  // The same hue-shifted ramp as the pixel critter, so both styles match.
+  const { ramp } = critterRamp(body)
   return {
     bg: mixRgb(bg, muted, 0.38),
-    v: mixRgb(bg, body, 0.22),
-    b0: mixRgb(bg, body, 0.4),
-    b1: mixRgb(bg, body, 0.62),
-    b2: mixRgb(bg, body, 0.82),
-    b3: `rgb(${body.join(', ')})`,
-    b4: mixRgb(body, WHITE, 0.3),
-    glow: mixRgb(body, WHITE, 0.55),
+    r0: ramp[0],
+    r1: ramp[1],
+    r2: ramp[2],
+    r3: ramp[3],
+    r4: ramp[4],
+    // A near-black outline would vanish on a dark panel; a dim ramp tone still draws the edge.
+    line: mixRgb(parseRgb(ramp[0]), bg, 0.45),
     eye: '#ffffff',
     white: css('--term-bright-white', '#ffffff'),
     red: css('--term-bright-red', '#f14c4c'),
@@ -69,7 +71,7 @@ function facePalette(canvas: HTMLCanvasElement): Record<CompanionColor, string> 
 
 /**
  * Draws an ASCII frame with one fillText per glyph, batched by color so the
- * fill style changes only a few times. Glowing cells (eyes, brows, mouth) get
+ * fill style changes only a few times. The eye glints get
  * a soft shadow in a second pass; nothing else pays for it.
  */
 function paintFace(canvas: HTMLCanvasElement, frame: CompanionFrame, cellW: number, cellH: number, palette: Record<CompanionColor, string>, glow: string): void {
@@ -92,7 +94,7 @@ function paintFace(canvas: HTMLCanvasElement, frame: CompanionFrame, cellW: numb
     }
   })
   for (const [color, cells] of byColor) {
-    const glowing = color === 'glow' || color === 'eye'
+    const glowing = color === 'eye'
     ctx.shadowBlur = glowing ? 6 : 0
     ctx.shadowColor = glowing ? glow : 'transparent'
     ctx.fillStyle = palette[color]

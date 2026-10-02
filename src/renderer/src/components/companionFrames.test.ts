@@ -15,8 +15,12 @@ const COLS = 46
 const ROWS = 30
 const frame = (mood: CompanionMood, tick: number): ReturnType<typeof renderCompanion> => renderCompanion(mood, tick, COLS, ROWS)
 const text = (mood: CompanionMood, tick: number): string => frame(mood, tick).lines.join('\n')
-const eyeCells = (mood: CompanionMood, tick: number): number =>
-  frame(mood, tick).colors.flat().filter((color) => color === 'eye' || color === 'glow').length
+/** Cells of the eye glints (the white highlight in each open eye). */
+const glints = (mood: CompanionMood, tick: number, listening = false): number[] =>
+  renderCompanion(mood, tick, COLS, ROWS, 1.75, listening).colors.flatMap((row) => row.map((color, c) => (color === 'eye' ? c : -1))).filter((c) => c >= 0)
+/** Topmost row of the critter's body. */
+const critterTop = (mood: CompanionMood, tick: number): number =>
+  frame(mood, tick).colors.findIndex((row) => row.some((color) => color.startsWith('r') && color !== 'red'))
 
 describe('renderCompanion', () => {
   it('fills exactly the requested grid, with a color per cell', () => {
@@ -38,9 +42,17 @@ describe('renderCompanion', () => {
     expect(new Set(Array.from({ length: 30 }, (_, tick) => backgroundRow(tick))).size).toBeGreaterThan(1)
   })
 
-  it('draws one character in the agent color over a dim background', () => {
+  it('draws the pixel critter in its shading ramp over a dim background', () => {
     const colors = frame('waiting', 5).colors.flat()
-    for (const step of ['b0', 'b1', 'b2', 'b3', 'b4', 'bg', 'v']) expect(colors, step).toContain(step)
+    for (const tone of ['r1', 'r2', 'r3', 'r4', 'line', 'bg']) expect(colors, tone).toContain(tone)
+    // Brighter ramp tones get denser glyphs: the lit side reads as a rounded form.
+    const { lines, colors: grid } = frame('waiting', 5)
+    const RAMP = '.,-~:;=!*#$@'
+    const density = (tone: string): number => {
+      const glyphs = grid.flatMap((row, r) => row.map((color, c) => (color === tone ? RAMP.indexOf(lines[r][c]) : -1))).filter((i) => i >= 0)
+      return glyphs.reduce((a, b) => a + b, 0) / glyphs.length
+    }
+    expect(density('r4')).toBeGreaterThan(density('r1'))
   })
 
   it('is deterministic for the same tick', () => {
@@ -53,11 +65,16 @@ describe('renderCompanion', () => {
     }
   })
 
-  it('shows the emotion in the eyes', () => {
-    // Wide open when surprised, half shut when tired, thin lines when asleep.
-    expect(eyeCells('attention', 5)).toBeGreaterThan(eyeCells('waiting', 5))
-    expect(eyeCells('working', TIRED_TICKS + 5)).toBeLessThan(eyeCells('waiting', 5))
-    expect(eyeCells('sleeping', 5)).toBeLessThan(eyeCells('working', 5))
+  it('shows the emotion in the eyes and the pose', () => {
+    // Open eyes have glints; closed (asleep), happy (proud) and X (angry) eyes don't.
+    expect(glints('waiting', 5).length).toBeGreaterThan(0)
+    expect(glints('sleeping', 5)).toHaveLength(0)
+    expect(glints('done', 5)).toHaveLength(0)
+    expect(glints('error', 5)).toHaveLength(0)
+    // Tired eyes keep falling shut.
+    expect(glints('working', TIRED_TICKS + 2)).toHaveLength(0)
+    // Surprised and proud, it hops off the ground.
+    expect(critterTop('attention', 4)).toBeLessThan(critterTop('waiting', 4))
   })
 
   it('reacts with its own extras', () => {
@@ -120,12 +137,10 @@ describe('companionCaption', () => {
 
 describe('reacting to the user and the agent', () => {
   it('turns to listen while you type: eyes move toward the terminal', () => {
-    const eyeCenter = (listening: boolean): number => {
-      const { colors } = renderCompanion('waiting', 40, COLS, ROWS, 1.75, listening)
-      const cols = colors.flatMap((row) => row.map((color, c) => (color === 'eye' ? c : -1))).filter((c) => c >= 0)
-      return cols.reduce((a, b) => a + b, 0) / cols.length
-    }
-    expect(eyeCenter(true)).toBeLessThan(eyeCenter(false))
+    // Rested, it looks straight ahead; listening, its glints move toward the terminal.
+    const mean = (cells: number[]): number => cells.reduce((a, b) => a + b, 0) / cells.length
+    const tick = PROUD_TICKS + 10
+    expect(mean(glints('done', tick, true))).toBeLessThan(mean(glints('done', tick)))
     expect(companionCaption('working', 0, true)).toBe('Listening...')
   })
 
