@@ -401,7 +401,10 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
     const dataSub = term.onData((data) => {
       // Protocol replies (OSC/CSI, always ESC-prefixed) must reach background
       // PTYs too; only human keyboard input is restricted to the active tab.
-      if (!activeRef.current && !data.startsWith('\x1b')) return
+      // Pane'e tıklanınca activeRef bir sonraki React commit'inde güncellenir;
+      // o arada odaktaki terminale yazılan ilk tuşlar düşmesin.
+      const focused = term.textarea !== undefined && document.activeElement === term.textarea
+      if (!activeRef.current && !focused && !data.startsWith('\x1b')) return
       const tab = useTerminalStore.getState().tabs.find((item) => item.id === tabId)
       const cursorLine = term.buffer.active.getLine(term.buffer.active.cursorY)?.translateToString(true) ?? ''
       const sensitivePrompt = /(?:password|passphrase|token|secret|api[_ -]?key)[^\r\n]*:\s*$/i.test(cursorLine)
