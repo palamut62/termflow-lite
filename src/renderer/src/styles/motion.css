@@ -164,3 +164,71 @@
     transform: translate(-50%, calc(-50% + 8px)) scale(0.98);
   }
 }
+
+/* ---- Toast ---- */
+.toast-stack {
+  position: fixed;
+  right: 12px;
+  bottom: 36px;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 360px;
+  padding: 8px 10px 8px 12px;
+  background: var(--menu-background);
+  color: var(--menu-foreground);
+  border: 1px solid var(--widget-border);
+  border-left: 3px solid var(--accent-color);
+  border-radius: 4px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+  font-size: 12px;
+  pointer-events: auto;
+  animation: toast-in var(--motion-base) var(--motion-pop);
+}
+
+.toast-success { border-left-color: var(--term-green); }
+.toast-error { border-left-color: var(--term-red); }
+
+.toast-close {
+  display: grid;
+  place-items: center;
+  padding: 2px;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.toast-close:hover { opacity: 1; background: var(--menu-selection-background); }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+}
+
+/* ---- Status bar çıktı nabzı (OutputPulse) ---- */
+.status-pulse {
+  display: inline-flex;
+  align-items: center;
+  color: color-mix(in srgb, var(--status-bar-foreground) 85%, transparent);
+  animation: backdrop-in var(--motion-base) ease-out;
+}
+
+.status-pulse-waiting {
+  color: var(--term-yellow);
+}
+
+.confetti-layer {
+  position: fixed;
+  z-index: 450;
+  pointer-events: none;
+}

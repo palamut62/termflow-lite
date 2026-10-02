@@ -31,6 +31,7 @@ export const IPC = {
   WINDOW_TITLEBAR_OVERLAY: 'window:titlebar-overlay', // (TitleBarOverlayPayload) — Windows only
   WINDOW_NOTIFY: 'window:notify', // (CommandNotification) — sistem bildirimi
   WINDOW_FOCUS_TAB: 'window:focus-tab', // main -> renderer (tabId) — bildirime tıklandı
+  WINDOW_SAVE_SNAPSHOT: 'window:save-snapshot', // (CaptureRect, defaultName) -> kaydedilen yol | null
   DIALOG_OPEN_DIR: 'dialog:open-dir',
   DIALOG_OPEN_FILE: 'dialog:open-file', // -> seçilen dosya yolu | null
   UPDATE_CHECK: 'update:check', // -> UpdateStatus
@@ -216,6 +217,14 @@ export interface ProjectInfo {
   root: string
   technologies: string[]
   tasks: ProjectTask[]
+}
+
+/** Pencere içeriğinden PNG olarak kaydedilecek dikdörtgen (CSS px). */
+export interface CaptureRect {
+  x: number
+  y: number
+  width: number
+  height: number
 }
 
 /** Arka planda biten komut için sistem bildirimi. */

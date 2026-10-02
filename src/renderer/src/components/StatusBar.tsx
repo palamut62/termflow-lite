@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertCircle, Bookmark, Bot, Braces, Clock3, Command, Download, GitBranch, Loader2, Radio, RefreshCw, Server, ShieldCheck, X } from 'lucide-react'
+import { AlertCircle, Bookmark, Bot, Braces, Clock3, Command, Download, GitBranch, Loader2, Radio, RefreshCw, Server, ShieldCheck, Sparkles, X } from 'lucide-react'
 import type { AgentPermissionMode } from '../../../shared/types'
 import type { GitStatus, ProjectInfo } from '../../../shared/ipc'
 import { agentForProfile, sshFromProfileId } from '../../../shared/profiles'
@@ -13,6 +13,8 @@ import { useSavedCommandStore } from '../store/savedCommandStore'
 import { useAgentEventStore } from '../store/agentEventStore'
 import { initUpdateStatusBridge, shouldShowUpdateBadge, updateBadgeLabel, updateBadgeTitle, useUpdateStore } from '../store/updateStore'
 import { agentProfileOptions, switchActiveAgentProfile } from '../agentHandover'
+import { OutputPulse } from './OutputPulse'
+import { useStatsStore } from '../store/statsStore'
 
 const PERMISSION_MODES: AgentPermissionMode[] = ['safe', 'workspace', 'full']
 const PERMISSION_LABELS: Record<AgentPermissionMode, string> = {
@@ -152,6 +154,7 @@ export function StatusBar(): React.JSX.Element {
       <button className="status-action" onClick={() => useAgentSessionStore.getState().show()} title="Saved agent sessions"><Bot size={12} />Sessions</button>
       <button className="status-action" onClick={() => useAgentEventStore.getState().show()} title="Live agent activity and timeline"><Radio size={12} />Agents</button>
       <button className="status-action" onClick={() => useTaskPaletteStore.getState().show()} title="Command palette (Ctrl+Shift+P)"><Command size={12} />Commands</button>
+      <button className="status-action" onClick={() => useStatsStore.getState().show()} title="Your TermFlow stats and badges"><Sparkles size={12} />Wrapped</button>
       <span className="status-spacer" />
       {/* Yanlışlıkla açık kalmasın diye belirgin rozet; tıklama kapatır. */}
       {broadcastInput && (
@@ -180,6 +183,7 @@ export function StatusBar(): React.JSX.Element {
         </span>
       )}
       {git && <span className="status-item status-git" title={`${git.changedFiles} changed file${git.changedFiles === 1 ? '' : 's'}`}><GitBranch size={12} />{git.branch}{git.changedFiles > 0 ? ` (${git.changedFiles})` : ''}</span>}
+      <OutputPulse />
       <span className="status-item">{tabs.length} tab{tabs.length === 1 ? '' : 's'}</span>
       <UpdateBadge />
       {profileSwitchError && <span className="status-item status-switch-error" title="The active agent profile could not be changed"><AlertCircle size={12} />Switch failed</span>}

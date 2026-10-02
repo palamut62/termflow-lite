@@ -429,6 +429,25 @@ export const THEMES: Theme[] = [
   { id: 'custom', name: 'Custom', colors: DARK_PLUS }
 ]
 
+/** Fosfor ekran paletleri: her ANSI rengi aynı tonun parlaklık kademesi. */
+function phosphor(bg: string, dim: string, base: string, bright: string, selection: string): ThemeColors {
+  return {
+    background: bg, foreground: base, cursor: bright, selection,
+    black: bg, red: bright, green: base, yellow: bright, blue: dim, magenta: base, cyan: base, white: base,
+    brightBlack: dim, brightRed: bright, brightGreen: bright, brightYellow: bright,
+    brightBlue: base, brightMagenta: bright, brightCyan: bright, brightWhite: bright
+  }
+}
+
+/**
+ * Gizli retro temalar: Konami koduyla (↑↑↓↓←→←→BA) açılır; açılınca tema
+ * ızgarasında THEMES'in ardından listelenir.
+ */
+export const RETRO_THEMES: Theme[] = [
+  { id: 'retro-matrix', name: 'Matrix (retro)', colors: phosphor('#020a03', '#1d6b2a', '#33ff66', '#b4ffc8', '#0f3d18') },
+  { id: 'retro-amber', name: 'Amber CRT (retro)', colors: phosphor('#0d0700', '#7a4a00', '#ffb000', '#ffd68a', '#4a2c00') }
+]
+
 /**
  * Eski sürümlerden kalan tema id'leri (settings.json'da yaşayabilir) yeni VS
  * Code temalarına eşlenir; böylece mevcut kurulumlar güncellemeden sonra
@@ -450,6 +469,7 @@ export function getTheme(id: string): Theme {
   const mapped = LEGACY_THEME_IDS[id] ?? id
   return (
     THEMES.find((t) => t.id === mapped) ??
+    RETRO_THEMES.find((t) => t.id === mapped) ??
     THEMES.find((t) => t.id === DEFAULT_THEME_ID) ??
     THEMES[0]
   )

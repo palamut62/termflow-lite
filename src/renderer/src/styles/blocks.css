@@ -78,3 +78,35 @@
   15% { opacity: 1; }
   100% { opacity: 0; }
 }
+
+/* ---- Retro katman (settings.terminalEffect) ----
+   Yalnızca transform'suz kaplama + ekran filtresi; xterm ölçümü etkilenmez. */
+.terminal-host {
+  position: relative;
+}
+
+:root[data-term-effect='scanlines'] .terminal-host::after,
+:root[data-term-effect='crt'] .terminal-host::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 11;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 2px,
+    rgba(0, 0, 0, 0.16) 3px
+  );
+}
+
+:root[data-term-effect='crt'] .terminal-host::after {
+  background:
+    radial-gradient(ellipse at center, transparent 58%, rgba(0, 0, 0, 0.38) 100%),
+    repeating-linear-gradient(to bottom, transparent 0, transparent 2px, rgba(0, 0, 0, 0.2) 3px);
+}
+
+/* Fosfor ışıması: metin kendi renginde hafifçe parlar. */
+:root[data-term-effect='crt'] .terminal-host .xterm-screen {
+  filter: drop-shadow(0 0 2.5px color-mix(in srgb, var(--terminal-foreground) 55%, transparent));
+}

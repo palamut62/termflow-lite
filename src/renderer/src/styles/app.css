@@ -5,6 +5,7 @@
 @import './motion.css';
 @import './backdrop.css';
 @import './blocks.css';
+@import './wrapped.css';
 
 * {
   box-sizing: border-box;

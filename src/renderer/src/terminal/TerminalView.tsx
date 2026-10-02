@@ -13,6 +13,9 @@ import { useCommandHistoryStore } from '../store/commandHistoryStore'
 import { resolveTheme } from '../themes/themes'
 import { backdropActive, terminalTheme } from '../backdrop'
 import { CursorFx } from './cursorFx'
+import { recordOutput } from '../fun/outputMeter'
+import { burstConfetti, shouldCelebrate } from '../fun/confetti'
+import { useStatsStore } from '../store/statsStore'
 import { ShellIntegration, formatDuration, type FinishedCommand } from './shellIntegration'
 import { motionEnabled } from '../motion'
 import { formatDroppedPaths } from './dropPaths'
@@ -232,7 +235,11 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
     // OSC 133 komut blokları: gutter, süre/exit rozeti, gezinme, bildirim.
     const onCommandFinished = (cmd: FinishedCommand): void => {
       useTerminalStore.getState().setTabLastCommand(tabId, cmd.exitCode, cmd.durationMs)
+      useStatsStore.getState().finished(cmd.command, cmd.exitCode, cmd.durationMs)
       const current = useSettingsStore.getState().settings
+      if (current.celebrate && activeRef.current && motionEnabled(current.motion) && shouldCelebrate(cmd.command, cmd.exitCode, cmd.durationMs)) {
+        burstConfetti(host)
+      }
       const unseen = !activeRef.current || !document.hasFocus()
       if (!current.commandNotifications || !unseen || cmd.durationMs < NOTIFY_MIN_MS) return
       const tab = useTerminalStore.getState().tabs.find((t) => t.id === tabId)
@@ -267,6 +274,7 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
     const onDataHandler = (data: string): void => {
       if (ready) term.write(data)
       else queue.push(data)
+      recordOutput(tabId, data.length)
       recentOutput = (recentOutput + data).replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '').slice(-256)
       const activity = !activeRef.current
         ? 'unread'
@@ -349,9 +357,12 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
           const profile = mergeProfiles(settings.profiles).find((item) => item.id === profileId)
           const provider = providerFromProfileId(settings, profileId)
           const agent = agentKindForCommand(profile?.startupCommand || profile?.command || provider?.command)
-          if (agent) useAgentEventStore.getState().append(tabId, agent, permissionMode, {
-            kind: 'session', title: 'Agent session started', detail: `${agent} · ${permissionMode}`
-          })
+          if (agent) {
+            useAgentEventStore.getState().append(tabId, agent, permissionMode, {
+              kind: 'session', title: 'Agent session started', detail: `${agent} · ${permissionMode}`
+            })
+            useStatsStore.getState().agentSession()
+          }
         void window.termflow.pty.buffer(tabId).then((data) => {
           if (disposed) return
           if (data) term.write(data)
@@ -397,6 +408,7 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
                 profileId: tab.profileId,
                 profileName: tab.title
               })
+              useStatsStore.getState().command(command, tab.cwd || tab.launchCwd || '')
             }
             inputBuffer = ''
             capturingCommand = false

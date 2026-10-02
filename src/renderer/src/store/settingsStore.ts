@@ -117,6 +117,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     style.setProperty('--window-border', s.windowBorder ? '1px solid var(--border-color)' : 'none')
     style.setProperty('--window-corner-radius', `${s.cornerRadius}px`)
     document.documentElement.dataset.motion = effectiveMotion(s.motion)
+    document.documentElement.dataset.termEffect = s.terminalEffect
     // Backdrop: kabuk yüzeyleri yarı saydam; terminal tonu tek katmanda (.terminal-area).
     document.documentElement.dataset.backdrop = backdrop ? 'on' : 'off'
     if (backdrop) {

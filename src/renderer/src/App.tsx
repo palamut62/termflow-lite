@@ -25,6 +25,11 @@ import { AgentInbox } from './components/AgentInbox'
 import { useAgentEventStore } from './store/agentEventStore'
 import { useHandoverStore } from './store/handoverStore'
 import { HandoverDialog } from './components/HandoverDialog'
+import { Toasts } from './components/Toasts'
+import { Wrapped } from './components/Wrapped'
+import { useStatsStore } from './store/statsStore'
+import { useToastStore } from './store/toastStore'
+import { listenForKonami } from './fun/konami'
 
 // StrictMode double-mounts effects in dev — the boot sequence must run once.
 let bootStarted = false
@@ -48,6 +53,7 @@ export default function App(): React.JSX.Element {
   const savedCommandsOpen = useSavedCommandStore((s) => s.open)
   const agentInboxOpen = useAgentEventStore((s) => s.open)
   const handover = useHandoverStore(s => s.pending)
+  const wrappedOpen = useStatsStore((s) => s.open)
 
   useCommandScheduler()
 
@@ -74,6 +80,12 @@ export default function App(): React.JSX.Element {
       }
     })()
   }, [])
+
+  // Easter egg: Konami kodu gizli retro temaları açar ve CRT katmanını yakar.
+  useEffect(() => listenForKonami(() => {
+    void useSettingsStore.getState().update({ retroUnlocked: true, themeId: 'retro-matrix', terminalEffect: 'crt' })
+    useToastStore.getState().show('Retro mode unlocked: Matrix and Amber CRT themes are now in Settings > Appearance.', 'success')
+  }), [])
 
   // Komut bildirimine tıklanınca ilgili sekmeyi öne al.
   useEffect(() => window.termflow.window.onFocusTab((tabId) => {
@@ -279,6 +291,8 @@ export default function App(): React.JSX.Element {
       {settingsOpen && <Settings />}
       {pendingCloseTabId && <CloseTabConfirm />}
       {handover && <HandoverDialog />}
+      {wrappedOpen && <Wrapped />}
+      <Toasts />
       <WorktreeCleanupDialog />
     </div>
   )

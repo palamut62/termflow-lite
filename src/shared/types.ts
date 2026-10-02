@@ -332,6 +332,12 @@ export interface AppSettings {
    * "reduce motion" tercihi her zaman 'off' gibi davranır.
    */
   motion: MotionLevel
+  /** Terminal üstü retro katman: tarama çizgileri ya da CRT (çizgi + vinyet + ışıma). */
+  terminalEffect: TerminalEffect
+  /** Test/build komutu başarıyla bitince konfeti (hareket açıkken). */
+  celebrate: boolean
+  /** Konami koduyla açılan gizli retro temalar. */
+  retroUnlocked: boolean
   /**
    * PowerShell / Git Bash / bash / zsh oturumlarına OSC 133 shell integration
    * ekler: komut blokları, exit code, süre, komutlar arası gezinme.
@@ -344,6 +350,7 @@ export interface AppSettings {
 export type MotionLevel = 'off' | 'subtle' | 'full'
 export type BackdropMaterial = 'none' | 'mica' | 'acrylic' | 'tabbed'
 export type CursorEffect = 'none' | 'trail' | 'blaze'
+export type TerminalEffect = 'none' | 'scanlines' | 'crt'
 
 /**
  * Otomatik güncelleme durumu (electron-updater). Main tarafından üretilir,
@@ -476,6 +483,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoCheckUpdates: true,
   defaultAgentPermissionMode: 'workspace',
   motion: 'subtle',
+  terminalEffect: 'none',
+  retroUnlocked: false,
+  celebrate: false,
   shellIntegration: true,
   commandNotifications: true
 }

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Minus, Plus } from 'lucide-react'
-import { DEFAULT_THEME_ID, getTheme, THEMES } from '../themes/themes'
+import { DEFAULT_THEME_ID, getTheme, RETRO_THEMES, THEMES } from '../themes/themes'
 import { useSettingsStore } from '../store/settingsStore'
-import type { BackdropMaterial, CursorEffect, MotionLevel, ThemeColors } from '../../../shared/types'
+import type { BackdropMaterial, CursorEffect, MotionLevel, TerminalEffect, ThemeColors } from '../../../shared/types'
 import { ColorPicker, Field, NumberInput, Select, TextInput, Toggle } from './Settings'
 
 const FONT_SUGGESTIONS = [
@@ -107,7 +107,7 @@ export function AppearanceSettings(): React.JSX.Element {
       <section>
         <div className="settings-section-title">Theme</div>
         <div className="settings-theme-grid">
-          {THEMES.map((t) => (
+          {[...THEMES, ...(settings.retroUnlocked ? RETRO_THEMES : [])].map((t) => (
             <button
               key={t.id}
               className={`theme-card${t.id === settings.themeId ? ' theme-card-active' : ''}`}
@@ -296,6 +296,25 @@ export function AppearanceSettings(): React.JSX.Element {
               { value: 'full', label: 'Full' }
             ]}
             onChange={(v) => void update({ motion: v as MotionLevel })}
+          />
+        </Field>
+        <Field label="Retro Overlay" hint="Scanlines, or a full CRT look with vignette and phosphor glow. CRT glow costs some GPU time.">
+          <Select
+            value={settings.terminalEffect}
+            options={[
+              { value: 'none', label: 'None' },
+              { value: 'scanlines', label: 'Scanlines' },
+              { value: 'crt', label: 'CRT' }
+            ]}
+            onChange={(v) => void update({ terminalEffect: v as TerminalEffect })}
+          />
+        </Field>
+        <Field label="Celebrate" hint="Confetti when a test or build command passes (needs shell integration)">
+          <Toggle
+            checked={settings.celebrate}
+            onChange={(v) => void update({ celebrate: v })}
+            label="Celebrate passing tests"
+            disabled={settings.motion === 'off'}
           />
         </Field>
       </section>
