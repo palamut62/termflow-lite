@@ -31,7 +31,7 @@ async function launch(env: Record<string, string> = {}): Promise<void> {
   const userData = mkdtempSync(join(tmpdir(), 'termflow-e2e-gh-'))
   cleanupDirectories.push(userData)
   writeFileSync(join(userData, 'settings.json'), JSON.stringify({
-    gpuAcceleration: 'off', closeToTray: false, confirmBeforeClose: false, restoreSession: false
+    gpuAcceleration: 'off', motion: 'off', showTips: false, closeToTray: false, confirmBeforeClose: false, restoreSession: false
   }))
   app = await electron.launch({
     args: ['.', '--no-sandbox'],

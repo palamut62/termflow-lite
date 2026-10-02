@@ -29,7 +29,7 @@ test.beforeEach(async ({}, testInfo) => {
   cleanupDirectories.push(e2eUserData)
   // Terminal metniyle assertion yapan bu paket DOM renderer kullanmalı;
   // closeToTray kapalı olmalı ki app.close child PTY'leri de gerçekten bitirsin.
-  writeFileSync(join(e2eUserData, 'settings.json'), JSON.stringify({ gpuAcceleration: 'off', closeToTray: false }))
+  writeFileSync(join(e2eUserData, 'settings.json'), JSON.stringify({ gpuAcceleration: 'off', motion: 'off', showTips: false, closeToTray: false }))
   const contextCase = contextMenuCases.find(([id]) => testInfo.title === `Explorer menu opens ${id}`)
   const args = ['.', '--no-sandbox']
   if (contextCase) {

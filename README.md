@@ -47,6 +47,20 @@ TermFlow Lite opens straight into a terminal — no welcome screens, no setup wi
 - **Right-click menu & copy-paste** - context menu with copy/paste (or configure right-click to paste directly)
 - **Live settings** - appearance and behavior changes apply instantly; no restart needed
 
+## Shell integration and visuals
+
+- **Command blocks** - PowerShell, pwsh, Git Bash, bash and zsh get OSC 133 shell integration: a status line beside every command (running, passed, failed, cancelled), and a duration / exit badge on slow or failed commands. Nothing is written to your profile or dotfiles.
+- **Jump between commands** - `Ctrl+Up` / `Ctrl+Down` scrolls to the previous or next prompt; right-click a block to copy the command, copy its output, rerun it, or copy it formatted for an AI agent
+- **Inline suggestions** - grey fish-style suggestions from your history while you type; `→` or `End` accepts. Turned off automatically when PSReadLine already predicts.
+- **Error locations** - `src/app.ts:42:7` and `app.ts(42,7)` in compiler and test output open the file at that line in VS Code, Cursor or Windsurf
+- **Finished-command notifications** - a command that ran longer than 10 seconds in a background tab sends a system notification; the tab flashes green or red when any command finishes
+- **Motion** - Off / Subtle / Full: tab, split, menu, dialog and theme crossfade animations; the system "reduce motion" preference always wins
+- **Mica and Acrylic** - Windows 11 backdrop materials with an adjustable surface tint
+- **Cursor effects** - optional trail or blaze when the cursor moves; pauses automatically during heavy output
+- **Retro overlay** - scanlines or a CRT look with vignette and phosphor glow
+- **Output pulse** - a live sparkline of the active tab's output rate in the status bar
+- **Fun, all optional** - synthesized mechanical or soft key sounds, confetti when a test or build passes, a hidden easter egg, and **Wrapped**: your local command stats and badges, exportable as a PNG. Wrapped stores only counters and tool names, never arguments or output, and nothing leaves your machine.
+
 ## Project workflows
 
 - **Workspaces** in Settings save folders, split panes, profiles, models and matching tasks. Opening a workspace keeps existing terminals alive.
@@ -83,6 +97,8 @@ Defaults (rebindable in Settings > Keyboard):
 | `Ctrl+\\` | Split terminal right |
 | `Ctrl+Shift+\\` | Split terminal down |
 | `Ctrl+Shift+F` | Search terminal |
+| `Ctrl+Up` / `Ctrl+Down` | Previous / next command (shell integration) |
+| `→` / `End` | Accept inline suggestion |
 | `Ctrl+Alt+B` | Toggle broadcast input |
 | `F12` | Toggle quake mode (when enabled) |
 | `Ctrl+,` | Open settings |
@@ -93,8 +109,8 @@ Defaults (rebindable in Settings > Keyboard):
 
 All settings apply in real time and are stored locally:
 
-- **Appearance** - theme, custom palette, font family, font size, line height, letter spacing, cursor style and color, opacity and blur, terminal padding
-- **Terminal** - scrollback, bell, copy-on-select, right-click behavior, confirm on close, startup directory
+- **Appearance** - theme, custom palette, font family, font size, line height, letter spacing, cursor style, color and effect, motion, retro overlay, celebrations, opacity, backdrop material and tint, terminal padding
+- **Terminal** - scrollback, shell integration, inline suggestions, command notifications, tips, bell and sounds, copy-on-select, right-click behavior, confirm on close, startup directory
 - **Profiles** - default profile and custom shell profiles (command, arguments, working directory, environment)
 - **Providers** - current selectable models, CLI command, endpoint, environment-variable mapping, permission controls, and menu color; secret values remain in the OS environment
 - **Keyboard** - rebind any shortcut

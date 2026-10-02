@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.9.0 - 2026-10-02
+
+- Shell integration for PowerShell, pwsh, Git Bash, bash and zsh: every command gets a status line (running, passed, failed, cancelled) and slow or failed commands show their duration and exit code. `Ctrl+Up` / `Ctrl+Down` jumps between commands. Nothing is written to your profile or dotfiles; CMD and WSL are unchanged.
+- Right-click a command to copy the command, copy only its output, rerun it, or copy it formatted for an AI agent.
+- Inline suggestions from your command history while typing; `→` or `End` accepts. Off when PSReadLine already shows its own prediction.
+- Compiler and test locations such as `src/app.ts:42:7` and `app.ts(42,7)` are now clickable and open the file at that line in VS Code, Cursor or Windsurf. Previously they were not linked at all.
+- A command that runs longer than 10 seconds in a background tab sends a system notification; clicking it brings the tab forward. Tabs flash green or red when a command finishes.
+- New Motion setting (Off / Subtle / Full) with tab, split, menu, dialog and theme crossfade animations. The system "reduce motion" preference always turns them off.
+- Windows 11 Mica, Acrylic and Mica Alt backdrops with an adjustable tint. The old Blur toggle carries over as Acrylic.
+- Optional cursor trail and blaze effects, a scanline or CRT overlay, a live output sparkline in the status bar, synthesized key sounds and confetti when a test or build passes.
+- Wrapped: local command stats and badges you can save as a PNG. Only counters and tool names are stored, never arguments or output.
+- A dismissible tip card on first launch.
+- Fixed PowerShell reporting a failed cmdlet with a stale native exit code, and Git Bash directories now resolve to Windows paths.
+
 ## 1.8.0 - 2026-09-23
 
 - The new tab menu has a filter box: start typing to narrow shells, agents, providers and SSH connections, and press Enter to open the first match. The Settings entry at the bottom of the menu is no longer cut off.

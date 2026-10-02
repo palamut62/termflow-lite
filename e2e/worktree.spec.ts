@@ -22,7 +22,7 @@ test.beforeEach(async () => {
   cleanupDirectories = []
   const userData = mkdtempSync(join(tmpdir(), 'termflow-e2e-wt-user-'))
   cleanupDirectories.push(userData)
-  writeFileSync(join(userData, 'settings.json'), JSON.stringify({ gpuAcceleration: 'off', closeToTray: false, confirmBeforeClose: false, restoreSession: false }))
+  writeFileSync(join(userData, 'settings.json'), JSON.stringify({ gpuAcceleration: 'off', motion: 'off', showTips: false, closeToTray: false, confirmBeforeClose: false, restoreSession: false }))
 
   sandbox = mkdtempSync(join(tmpdir(), 'termflow-e2e-wt-repo-'))
   cleanupDirectories.push(sandbox)

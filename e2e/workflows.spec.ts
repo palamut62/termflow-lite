@@ -10,7 +10,7 @@ const pageErrors: string[] = []
 test.beforeEach(async ({}, info) => {
   folder = mkdtempSync(join(tmpdir(), 'termflow-workflows-'))
   writeFileSync(join(folder, 'invalid.exe'), '')
-  const settings = { defaultProfileId: 'cmd', closeToTray: false, gpuAcceleration: 'off', startupDirectory: 'home',
+  const settings = { defaultProfileId: 'cmd', closeToTray: false, gpuAcceleration: 'off', motion: 'off', showTips: false, startupDirectory: 'home',
     defaultAgentPermissionMode: 'safe', profiles: [{ id: 'broken', name: 'Broken test', command: 'C:\\termflow-missing-test\\no.exe' }, { id: 'invalid', name: 'Invalid executable', command: join(folder, 'invalid.exe') }] }
   writeFileSync(join(folder, 'settings.json'), JSON.stringify(settings))
   if (info.title.includes('saved folders')) {

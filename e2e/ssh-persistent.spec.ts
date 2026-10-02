@@ -20,7 +20,7 @@ let userData = ''
 test.beforeEach(async () => {
   userData = mkdtempSync(join(tmpdir(), 'termflow-e2e-sshp-'))
   writeFileSync(join(userData, 'settings.json'), JSON.stringify({
-    gpuAcceleration: 'off', closeToTray: false, confirmBeforeClose: false, restoreSession: false,
+    gpuAcceleration: 'off', motion: 'off', showTips: false, closeToTray: false, confirmBeforeClose: false, restoreSession: false,
     sshConnections: [{ id: 'srv1', name: 'Prod', host: 'prod.example.com', user: 'deploy' }]
   }))
   app = await electron.launch({

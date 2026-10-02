@@ -22,7 +22,7 @@ test.beforeEach(async () => {
   cleanupDirectories.push(userData)
   // Rail on from the start; no close confirmation so the close button is direct.
   writeFileSync(join(userData, 'settings.json'), JSON.stringify({
-    gpuAcceleration: 'off', closeToTray: false, confirmBeforeClose: false, restoreSession: false, showSessionRail: true
+    gpuAcceleration: 'off', motion: 'off', showTips: false, closeToTray: false, confirmBeforeClose: false, restoreSession: false, showSessionRail: true
   }))
 
   const sandbox = mkdtempSync(join(tmpdir(), 'termflow-e2e-rail-'))

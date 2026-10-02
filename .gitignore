@@ -84,3 +84,6 @@ output/
 # Local scratch files (not repo assets)
 *.mp4
 ORCHESTRA.md
+
+# Local AI-workflow project guide
+PROJE-REHBER.md
