@@ -25,6 +25,7 @@ import { getPathAtMouse, registerPathLinkProvider, type PathMenuInfo } from './p
 import { TerminalContextMenu } from './TerminalContextMenu'
 import { TerminalSearch } from './TerminalSearch'
 import { AgentWorkPanel } from '../components/AgentWorkPanel'
+import { AgentCompanion } from '../components/AgentCompanion'
 import { redactApiKeys } from '../../../shared/secretRedaction'
 import { agentKindForCommand, parseAgentOutput } from '../../../shared/agentEvents'
 import { mergeProfiles, providerFromProfileId } from '../../../shared/profiles'
@@ -864,7 +865,12 @@ ${block.output.slice(-8000)}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
-      <div ref={hostRef} className="terminal-host" />
+      {/* Terminal + optional agent animation side by side; the host keeps
+          the remaining width and xterm refits through its ResizeObserver. */}
+      <div className="terminal-body">
+        <div ref={hostRef} className="terminal-host" />
+        <AgentCompanion tabId={tabId} visible={visible} />
+      </div>
       <AgentWorkPanel tabId={tabId} onChangeCwd={handleChangeCwd} />
       {uiSearchTabId === tabId && (
         <TerminalSearch

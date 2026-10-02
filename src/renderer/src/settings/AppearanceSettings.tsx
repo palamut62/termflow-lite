@@ -298,7 +298,7 @@ export function AppearanceSettings(): React.JSX.Element {
             onChange={(v) => void update({ motion: v as MotionLevel })}
           />
         </Field>
-        <Field label="Retro Overlay" hint="Scanlines, or a full CRT look with vignette and phosphor glow. CRT glow costs some GPU time.">
+        <Field label="Retro Overlay" hint="Scanlines, or a CRT look with scanlines and a vignette.">
           <Select
             value={settings.terminalEffect}
             options={[
@@ -307,6 +307,13 @@ export function AppearanceSettings(): React.JSX.Element {
               { value: 'crt', label: 'CRT' }
             ]}
             onChange={(v) => void update({ terminalEffect: v as TerminalEffect })}
+          />
+        </Field>
+        <Field label="Agent Animation" hint="Character animation to the right of agent terminals that follows what the agent is doing">
+          <Toggle
+            checked={settings.agentCompanion}
+            onChange={(v) => void update({ agentCompanion: v })}
+            label="Agent animation"
           />
         </Field>
         <Field label="Celebrate" hint="Confetti when a test or build command passes (needs shell integration)">

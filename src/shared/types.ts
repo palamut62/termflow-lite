@@ -351,6 +351,8 @@ export interface AppSettings {
   inlineSuggestions: boolean
   /** Arka planda uzun süren bir komut bitince sistem bildirimi göster. */
   commandNotifications: boolean
+  /** Ajan sekmelerinin sağında, ajan durumuna göre değişen karakter animasyonu. */
+  agentCompanion: boolean
 }
 
 export type MotionLevel = 'off' | 'subtle' | 'full'
@@ -497,5 +499,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   showTips: true,
   shellIntegration: true,
   inlineSuggestions: true,
-  commandNotifications: true
+  commandNotifications: true,
+  agentCompanion: true
 }

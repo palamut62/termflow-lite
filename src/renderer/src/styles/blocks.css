@@ -80,13 +80,14 @@
 }
 
 /* ---- Retro katman (settings.terminalEffect) ----
-   Yalnızca transform'suz kaplama + ekran filtresi; xterm ölçümü etkilenmez. */
+   Kaplama dolgu dahil tüm terminal yüzeyini örter (aksi halde iç alan ayrı
+   bir kutu gibi görünür); transform yok, xterm ölçümü etkilenmez. */
 .terminal-host {
   position: relative;
 }
 
-:root[data-term-effect='scanlines'] .terminal-host::after,
-:root[data-term-effect='crt'] .terminal-host::after {
+:root[data-term-effect='scanlines'] .terminal-view::after,
+:root[data-term-effect='crt'] .terminal-view::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -100,15 +101,10 @@
   );
 }
 
-:root[data-term-effect='crt'] .terminal-host::after {
+:root[data-term-effect='crt'] .terminal-view::after {
   background:
     radial-gradient(ellipse at center, transparent 58%, rgba(0, 0, 0, 0.38) 100%),
     repeating-linear-gradient(to bottom, transparent 0, transparent 2px, rgba(0, 0, 0, 0.2) 3px);
-}
-
-/* Fosfor ışıması: metin kendi renginde hafifçe parlar. */
-:root[data-term-effect='crt'] .terminal-host .xterm-screen {
-  filter: drop-shadow(0 0 2.5px color-mix(in srgb, var(--terminal-foreground) 55%, transparent));
 }
 
 /* Satır içi komut önerisi (inlineSuggest.ts): hücre ızgarasına oturan gri metin. */

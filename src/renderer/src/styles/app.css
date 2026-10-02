@@ -576,3 +576,98 @@ body {
   cursor: col-resize;
   z-index: 5;
 }
+
+/* ---- Agent companion (AgentCompanion.tsx): karakter animasyonu, terminalin sağında ---- */
+.terminal-view { container-type: inline-size; }
+
+.agent-companion {
+  position: relative;
+  flex: 0 0 clamp(220px, 26%, 340px);
+  min-width: 0;
+  margin: calc(-1 * var(--terminal-padding, 8px)) calc(-1 * var(--terminal-padding, 8px)) 0 var(--terminal-padding, 8px);
+  border-left: 1px solid color-mix(in srgb, var(--widget-border) 45%, transparent);
+  background: color-mix(in srgb, var(--terminal-background) 92%, black);
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ASCII ızgarası tüm paneli doldurur (AgentCompanion panel boyutuna göre ölçer). */
+.agent-companion-art {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  overflow: hidden;
+  font-family: 'Cascadia Mono', Consolas, 'Courier New', monospace;
+  font-size: 9px;
+  line-height: 1;
+  white-space: pre;
+}
+
+.agent-companion-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 0 10px;
+  font-size: 11px;
+  color: var(--app-foreground);
+  text-shadow: 0 0 6px var(--terminal-background), 0 0 2px var(--terminal-background);
+  pointer-events: none;
+}
+
+.agent-companion-caption small {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.75;
+}
+
+/* Hücre renkleri (companionFrames CompanionColor): karakter ajan renginde, arka plan soluk. */
+.cc-bg { color: color-mix(in srgb, var(--tab-inactive-foreground) 38%, transparent); }
+.cc-v { color: color-mix(in srgb, var(--companion-body) 22%, var(--terminal-background)); }
+.cc-b0 { color: color-mix(in srgb, var(--companion-body) 40%, var(--terminal-background)); }
+.cc-b1 { color: color-mix(in srgb, var(--companion-body) 62%, var(--terminal-background)); }
+.cc-b2 { color: color-mix(in srgb, var(--companion-body) 82%, var(--terminal-background)); }
+.cc-b3 { color: var(--companion-body); }
+.cc-b4 { color: color-mix(in srgb, var(--companion-body) 70%, white); }
+.cc-glow { color: color-mix(in srgb, var(--companion-body) 45%, white); text-shadow: 0 0 4px var(--companion-body); }
+.cc-eye { color: #fff; text-shadow: 0 0 6px var(--companion-body); }
+/* Kızgın: karakter kırmızıya döner (inline ajan rengini ezer). */
+.agent-companion-error { --companion-body: var(--term-red) !important; }
+.cc-white { color: var(--term-bright-white); }
+.cc-red { color: var(--term-bright-red); }
+.cc-green { color: var(--term-bright-green); }
+.cc-yellow { color: var(--term-bright-yellow); }
+.cc-blue { color: var(--term-bright-blue); }
+.cc-magenta { color: var(--term-bright-magenta); }
+.cc-cyan { color: var(--term-bright-cyan); }
+
+.agent-companion-close {
+  position: absolute;
+  z-index: 1;
+  top: 6px;
+  right: 6px;
+  display: inline-flex;
+  padding: 3px;
+  color: var(--tab-inactive-foreground);
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .15s ease;
+}
+
+.agent-companion:hover .agent-companion-close,
+.agent-companion-close:focus-visible { opacity: 1; }
+.agent-companion-close:hover { color: var(--app-foreground); background: color-mix(in srgb, currentColor 12%, transparent); }
+
+/* Dar pane'lerde terminale yer bırak. */
+@container (max-width: 640px) {
+  .agent-companion { display: none; }
+}

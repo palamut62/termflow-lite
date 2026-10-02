@@ -65,7 +65,7 @@ export function sshFromProfileId(settings: AppSettings, profileId: string): SshC
  */
 export const BUILTIN_PROFILES: readonly TerminalProfile[] = [
   { id: 'claude', name: 'Claude Code', command: '', startupCommand: 'claude', model: 'opus', color: '#d97757', fullPermissions: true, fullPermissionArgs: '--dangerously-skip-permissions' },
-  { id: 'codex', name: 'Codex', command: '', startupCommand: 'codex', color: '#10a37f', fullPermissions: true, fullPermissionArgs: '--dangerously-bypass-approvals-and-sandbox' },
+  { id: 'codex', name: 'Codex', command: '', startupCommand: 'codex', color: '#3b82f6', fullPermissions: true, fullPermissionArgs: '--dangerously-bypass-approvals-and-sandbox' },
   { id: 'opencode', name: 'OpenCode', command: '', startupCommand: 'opencode', color: '#3fb950', fullPermissions: true, fullPermissionArgs: '--auto' },
   { id: 'ollama-serve', name: 'Ollama Serve', command: '', startupCommand: 'ollama serve', color: '#b48ead', fullPermissions: true, fullPermissionArgs: '' }
 ]
