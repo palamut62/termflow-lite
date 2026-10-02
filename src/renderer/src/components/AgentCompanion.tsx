@@ -7,57 +7,101 @@ import { useTerminalStore } from '../store/terminalStore'
 import { useAgentEventStore } from '../store/agentEventStore'
 import { useToastStore } from '../store/toastStore'
 import { motionEnabled } from '../motion'
-import { companionCaption, companionMood, renderCompanion, type CompanionFrame, type CompanionMood } from './companionFrames'
+import { companionCaption, companionMood, renderCompanion, type CompanionColor, type CompanionFrame, type CompanionMood } from './companionFrames'
 import { PIXEL_PALETTE, renderScene, sceneFor, type PixelColor, type PixelFrame } from './companionScenes'
 
-const FRAME_MS = 110
+/** ~15 fps: smooth enough for the glide, still a retro character-art cadence. */
+const FRAME_MS = 66
+/** Animation time advances in ~110 ms ticks (see companionFrames). */
+const TICKS_PER_FRAME = FRAME_MS / 110
 
-const ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;' }
+type Rgb = [number, number, number]
 
-/** One ASCII frame as HTML: runs of same-colored cells become one span each. */
-function frameHtml({ lines, colors }: CompanionFrame): string {
-  return lines.map((line, row) => {
-    const chars = Array.from(line)
-    let html = ''
-    let start = 0
-    for (let i = 1; i <= chars.length; i++) {
-      if (i < chars.length && colors[row][i] === colors[row][start]) continue
-      const text = chars.slice(start, i).join('').replace(/[&<>]/g, (ch) => ESCAPES[ch])
-      html += text.trim() ? `<span class="cc-${colors[row][start]}">${text}</span>` : text
-      start = i
-    }
-    return html
-  }).join('\n')
+function parseRgb(color: string, fallback: Rgb = [217, 119, 87]): Rgb {
+  const hex = color.trim().match(/^#([0-9a-f]{6})$/i)
+  if (hex) return [0, 2, 4].map((i) => parseInt(hex[1].slice(i, i + 2), 16)) as Rgb
+  const match = color.match(/\d+(\.\d+)?/g)
+  return match && match.length >= 3 ? [Number(match[0]), Number(match[1]), Number(match[2])] : fallback
 }
 
-/** Grid size that fills the panel, from the <pre>'s font metrics. */
-function measureGrid(pre: HTMLPreElement): { cols: number; rows: number; aspect: number } {
-  const style = getComputedStyle(pre)
-  const ctx = document.createElement('canvas').getContext('2d')
-  let charW = parseFloat(style.fontSize) * 0.6
-  if (ctx) {
-    ctx.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`
-    charW = ctx.measureText('MMMMMMMMMM').width / 10 || charW
+/** `amount` of the way from `from` toward `to`. */
+function mixRgb(from: Rgb, to: Rgb, amount: number): string {
+  const [r, g, b] = from.map((v, i) => Math.round(v + (to[i] - v) * amount))
+  return `rgb(${r}, ${g}, ${b})`
+}
+
+const WHITE: Rgb = [255, 255, 255]
+
+// ---- ASCII face on a canvas ----
+
+const FACE_FONT_PX = 9
+const FACE_FONT = `${FACE_FONT_PX}px 'Cascadia Mono', Consolas, 'Courier New', monospace`
+
+/** Theme-aware colors for every CompanionColor, resolved once per measure. */
+function facePalette(canvas: HTMLCanvasElement): Record<CompanionColor, string> {
+  const root = getComputedStyle(document.documentElement)
+  const css = (name: string, fallback: string): string => root.getPropertyValue(name).trim() || fallback
+  const body = parseRgb(getComputedStyle(canvas).color)
+  const bg = parseRgb(css('--terminal-background', '#1e1e1e'), [30, 30, 30])
+  const muted = parseRgb(css('--tab-inactive-foreground', '#8b8b8b'), [139, 139, 139])
+  return {
+    bg: mixRgb(bg, muted, 0.38),
+    v: mixRgb(bg, body, 0.22),
+    b0: mixRgb(bg, body, 0.4),
+    b1: mixRgb(bg, body, 0.62),
+    b2: mixRgb(bg, body, 0.82),
+    b3: `rgb(${body.join(', ')})`,
+    b4: mixRgb(body, WHITE, 0.3),
+    glow: mixRgb(body, WHITE, 0.55),
+    eye: '#ffffff',
+    white: css('--term-bright-white', '#ffffff'),
+    red: css('--term-bright-red', '#f14c4c'),
+    green: css('--term-bright-green', '#23d18b'),
+    yellow: css('--term-bright-yellow', '#f5f543'),
+    blue: css('--term-bright-blue', '#3b8eea'),
+    magenta: css('--term-bright-magenta', '#d670d6'),
+    cyan: css('--term-bright-cyan', '#29b8db')
   }
-  const lineH = parseFloat(style.lineHeight) || parseFloat(style.fontSize)
-  const box = pre.getBoundingClientRect()
-  return { cols: Math.max(8, Math.floor(box.width / charW)), rows: Math.max(6, Math.floor(box.height / lineH)), aspect: lineH / charW }
+}
+
+/**
+ * Draws an ASCII frame with one fillText per glyph, batched by color so the
+ * fill style changes only a few times. Glowing cells (eyes, brows, mouth) get
+ * a soft shadow in a second pass; nothing else pays for it.
+ */
+function paintFace(canvas: HTMLCanvasElement, frame: CompanionFrame, cellW: number, cellH: number, palette: Record<CompanionColor, string>, glow: string): void {
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+  const dpr = window.devicePixelRatio || 1
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  ctx.clearRect(0, 0, canvas.width, canvas.height)
+  ctx.font = FACE_FONT
+  ctx.textBaseline = 'top'
+  const byColor = new Map<CompanionColor, Array<[string, number, number]>>()
+  frame.lines.forEach((line, row) => {
+    for (let col = 0; col < line.length; col++) {
+      const ch = line[col]
+      if (ch === ' ') continue
+      const color = frame.colors[row][col]
+      let list = byColor.get(color)
+      if (!list) byColor.set(color, (list = []))
+      list.push([ch, col * cellW, row * cellH])
+    }
+  })
+  for (const [color, cells] of byColor) {
+    const glowing = color === 'glow' || color === 'eye'
+    ctx.shadowBlur = glowing ? 6 : 0
+    ctx.shadowColor = glowing ? glow : 'transparent'
+    ctx.fillStyle = palette[color]
+    for (const [ch, x, y] of cells) ctx.fillText(ch, x, y)
+  }
+  ctx.shadowBlur = 0
 }
 
 // ---- Pixel scenes on a canvas ----
 
 /** Scene pixels across the panel width; each one becomes a square block. */
 const SCENE_COLUMNS = 64
-
-function parseRgb(color: string): [number, number, number] {
-  const match = color.match(/\d+(\.\d+)?/g)
-  return match && match.length >= 3 ? [Number(match[0]), Number(match[1]), Number(match[2])] : [217, 119, 87]
-}
-
-function mix(rgb: [number, number, number], target: number, amount: number): string {
-  const [r, g, b] = rgb.map((v) => Math.round(v + (target - v) * amount))
-  return `rgb(${r}, ${g}, ${b})`
-}
 
 /** Splits `text` into lines no wider than `maxWidth` pixels. */
 function wrap(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
@@ -80,7 +124,7 @@ function paintScene(canvas: HTMLCanvasElement, frame: PixelFrame, scale: number,
   const ctx = canvas.getContext('2d')
   if (!ctx) return
   const rgb = parseRgb(body)
-  const colors: Record<PixelColor, string> = { ...PIXEL_PALETTE, body: `rgb(${rgb.join(', ')})`, bodyHi: mix(rgb, 255, 0.35), bodyLo: mix(rgb, 0, 0.3) }
+  const colors: Record<PixelColor, string> = { ...PIXEL_PALETTE, body: `rgb(${rgb.join(', ')})`, bodyHi: mixRgb(rgb, WHITE, 0.35), bodyLo: mixRgb(rgb, [0, 0, 0], 0.3) }
   const dpr = window.devicePixelRatio || 1
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   // Pixels, merged into horizontal runs to keep the draw calls down.
@@ -132,9 +176,9 @@ function paintScene(canvas: HTMLCanvasElement, frame: PixelFrame, scale: number,
 /**
  * Agent animation docked to the right of an agent terminal, in one of two
  * styles: an ASCII face whose eyes mirror the agent's state, or pixel scenes
- * that act out what the agent is doing. Frames are painted straight into the
- * DOM on a timer (no React render per frame), and the timer only runs while
- * the pane is visible, the window is shown and motion is enabled.
+ * that act out what the agent is doing. Both are painted on one canvas on a
+ * timer (no React render per frame), and the timer only runs while the pane
+ * is visible, the window is shown and motion is enabled.
  */
 export function AgentCompanion({ tabId, visible }: { tabId: string; visible: boolean }): React.JSX.Element | null {
   const tab = useTerminalStore((state) => state.tabs.find((item) => item.id === tabId))
@@ -145,7 +189,6 @@ export function AgentCompanion({ tabId, visible }: { tabId: string; visible: boo
     }
     return undefined
   })
-  const artRef = useRef<HTMLPreElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const captionRef = useRef<HTMLSpanElement>(null)
   // Read on every frame, so a new event changes the scene without restarting it.
@@ -163,53 +206,69 @@ export function AgentCompanion({ tabId, visible }: { tabId: string; visible: boo
   const animate = enabled && visible && motionEnabled(settings.motion)
 
   useEffect(() => {
-    if (!enabled) return
-    const pre = artRef.current
     const canvas = canvasRef.current
-    if (style === 'scenes' ? !canvas : !pre) return
+    if (!enabled || !canvas) return
     // Every mood starts from its first frame, so each reaction plays afresh.
     let tick = 0
+    let disposed = false
     let paint = (): void => undefined
     const measure = (): void => {
-      if (canvas && style === 'scenes') {
-        const box = canvas.getBoundingClientRect()
-        const dpr = window.devicePixelRatio || 1
-        canvas.width = Math.max(1, Math.round(box.width * dpr))
-        canvas.height = Math.max(1, Math.round(box.height * dpr))
+      const box = canvas.getBoundingClientRect()
+      const dpr = window.devicePixelRatio || 1
+      canvas.width = Math.max(1, Math.round(box.width * dpr))
+      canvas.height = Math.max(1, Math.round(box.height * dpr))
+      // The canvas CSS color is the agent color (red while angry), resolved here.
+      const body = getComputedStyle(canvas).color
+      if (style === 'scenes') {
         const scale = Math.max(3, box.width / SCENE_COLUMNS)
         const columns = Math.floor(box.width / scale)
         const rows = Math.ceil(box.height / scale)
-        // The canvas CSS color is the agent color, resolved to rgb here.
-        const body = getComputedStyle(canvas).color
         paint = () => {
           const event = eventRef.current
           paintScene(canvas, renderScene(sceneFor(mood, event), tick, columns, rows, event), scale, body)
         }
-      } else if (pre) {
-        const grid = measureGrid(pre)
-        paint = () => {
-          // Built only from the fixed glyph set in companionFrames, and escaped anyway.
-          pre.innerHTML = frameHtml(renderCompanion(mood, tick, grid.cols, grid.rows, grid.aspect))
-          if (captionRef.current) captionRef.current.textContent = companionCaption(mood, tick)
-        }
+        return
+      }
+      // Cell metrics come from the real font, so the aspect correction is exact.
+      const ctx = canvas.getContext('2d')
+      if (ctx) ctx.font = FACE_FONT
+      const cellW = (ctx?.measureText('MMMMMMMMMM').width ?? FACE_FONT_PX * 6) / 10 || FACE_FONT_PX * 0.6
+      const cellH = FACE_FONT_PX
+      const cols = Math.max(8, Math.floor(box.width / cellW))
+      const rows = Math.max(6, Math.floor(box.height / cellH))
+      const palette = facePalette(canvas)
+      paint = () => {
+        paintFace(canvas, renderCompanion(mood, tick, cols, rows, cellH / cellW), cellW, cellH, palette, body)
+        if (captionRef.current) captionRef.current.textContent = companionCaption(mood, tick)
       }
     }
     measure()
     paint()
-    // The animation always fills the panel, so it is re-measured when the panel resizes.
-    const host = (style === 'scenes' ? canvas : pre) as Element
+    // Re-measure once the monospace font has loaded (it settles the cell
+    // metrics) and whenever the panel resizes.
+    void document.fonts?.ready.then(() => {
+      if (disposed) return
+      measure()
+      paint()
+    })
     const observer = new ResizeObserver(() => {
       measure()
       paint()
     })
-    observer.observe(host)
-    if (!animate) return () => observer.disconnect()
+    observer.observe(canvas)
+    if (!animate) {
+      return () => {
+        disposed = true
+        observer.disconnect()
+      }
+    }
     const timer = window.setInterval(() => {
       if (document.hidden) return
-      tick += 1
+      tick += TICKS_PER_FRAME
       paint()
     }, FRAME_MS)
     return () => {
+      disposed = true
       window.clearInterval(timer)
       observer.disconnect()
     }
@@ -231,11 +290,11 @@ export function AgentCompanion({ tabId, visible }: { tabId: string; visible: boo
       <button className="agent-companion-close" type="button" onClick={hide} title="Hide agent animation" aria-label="Hide agent animation">
         <X size={12} />
       </button>
-      {style === 'scenes'
-        ? <canvas ref={canvasRef} className="agent-companion-canvas" aria-hidden="true" />
-        : <pre ref={artRef} className="agent-companion-art" aria-hidden="true" />}
+      {/* Keyed by style so switching styles starts from a fresh canvas. */}
+      <canvas key={style} ref={canvasRef} className="agent-companion-canvas" aria-hidden="true" />
+      {/* Not a live region: the spinner changes every few frames and must not be read out. */}
       {style === 'face' && (
-        <div className="agent-companion-caption" role="status">
+        <div className="agent-companion-caption">
           <span ref={captionRef} />
           {mood === 'working' && latestEvent?.title && <small title={latestEvent.title}>{latestEvent.title}</small>}
         </div>

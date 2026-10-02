@@ -37,6 +37,8 @@ test('a running command keeps going through widget view and back', async () => {
   await win.locator('.terminal-host .xterm').first().click()
   await win.keyboard.type('1..6 | % { "tick$_"; Start-Sleep -Milliseconds 500 }')
   await win.keyboard.press('Enter')
+  // Switch only once the command is really producing output, i.e. mid-run.
+  await expect(win.locator('.terminal-host .xterm-rows').first()).toContainText('tick1', { timeout: 15_000 })
 
   await win.click('[aria-label="Switch to widget view"]')
   await expect(win.locator('.tf-widget')).toBeVisible()
@@ -54,7 +56,10 @@ test('a running command keeps going through widget view and back', async () => {
   await expect(win.locator('.tf-widget')).toHaveCount(0)
   await expect.poll(bounds).toEqual(before)
   expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isAlwaysOnTop())).toBe(false)
-  const text = await win.locator('.terminal-host .xterm-rows').first().innerText()
+  // The command ran to completion: every line is there, none was lost in the switch.
+  const rows = win.locator('.terminal-host .xterm-rows').first()
+  await expect(rows).toContainText('tick6', { timeout: 15_000 })
+  const text = await rows.innerText()
   for (let i = 1; i <= 6; i++) expect(text).toContain(`tick${i}`)
 })
 

@@ -66,10 +66,17 @@ describe('renderCompanion', () => {
     expect([...proud].filter((color) => ['red', 'yellow', 'green', 'cyan', 'blue', 'magenta'].includes(color)).length).toBeGreaterThan(0)
   })
 
-  it('tolerates negative and fractional ticks and tiny grids', () => {
+  it('tolerates negative ticks and tiny grids', () => {
     expect(frame('working', -3)).toEqual(frame('working', 0))
-    expect(frame('done', 2.7)).toEqual(frame('done', 2))
+    expect(frame('working', Number.NaN)).toEqual(frame('working', 0))
     expect(renderCompanion('waiting', 0, 1, 1).lines.length).toBeGreaterThan(0)
+  })
+
+  it('glides between whole ticks: continuous motion uses fractional time', () => {
+    // The background flow moves between ticks; discrete events (blinks) do not jump early.
+    const flow = (tick: number): string => frame('working', tick).lines.join('\n')
+    expect(flow(10.5)).not.toBe(flow(10))
+    expect(flow(10.5)).not.toBe(flow(11))
   })
 })
 

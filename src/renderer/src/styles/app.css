@@ -591,19 +591,7 @@ body {
   user-select: none;
 }
 
-/* ASCII ızgarası tüm paneli doldurur (AgentCompanion panel boyutuna göre ölçer). */
-.agent-companion-art {
-  position: absolute;
-  inset: 0;
-  margin: 0;
-  overflow: hidden;
-  font-family: 'Cascadia Mono', Consolas, 'Courier New', monospace;
-  font-size: 9px;
-  line-height: 1;
-  white-space: pre;
-}
-
-/* Piksel sahneler: tuval tüm paneli kaplar; rengi ajan rengidir (sahne gövde tonu buradan okunur). */
+/* Her iki stil de tek tuvale çizilir; tuval tüm paneli kaplar ve rengi ajan rengidir (gövde tonu buradan okunur). */
 .agent-companion-canvas {
   position: absolute;
   inset: 0;
@@ -637,25 +625,8 @@ body {
   opacity: 0.75;
 }
 
-/* Hücre renkleri (companionFrames CompanionColor): karakter ajan renginde, arka plan soluk. */
-.cc-bg { color: color-mix(in srgb, var(--tab-inactive-foreground) 38%, transparent); }
-.cc-v { color: color-mix(in srgb, var(--companion-body) 22%, var(--terminal-background)); }
-.cc-b0 { color: color-mix(in srgb, var(--companion-body) 40%, var(--terminal-background)); }
-.cc-b1 { color: color-mix(in srgb, var(--companion-body) 62%, var(--terminal-background)); }
-.cc-b2 { color: color-mix(in srgb, var(--companion-body) 82%, var(--terminal-background)); }
-.cc-b3 { color: var(--companion-body); }
-.cc-b4 { color: color-mix(in srgb, var(--companion-body) 70%, white); }
-.cc-glow { color: color-mix(in srgb, var(--companion-body) 45%, white); text-shadow: 0 0 4px var(--companion-body); }
-.cc-eye { color: #fff; text-shadow: 0 0 6px var(--companion-body); }
-/* Kızgın: karakter kırmızıya döner (inline ajan rengini ezer). */
+/* Kızgın: karakter kırmızıya döner (inline ajan rengini ezer; canvas rengi buradan okunur). */
 .agent-companion-error { --companion-body: var(--term-red) !important; }
-.cc-white { color: var(--term-bright-white); }
-.cc-red { color: var(--term-bright-red); }
-.cc-green { color: var(--term-bright-green); }
-.cc-yellow { color: var(--term-bright-yellow); }
-.cc-blue { color: var(--term-bright-blue); }
-.cc-magenta { color: var(--term-bright-magenta); }
-.cc-cyan { color: var(--term-bright-cyan); }
 
 .agent-companion-close {
   position: absolute;

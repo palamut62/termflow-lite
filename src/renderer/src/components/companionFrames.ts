@@ -29,7 +29,7 @@ export interface CompanionFrame {
 /** Expression actually shown; a mood can move through several over time. */
 export type CompanionExpression = 'focused' | 'tired' | 'waiting' | 'surprised' | 'proud' | 'rested' | 'angry' | 'asleep'
 
-/** Ticks are ~110 ms. Proud for ~8 s after finishing, tired after ~4 min of work. */
+/** A tick is ~110 ms of animation time (fractional ticks are fine). Proud for ~8 s after finishing, tired after ~4 min of work. */
 export const PROUD_TICKS = 70
 export const TIRED_TICKS = 2200
 
@@ -99,7 +99,8 @@ function blinkLid(t: number, every: number): number {
   return phase === 1 ? 1 : phase === 0 || phase === 2 ? 0.2 : -2
 }
 
-function faceFor(expression: CompanionExpression, t: number): Face {
+/** `t` is the whole-frame step for discrete events; `time` is continuous for smooth motion. */
+function faceFor(expression: CompanionExpression, t: number, time: number): Face {
   const base: Face = { eye: 'open', lid: -2, lidTilt: 0, scale: 1, lookX: 0, lookY: 0, brows: null, mouth: 'line' }
   switch (expression) {
     case 'focused': {
@@ -109,14 +110,14 @@ function faceFor(expression: CompanionExpression, t: number): Face {
     }
     case 'tired':
       // Heavy lids droop and slowly fight back open.
-      return { ...base, lid: Math.max(0.05 + 0.25 * Math.max(0, Math.sin(t * 0.07)), blinkLid(t, 23)), lookY: 0.25, brows: { lift: 0.3, tilt: -0.25 }, mouth: 'wave' }
+      return { ...base, lid: Math.max(0.05 + 0.25 * Math.max(0, Math.sin(time * 0.07)), blinkLid(t, 23)), lookY: 0.25, brows: { lift: 0.3, tilt: -0.25 }, mouth: 'wave' }
     case 'waiting': {
       // Looks toward the terminal on the left, now and then back at you.
       const away = Math.floor(t / 30) % 3 !== 2
       return { ...base, lid: blinkLid(t, 37), lookX: away ? -0.4 : 0, lookY: away ? 0.05 : 0, brows: { lift: 0.4, tilt: 0 } }
     }
     case 'surprised':
-      return { ...base, scale: 1.18 + 0.05 * Math.sin(t * 0.6), brows: { lift: 0.75, tilt: -0.1 }, mouth: 'o' }
+      return { ...base, scale: 1.18 + 0.05 * Math.sin(time * 0.6), brows: { lift: 0.75, tilt: -0.1 }, mouth: 'o' }
     case 'proud':
       return { ...base, eye: 'arc', brows: { lift: 0.55, tilt: -0.05 }, mouth: 'smile' }
     case 'rested':
@@ -143,7 +144,11 @@ const LIGHT = [-0.43, -0.58, 0.69]
  * `rows` grid. `aspect` is a cell's height divided by its width.
  */
 export function renderCompanion(mood: CompanionMood, tick: number, cols: number, rows: number, aspect = 1.75): CompanionFrame {
-  const t = Math.max(0, Math.floor(tick))
+  // Discrete steps (blinks, saccades, glitches) use whole frames; continuous
+  // motion (bobbing, the background flow) uses fractional time so it glides
+  // even when the renderer runs faster than one step per frame.
+  const time = Math.max(0, Number.isFinite(tick) ? tick : 0)
+  const t = Math.floor(time)
   const w = Math.max(8, Math.floor(cols))
   const h = Math.max(6, Math.floor(rows))
   const ch = Array.from({ length: h }, () => Array.from({ length: w }, () => ' '))
@@ -167,14 +172,14 @@ export function renderCompanion(mood: CompanionMood, tick: number, cols: number,
   }
 
   const expression = companionExpression(mood, t)
-  const face = faceFor(expression, t)
+  const face = faceFor(expression, t, time)
 
   // Head geometry, sized to the panel.
   const hx = Math.min(halfW * 0.86, 0.82)
   const hy = Math.min(0.6, hx * 0.86)
-  const bob = mood === 'sleeping' ? Math.sin(t * 0.1) * 0.015
-    : expression === 'proud' ? -Math.abs(Math.sin(t * 0.3)) * 0.06
-      : Math.sin(t * 0.12) * 0.012
+  const bob = mood === 'sleeping' ? Math.sin(time * 0.1) * 0.015
+    : expression === 'proud' ? -Math.abs(Math.sin(time * 0.3)) * 0.06
+      : Math.sin(time * 0.12) * 0.012
   const hcx = mood === 'error' ? ((hash(t) % 3) - 1) * cellW : 0
   const hcy = -0.08 + bob
   const head = (x: number, y: number): number => rbox(x, y, hcx, hcy, hx, hy, hy * 0.55)
@@ -238,7 +243,7 @@ export function renderCompanion(mood: CompanionMood, tick: number, cols: number,
     return d
   }
 
-  const tf = t * FLOW[mood]
+  const tf = time * FLOW[mood]
   for (let r = 0; r < h; r++) {
     for (let c = 0; c < w; c++) {
       const x = cx(c)
