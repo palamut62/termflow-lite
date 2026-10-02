@@ -128,7 +128,7 @@ describe('PtyCore lifecycle', () => {
     const core = new PtyCore((event) => events.push(event))
     core.create('t1', input)
     registry[0].emitData('\x1b]7;file://host/C:/Users/test\x07')
-    expect(events.some((e) => (e as { kind: string }).kind === 'cwd')).toBe(true)
+    expect(events).toContainEqual({ kind: 'cwd', ptyId: 't1', cwd: 'C:\\Users\\test' })
     core.resize('t1', 120, 30) // identical to spawn size — no rewrap
     expect(registry[0].resizes).toEqual([])
   })

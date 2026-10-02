@@ -13,6 +13,7 @@ import { useCommandHistoryStore } from '../store/commandHistoryStore'
 import { resolveTheme } from '../themes/themes'
 import { backdropActive, terminalTheme } from '../backdrop'
 import { CursorFx } from './cursorFx'
+import { ShellIntegration, formatDuration, type FinishedCommand } from './shellIntegration'
 import { motionEnabled } from '../motion'
 import { formatDroppedPaths } from './dropPaths'
 import { getPathAtMouse, registerPathLinkProvider, type PathMenuInfo } from './pathLinks'
@@ -39,10 +40,21 @@ interface ExitInfo {
   durationMs: number
 }
 
+/** Sağ tıklanan komut bloğu (shell integration). */
+export interface BlockMenuInfo {
+  command: string
+  output: string
+  exitCode?: number
+}
+
+/** Bu süreden uzun süren komut arka planda biterse bildirim gösterilir. */
+const NOTIFY_MIN_MS = 10_000
+
 interface ContextMenuState {
   x: number
   y: number
   hasSelection: boolean
+  block?: BlockMenuInfo | null
   /** İmleç altında çözülmüş bir yol varsa menünün en üstüne yol işlemleri eklenir. */
   path?: PathMenuInfo | null
 }
@@ -84,6 +96,7 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
   // Canlı yüklenip atılabilen addon'lar/joiner: ayar değişimi terminali
   // yeniden yaratmasın diye ref'te tutulur.
   const webglRef = useRef<WebglAddon | null>(null)
+  const shellRef = useRef<ShellIntegration | null>(null)
   const imageRef = useRef<ImageAddon | null>(null)
   const joinerRef = useRef<number | null>(null)
   const activeRef = useRef(active)
@@ -216,6 +229,22 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
         enabled: activeRef.current && motionEnabled(current.motion)
       }
     })
+    // OSC 133 komut blokları: gutter, süre/exit rozeti, gezinme, bildirim.
+    const onCommandFinished = (cmd: FinishedCommand): void => {
+      useTerminalStore.getState().setTabLastCommand(tabId, cmd.exitCode, cmd.durationMs)
+      const current = useSettingsStore.getState().settings
+      const unseen = !activeRef.current || !document.hasFocus()
+      if (!current.commandNotifications || !unseen || cmd.durationMs < NOTIFY_MIN_MS) return
+      const tab = useTerminalStore.getState().tabs.find((t) => t.id === tabId)
+      const ok = cmd.exitCode === 0
+      window.termflow.window.notify({
+        tabId,
+        title: `${ok ? 'Command finished' : `Command failed (exit ${cmd.exitCode})`} · ${formatDuration(cmd.durationMs)}`,
+        body: `${tab?.title ?? 'Terminal'}: ${redactApiKeys(cmd.command).slice(0, 160)}`
+      })
+    }
+    const shellIntegration = new ShellIntegration(term, onCommandFinished)
+    shellRef.current = shellIntegration
     // Terminaldeki tıklanabilir yollar (PRD ek). Ayarlar canlı okunur:
     // clickablePaths kapatılınca provider link üretmeyi bırakır.
     const pathLinksDisposable = registerPathLinkProvider(
@@ -378,6 +407,7 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
           }
         }
       }
+      if (data.includes('\r')) shellIntegration.noteEnter()
       useTerminalStore.getState().setTabActivity(tabId, 'running')
       // Broadcast: yalnızca insan girdisi (ESC ile başlamayan) split'teki tüm
       // panellere gider; protokol yanıtları hep kendi PTY'sinde kalır. Komut
@@ -435,6 +465,10 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
     // şekilde PTY'ye gider. Ctrl+V / Ctrl+Shift+V preload üzerinden yapıştırır.
     term.attachCustomKeyEventHandler((e) => {
       if (e.type !== 'keydown') return true
+      // Ctrl+Up/Down: önceki/sonraki komuta git (yalnızca shell integration varken).
+      if (e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+        if (shellIntegration.navigate(e.key === 'ArrowUp' ? -1 : 1)) return false
+      }
       if (e.ctrlKey && !e.altKey && !e.metaKey) {
         if (e.key === 'C' || e.key === 'c') {
           if (term.hasSelection()) {
@@ -479,13 +513,18 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
       e.preventDefault()
       const current = useSettingsStore.getState().settings
       const hasSelection = term.hasSelection()
+      const line = shellIntegration.lineAtClientY(e.clientY)
+      const found = line === null ? null : shellIntegration.blockAt(line)
+      const block: BlockMenuInfo | null = found
+        ? { command: found.command, output: shellIntegration.outputOf(found), exitCode: found.exitCode }
+        : null
       if (!current.pathContextMenu) {
         if (current.rightClickBehavior === 'paste') {
           if (hasSelection) copySelection(term)
           else pasteFromClipboard(term)
           return
         }
-        setMenu({ x: e.clientX, y: e.clientY, hasSelection, path: null })
+        setMenu({ x: e.clientX, y: e.clientY, hasSelection, path: null, block })
         return
       }
       const token = ++ctxMenuToken
@@ -493,7 +532,7 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
       void getPathAtMouse(term, e, cwd).then((path) => {
         if (disposed || token !== ctxMenuToken) return
         if (path) {
-          setMenu({ x: e.clientX, y: e.clientY, hasSelection, path })
+          setMenu({ x: e.clientX, y: e.clientY, hasSelection, path, block })
           return
         }
         if (current.rightClickBehavior === 'paste') {
@@ -501,7 +540,7 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
           else pasteFromClipboard(term)
           return
         }
-        setMenu({ x: e.clientX, y: e.clientY, hasSelection, path: null })
+        setMenu({ x: e.clientX, y: e.clientY, hasSelection, path: null, block })
       })
     }
     host.addEventListener('contextmenu', onCtxMenu)
@@ -521,6 +560,8 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
       bellSub.dispose()
       pathLinksDisposable.dispose()
       cursorFx.dispose()
+      shellIntegration.dispose()
+      shellRef.current = null
       host.removeEventListener('contextmenu', onCtxMenu)
       // Bu view'lar tabId ile anahtarlanır; unmount yalnızca kendi kaydını siler.
       dataHandlers.delete(tabId)
@@ -712,6 +753,46 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
     if (path) void window.termflow.clipboard.writeText(path.path)
   }
 
+  // ---- Komut bloğu işlemleri (shell integration) ----
+  const handleCopyCommand = (): void => {
+    const block = menu?.block
+    closeMenu()
+    if (block) void window.termflow.clipboard.writeText(block.command)
+  }
+  const handleCopyOutput = (): void => {
+    const block = menu?.block
+    closeMenu()
+    if (block) void window.termflow.clipboard.writeText(block.output)
+  }
+  const handleRerun = (): void => {
+    const block = menu?.block
+    closeMenu()
+    // Komut prompt'a yazılır; Enter'a basılmaz, kullanıcı onaylar.
+    if (block && !block.command.includes('\n')) {
+      window.termflow.pty.write(tabId, block.command)
+      termRef.current?.focus()
+    }
+  }
+  const handleCopyForAgent = (): void => {
+    const block = menu?.block
+    closeMenu()
+    if (!block) return
+    const status = block.exitCode === undefined ? 'still running' : `exit code ${block.exitCode}`
+    const text = `I ran this command in my terminal (${status}):
+
+\`\`\`
+${block.command}
+\`\`\`
+
+Output:
+
+\`\`\`
+${block.output.slice(-8000)}
+\`\`\`
+`
+    void window.termflow.clipboard.writeText(redactApiKeys(text))
+  }
+
   // ---- Dosya sürükle-bırak: yalnızca yolu input'a yaz (Enter'a BASILMAZ) ----
   // Yalnızca gerçek dosya taşıyan sürüklemeler kabul edilir; metin/URL
   // sürüklemeleri tarayıcının varsayılan davranışına bırakılır.
@@ -767,6 +848,11 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
           y={menu.y}
           hasSelection={menu.hasSelection}
           path={menu.path ?? null}
+          block={menu.block ?? null}
+          onCopyCommand={handleCopyCommand}
+          onCopyOutput={handleCopyOutput}
+          onRerun={handleRerun}
+          onCopyForAgent={handleCopyForAgent}
           onOpenPath={handleOpenPath}
           onRevealInFolder={handleRevealInFolder}
           onCopyPath={handleCopyPath}

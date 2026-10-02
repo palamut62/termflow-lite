@@ -66,6 +66,8 @@ export interface TerminalTab {
   model?: string
   /** Isolated git checkout this tab runs in, when one was requested. */
   worktree?: TabWorktree
+  /** Shell integration'ın bildirdiği son biten komut (sekme parıltısı için). */
+  lastCommand?: { exitCode: number; durationMs: number; finishedAt: number }
 }
 
 export interface TerminalProfile {
@@ -159,6 +161,8 @@ export interface CreateTerminalInput {
   startupCommand?: string
   /** Shell/profile hazırlandıktan sonra yalnızca bir kez yazılacak komut. */
   launchCommand?: string
+  /** Desteklenen kabuklara OSC 133 shell integration enjekte edilsin mi. */
+  shellIntegration?: boolean
 }
 
 /**
@@ -328,6 +332,13 @@ export interface AppSettings {
    * "reduce motion" tercihi her zaman 'off' gibi davranır.
    */
   motion: MotionLevel
+  /**
+   * PowerShell / Git Bash / bash / zsh oturumlarına OSC 133 shell integration
+   * ekler: komut blokları, exit code, süre, komutlar arası gezinme.
+   */
+  shellIntegration: boolean
+  /** Arka planda uzun süren bir komut bitince sistem bildirimi göster. */
+  commandNotifications: boolean
 }
 
 export type MotionLevel = 'off' | 'subtle' | 'full'
@@ -464,5 +475,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   quakeHeightPercent: 50,
   autoCheckUpdates: true,
   defaultAgentPermissionMode: 'workspace',
-  motion: 'subtle'
+  motion: 'subtle',
+  shellIntegration: true,
+  commandNotifications: true
 }

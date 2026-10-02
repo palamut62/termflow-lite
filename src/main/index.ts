@@ -27,6 +27,7 @@ import { AgentEventStore } from './storage/AgentEventStore'
 import { AgentSessionOwnershipStore } from './storage/AgentSessionOwnershipStore'
 import { initUpdater, maybeAutoCheck } from './updater'
 import { SessionStore } from './storage/SessionStore'
+import { configureShellIntegration } from './terminal/shellIntegration'
 import { IPC } from '../shared/ipc'
 import { parseLaunchRequest } from './launchPath'
 import { resolvePathCandidate } from './pathResolver'
@@ -284,6 +285,11 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  // Windows bildirimleri kısayoldaki AppUserModelID ile eşleşmeli (electron-builder appId).
+  if (process.platform === 'win32') app.setAppUserModelId('com.palamut62.termflowlite')
+  configureShellIntegration(app.isPackaged
+    ? join(process.resourcesPath, 'resources', 'shell-integration')
+    : join(__dirname, '../../resources/shell-integration'))
   // Warm the registry PATH cache off the critical path so the first terminal
   // never pays for a `reg query` round trip.
   warmPathCache()

@@ -77,6 +77,20 @@ export function TerminalSettings(): React.JSX.Element {
             onChange={(v) => void update({ scrollback: Number(v) })}
           />
         </Field>
+        <Field
+          label="Shell Integration"
+          hint="PowerShell, pwsh, Git Bash, bash and zsh: command blocks with exit status and duration, Ctrl+Up/Down to jump between commands. Applies to new terminals."
+        >
+          <Toggle checked={settings.shellIntegration} onChange={(v) => void update({ shellIntegration: v })} label="Shell integration" />
+        </Field>
+        <Field label="Command Notifications" hint="Notify when a command that ran longer than 10 seconds finishes in a background tab">
+          <Toggle
+            checked={settings.commandNotifications}
+            onChange={(v) => void update({ commandNotifications: v })}
+            label="Command notifications"
+            disabled={!settings.shellIntegration}
+          />
+        </Field>
         <Field label="Bell">
           <Toggle checked={settings.bell} onChange={(v) => void update({ bell: v })} label="Bell" />
         </Field>

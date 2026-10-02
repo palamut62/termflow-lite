@@ -1,0 +1,80 @@
+/* Shell integration komut blokları (terminal/shellIntegration.ts).
+   xterm dekorasyonları hücre ızgarasına yerleşir; gutter çizgisi terminal
+   dolgusuna (sol boşluk) taşırılır, metnin üstüne binmez. */
+
+.xterm .cmd-gutter {
+  width: 3px !important;
+  margin-left: calc(-1 * min(6px, var(--terminal-padding, 8px)));
+  border-radius: 2px;
+  pointer-events: none;
+  opacity: 0.75;
+}
+
+.xterm .cmd-gutter-success { background: var(--term-green); opacity: 0.45; }
+.xterm .cmd-gutter-error { background: var(--term-red); }
+.xterm .cmd-gutter-cancelled { background: var(--term-yellow); opacity: 0.6; }
+
+.xterm .cmd-gutter-running {
+  background: var(--accent-color);
+  animation: cmd-running-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes cmd-running-pulse {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.95; }
+}
+
+/* Prompt satırının sağında süre / exit rozeti. */
+.xterm .cmd-badge {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 2px;
+  font-family: var(--ui-font-family);
+  font-size: 10px;
+  white-space: nowrap;
+  pointer-events: none;
+  color: var(--tab-inactive-foreground);
+  animation: cmd-badge-in var(--motion-base, 170ms) var(--motion-ease, ease-out);
+}
+
+.xterm .cmd-badge-error { color: var(--term-red); }
+.xterm .cmd-badge-cancelled { color: var(--term-yellow); }
+.xterm .cmd-badge-success { color: color-mix(in srgb, var(--term-green) 75%, var(--terminal-foreground)); }
+
+@keyframes cmd-badge-in {
+  from { opacity: 0; transform: translateX(6px); }
+}
+
+/* Ctrl+Up/Down ile gelinen prompt satırı kısa süre vurgulanır. */
+.xterm .cmd-nav-flash {
+  pointer-events: none;
+  background: color-mix(in srgb, var(--accent-color) 22%, transparent);
+  animation: cmd-nav-flash 700ms ease-out forwards;
+}
+
+@keyframes cmd-nav-flash {
+  to { opacity: 0; }
+}
+
+/* Sekmede biten komutun kısa parıltısı (başarılı yeşil, hatalı kırmızı). */
+.tab {
+  position: relative;
+}
+
+.tab-result-flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  animation: tab-result-flash 1.4s ease-out;
+}
+
+.tab-result-ok { background: linear-gradient(to top, color-mix(in srgb, var(--term-green) 30%, transparent), transparent 70%); }
+.tab-result-fail { background: linear-gradient(to top, color-mix(in srgb, var(--term-red) 38%, transparent), transparent 70%); }
+
+@keyframes tab-result-flash {
+  0% { opacity: 0; }
+  15% { opacity: 1; }
+  100% { opacity: 0; }
+}

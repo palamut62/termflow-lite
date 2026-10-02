@@ -1,7 +1,8 @@
 # TermFlow shell integration for Windows PowerShell 5.1 and PowerShell 7 (pwsh).
 #
-# Dot-sourced into the session TermFlow itself starts (via -NoExit -Command);
-# it is NEVER written to $PROFILE, so nothing survives the session.
+# Loaded into the session TermFlow itself starts (via -NoExit -Command, as a
+# script block so the user's execution policy is neither hit nor changed); it is
+# NEVER written to $PROFILE, so nothing survives the session.
 #
 # Emits the standard OSC 133 "semantic prompt" sequences plus the VS Code
 # OSC 633;E command-line report:
@@ -9,6 +10,7 @@
 #   ESC ] 133 ; B BEL   command input start
 #   ESC ] 133 ; C BEL   command output start (about to execute)
 #   ESC ] 133 ; D ; <exitcode> BEL   command finished
+#   ESC ] 7 ; file://host/path BEL   current directory (FileSystem provider only)
 #
 # Everything is wrapped in try/catch: a broken integration must never break the
 # user's shell.
@@ -40,8 +42,13 @@ try {
     # $? and $LASTEXITCODE must be read first: anything below clobbers them.
     $succeeded = $?
     $lastExit = $global:LASTEXITCODE
-    if ($null -eq $lastExit) { $lastExit = 0 }
-    $exitCode = if ($lastExit -ne 0) { $lastExit } elseif ($succeeded) { 0 } else { 1 }
+    # $? wins: a stale $LASTEXITCODE from an earlier native command must not
+    # mark a later successful cmdlet as failed. A failing cmdlet leaves
+    # $LASTEXITCODE untouched, so the native code is only reported when it
+    # changed during this command; otherwise the generic failure code 1.
+    $exitCode = if ($succeeded) { 0 }
+      elseif ($null -ne $lastExit -and $lastExit -ne 0 -and $lastExit -ne $Global:__TermFlowExitBefore) { $lastExit }
+      else { 1 }
 
     $esc = $Global:__TermFlowESC
     $bel = $Global:__TermFlowBEL
@@ -50,6 +57,12 @@ try {
       if ($Global:__TermFlowSawCommand -or $Global:__TermFlowNoHook) {
         $out += "$esc]133;D;$exitCode$bel"
         $Global:__TermFlowSawCommand = $false
+      }
+      $location = $executionContext.SessionState.Path.CurrentLocation
+      if ($location.Provider.Name -eq 'FileSystem') {
+        $uriPath = ($location.ProviderPath -replace '\\', '/') -replace '%', '%25'
+        if (-not $uriPath.StartsWith('/')) { $uriPath = '/' + $uriPath }
+        $out += "$esc]7;file://$env:COMPUTERNAME$uriPath$bel"
       }
       $out += "$esc]133;A$bel"
     } catch { }
@@ -75,6 +88,7 @@ try {
         $esc = $Global:__TermFlowESC
         $bel = $Global:__TermFlowBEL
         $Global:__TermFlowSawCommand = $true
+        $Global:__TermFlowExitBefore = $global:LASTEXITCODE
         $payload = "$esc]633;E;$(__TermFlow-Escape $command)$bel$esc]133;C$bel"
         [Console]::Write($payload)
       } catch { }

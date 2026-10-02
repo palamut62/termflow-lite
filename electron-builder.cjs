@@ -126,7 +126,7 @@ module.exports = {
     {
       from: 'resources',
       to: 'resources',
-      filter: ['icon.ico', 'icon.png', 'menu-icons/*.ico']
+      filter: ['icon.ico', 'icon.png', 'menu-icons/*.ico', 'shell-integration/*.ps1', 'shell-integration/*.sh', 'shell-integration/zsh/.z*']
     }
   ],
   asarUnpack: ['**/node_modules/@lydell/node-pty*/**'],

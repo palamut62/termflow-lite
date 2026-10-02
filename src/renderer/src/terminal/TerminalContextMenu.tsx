@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PathMenuInfo } from './pathLinks'
+import type { BlockMenuInfo } from './TerminalView'
 
 interface TerminalContextMenuProps {
   /** Fare pozisyonu (clientX/clientY). */
@@ -12,6 +13,12 @@ interface TerminalContextMenuProps {
   onOpenPath?: () => void
   onRevealInFolder?: () => void
   onCopyPath?: () => void
+  /** Sağ tıklanan komut bloğu (shell integration); yoksa bölüm gösterilmez. */
+  block?: BlockMenuInfo | null
+  onCopyCommand?: () => void
+  onCopyOutput?: () => void
+  onRerun?: () => void
+  onCopyForAgent?: () => void
   onClose: () => void
   onCopy: () => void
   onPaste: () => void
@@ -82,6 +89,24 @@ export function TerminalContextMenu(props: TerminalContextMenuProps): React.JSX.
           )}
           <button className="ctx-menu-item" role="menuitem" onClick={props.onCopyPath}>
             Copy Path
+          </button>
+          <div className="ctx-menu-divider" />
+        </>
+      )}
+      {props.block && (
+        <>
+          <div className="ctx-menu-section" role="presentation">Command</div>
+          <button className="ctx-menu-item" role="menuitem" onClick={props.onCopyCommand}>
+            Copy Command
+          </button>
+          <button className="ctx-menu-item" role="menuitem" disabled={!props.block.output} onClick={props.onCopyOutput}>
+            Copy Output
+          </button>
+          <button className="ctx-menu-item" role="menuitem" disabled={props.block.command.includes('\n')} onClick={props.onRerun}>
+            Rerun Command
+          </button>
+          <button className="ctx-menu-item" role="menuitem" onClick={props.onCopyForAgent}>
+            Copy for Agent
           </button>
           <div className="ctx-menu-divider" />
         </>

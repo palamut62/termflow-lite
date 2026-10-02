@@ -2,6 +2,7 @@ import * as pty from '@lydell/node-pty'
 import type { CreateTerminalInput, PtyEvent, RenderMode } from '../../shared/types'
 import { TerminalSecretRedactor } from '../../shared/secretRedaction'
 import { resolveShell } from './ShellDiscovery'
+import { applyShellIntegration } from './shellIntegration'
 import { executablePath, isWindowsExecutable } from './cli'
 
 const ACTIVE_INTERVAL_MS = 16 // PRD §11.6 IPC batching for the focused terminal
@@ -70,6 +71,7 @@ export class PtyCore {
       resolved.shell = executablePath(resolved.shell)
       if (!isWindowsExecutable(resolved.shell)) throw new Error('Select a Windows executable or a supported CLI profile. This file cannot be started directly.')
     }
+    Object.assign(resolved, applyShellIntegration(resolved, input))
     const cols = input.cols && input.cols > 0 ? Math.floor(input.cols) : 120
     const rows = input.rows && input.rows > 0 ? Math.floor(input.rows) : 30
     const proc = pty.spawn(resolved.shell, resolved.args, {
@@ -182,7 +184,9 @@ export class PtyCore {
       try {
         const decoded = decodeURIComponent(lastPath)
         // Windows paths arrive as /C:/Users/... over the file:// URI — strip the leading slash.
-        const normalized = /^\/[a-zA-Z]:/.test(decoded) ? decoded.slice(1) : decoded
+        const drivePath = /^\/[a-zA-Z]:/.test(decoded)
+        // Windows yolları Explorer/cmd biçiminde (ters eğik çizgi) saklanır.
+        const normalized = drivePath ? decoded.slice(1).replace(/\//g, '\\') : decoded
         if (normalized && normalized !== managed.cwd) {
           managed.cwd = normalized
           this.emit({ kind: 'cwd', ptyId: managed.id, cwd: normalized })

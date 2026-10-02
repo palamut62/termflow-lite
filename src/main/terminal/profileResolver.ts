@@ -191,7 +191,8 @@ export function profileToInput(
       ...base,
       kind: shell.kind,
       shell: shell.command,
-      args: shell.args
+      args: shell.args,
+      shellIntegration: settings.shellIntegration
     }
   }
 

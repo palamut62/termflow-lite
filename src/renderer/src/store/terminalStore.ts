@@ -93,6 +93,7 @@ interface TerminalState {
   renameTab(id: string, title: string): void
   setTabRunning(id: string, running: boolean): void
   setTabActivity(id: string, activity: TabActivity): void
+  setTabLastCommand(id: string, exitCode: number, durationMs: number): void
   /** Reorder (Faz 7'de sürükleme; store şimdi hazır). */
   moveTab(id: string, toIndex: number): void
   setTabCwd(id: string, cwd: string): void
@@ -286,6 +287,11 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
         ? { ...tab, activity, running: activity !== 'completed' && activity !== 'error' }
         : tab)
     }))
+  },
+
+  setTabLastCommand(id, exitCode, durationMs) {
+    const lastCommand = { exitCode, durationMs, finishedAt: Date.now() }
+    set((s) => ({ tabs: s.tabs.map((tab) => (tab.id === id ? { ...tab, lastCommand } : tab)) }))
   },
 
   moveTab(id, toIndex) {

@@ -29,6 +29,8 @@ export const IPC = {
   CLIPBOARD_READ_PASTE: 'clipboard:read-paste', // -> copied file path or text
   CLIPBOARD_WRITE: 'clipboard:write', // (text) -> boolean; navigator.clipboard.writeText odak/permission'a duyarlı
   WINDOW_TITLEBAR_OVERLAY: 'window:titlebar-overlay', // (TitleBarOverlayPayload) — Windows only
+  WINDOW_NOTIFY: 'window:notify', // (CommandNotification) — sistem bildirimi
+  WINDOW_FOCUS_TAB: 'window:focus-tab', // main -> renderer (tabId) — bildirime tıklandı
   DIALOG_OPEN_DIR: 'dialog:open-dir',
   DIALOG_OPEN_FILE: 'dialog:open-file', // -> seçilen dosya yolu | null
   UPDATE_CHECK: 'update:check', // -> UpdateStatus
@@ -214,6 +216,13 @@ export interface ProjectInfo {
   root: string
   technologies: string[]
   tasks: ProjectTask[]
+}
+
+/** Arka planda biten komut için sistem bildirimi. */
+export interface CommandNotification {
+  tabId: string
+  title: string
+  body: string
 }
 
 /** Windows Controls Overlay renkleri/yüksekliği (#rrggbb — PRD §68). */

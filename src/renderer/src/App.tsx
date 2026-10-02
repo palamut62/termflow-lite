@@ -75,6 +75,11 @@ export default function App(): React.JSX.Element {
     })()
   }, [])
 
+  // Komut bildirimine tıklanınca ilgili sekmeyi öne al.
+  useEffect(() => window.termflow.window.onFocusTab((tabId) => {
+    if (useTerminalStore.getState().tabs.some((t) => t.id === tabId)) useTerminalStore.getState().setActiveTab(tabId)
+  }), [])
+
   // Sekme/split düzenini kalıcı hale getir (main zaten debounce ediyor).
   useEffect(() => useTerminalStore.subscribe((state) => {
     if (!useSettingsStore.getState().settings.restoreSession) return

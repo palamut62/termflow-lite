@@ -118,6 +118,13 @@ export function TerminalTab({
       ) : (
         <span className="tab-title">{tab.title}</span>
       )}
+      {tab.lastCommand && (
+        <span
+          key={tab.lastCommand.finishedAt}
+          className={`tab-result-flash ${tab.lastCommand.exitCode === 0 ? 'tab-result-ok' : 'tab-result-fail'}`}
+          aria-hidden="true"
+        />
+      )}
       <span className={`tab-process-indicator tab-activity-${tab.activity}`} aria-label={`Activity: ${tab.activity}`} title={`Activity: ${tab.activity}`} />
       <button
         className="tab-close"

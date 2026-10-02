@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
-import { IPC, type AgentSessionsQuery, type AppLaunchRequest, type GhOutcome, type GitHubPullRequest, type GitHubRepo, type GitHubStatus, type GitRepoInfo, type GitStatus, type ProjectInfo, type ProjectTask, type ResolvedPath, type TitleBarOverlayPayload, type WorktreeCreateRequest, type WorktreeEntry, type WorktreeOutcome, type WorktreeRemoveOutcome, type WorktreeRemoveRequest } from '../shared/ipc'
+import { IPC, type AgentSessionsQuery, type AppLaunchRequest, type GhOutcome, type GitHubPullRequest, type GitHubRepo, type GitHubStatus, type GitRepoInfo, type GitStatus, type ProjectInfo, type ProjectTask, type ResolvedPath,  type TitleBarOverlayPayload, type CommandNotification, type WorktreeCreateRequest, type WorktreeEntry, type WorktreeOutcome, type WorktreeRemoveOutcome, type WorktreeRemoveRequest } from '../shared/ipc'
 import type { AgentEvent, AgentPermissionMode, AgentSession, AgentSessionRef, AppSettings, PersistedSession, RenderMode, ShellInfo, UpdateStatus } from '../shared/types'
 
 // Windows OS build number (e.g. 26200 for current Win11). xterm's windowsPty
@@ -156,7 +156,13 @@ const api = {
   window: {
     /** Tema değişince Windows Controls Overlay renklerini bildir (PRD §68). */
     setTitleBarOverlay: (overlay: TitleBarOverlayPayload): void =>
-      ipcRenderer.send(IPC.WINDOW_TITLEBAR_OVERLAY, overlay)
+      ipcRenderer.send(IPC.WINDOW_TITLEBAR_OVERLAY, overlay),
+    notify: (notification: CommandNotification): void => ipcRenderer.send(IPC.WINDOW_NOTIFY, notification),
+    onFocusTab: (callback: (tabId: string) => void): (() => void) => {
+      const handler = (_event: unknown, tabId: string): void => callback(tabId)
+      ipcRenderer.on(IPC.WINDOW_FOCUS_TAB, handler)
+      return () => ipcRenderer.removeListener(IPC.WINDOW_FOCUS_TAB, handler)
+    }
   },
   // ---- Clipboard ----
   clipboard: {
