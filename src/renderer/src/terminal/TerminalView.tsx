@@ -289,7 +289,9 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
       if (ready) term.write(data)
       else queue.push(data)
       recordOutput(tabId, data.length)
-      recentOutput = (recentOutput + data).replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '').slice(-256)
+      // Strip CSI and OSC sequences: shell integration ends every prompt with
+      // OSC 133;B, which would otherwise hide the prompt from the check below.
+      recentOutput = (recentOutput + data).replace(/\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b\[[0-?]*[ -/]*[@-~]/g, '').slice(-256)
       const activity = !activeRef.current
         ? 'unread'
         : /(?:[A-Za-z]:\\[^\r\n]*>|[$#>❯])\s*$/.test(recentOutput)

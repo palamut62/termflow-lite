@@ -66,6 +66,9 @@ export interface TerminalTab {
   model?: string
   /** Isolated git checkout this tab runs in, when one was requested. */
   worktree?: TabWorktree
+  /** Sekmenin son "meşgul" dönemi: running/unread'e geçtiği ve çıktığı an (widget süresi). */
+  busySince?: number
+  busyUntil?: number
   /** Shell integration'ın bildirdiği son biten komut (sekme parıltısı için). */
   lastCommand?: { exitCode: number; durationMs: number; finishedAt: number }
 }
@@ -355,6 +358,11 @@ export interface AppSettings {
   agentCompanion: boolean
   /** Animasyon stili: gözleriyle tepki veren ASCII yüz ya da piksel-art sahneler. */
   agentAnimationStyle: AgentAnimationStyle
+  /** Widget görünümünün son konumu (null = sağ üst köşe), daraltılmış ve üstte tutma durumu. */
+  widgetX: number | null
+  widgetY: number | null
+  widgetCollapsed: boolean
+  widgetPinned: boolean
 }
 
 export type MotionLevel = 'off' | 'subtle' | 'full'
@@ -504,5 +512,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   inlineSuggestions: true,
   commandNotifications: true,
   agentCompanion: true,
-  agentAnimationStyle: 'face'
+  agentAnimationStyle: 'face',
+  widgetX: null,
+  widgetY: null,
+  widgetCollapsed: false,
+  widgetPinned: true
 }

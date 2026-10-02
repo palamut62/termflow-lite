@@ -111,6 +111,19 @@ interface TerminalState {
   movePaneTo(sourceId: string, targetId: string, edge: PaneDropEdge): void
 }
 
+const isBusy = (activity: TabActivity): boolean => activity === 'running' || activity === 'unread'
+
+/**
+ * Tracks the tab's current busy period (running/unread) so the widget can show
+ * how long the current task has been running, or how long the last one took.
+ */
+export function withBusyPeriod(tab: TerminalTab, previous: TabActivity): TerminalTab {
+  const now = Date.now()
+  if (isBusy(tab.activity) && !isBusy(previous)) return { ...tab, busySince: now, busyUntil: undefined }
+  if (!isBusy(tab.activity) && isBusy(previous)) return { ...tab, busySince: tab.busySince ?? tab.startedAt, busyUntil: now }
+  return tab
+}
+
 export const useTerminalStore = create<TerminalState>()((set, get) => ({
   tabs: [],
   workspaceCwd: undefined,
@@ -278,13 +291,13 @@ export const useTerminalStore = create<TerminalState>()((set, get) => ({
   },
 
   setTabRunning(id, running) {
-    set((s) => ({ tabs: s.tabs.map((t) => (t.id === id ? { ...t, running, activity: running ? 'running' : 'completed' } : t)) }))
+    set((s) => ({ tabs: s.tabs.map((t) => (t.id === id ? withBusyPeriod({ ...t, running, activity: running ? 'running' : 'completed' }, t.activity) : t)) }))
   },
 
   setTabActivity(id, activity) {
     set((s) => ({
       tabs: s.tabs.map((tab) => tab.id === id && tab.activity !== activity
-        ? { ...tab, activity, running: activity !== 'completed' && activity !== 'error' }
+        ? withBusyPeriod({ ...tab, activity, running: activity !== 'completed' && activity !== 'error' }, tab.activity)
         : tab)
     }))
   },

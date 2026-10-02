@@ -31,6 +31,8 @@ import { TipCard } from './components/TipCard'
 import { useStatsStore } from './store/statsStore'
 import { useToastStore } from './store/toastStore'
 import { listenForKonami } from './fun/konami'
+import { WidgetView } from './widget/WidgetView'
+import { useWidgetStore } from './widget/widgetStore'
 
 // StrictMode double-mounts effects in dev — the boot sequence must run once.
 let bootStarted = false
@@ -38,6 +40,8 @@ let bootStarted = false
 export default function App(): React.JSX.Element {
   const loaded = useSettingsStore((s) => s.loaded)
   const tabHeight = useSettingsStore((s) => s.settings.tabHeight)
+  const widgetActive = useWidgetStore((s) => s.active)
+  const widgetFrozen = useWidgetStore((s) => s.frozen)
   const showSessionRail = useSettingsStore((s) => s.settings.showSessionRail)
   const themeId = useSettingsStore((s) => s.settings.themeId)
   const settingsOpen = useSettingsStore((s) => s.settingsOpen)
@@ -264,7 +268,14 @@ export default function App(): React.JSX.Element {
   const backgroundTabs = paneTabIds ? tabs.filter((tab) => !paneTabIds.has(tab.id)) : []
 
   return (
-    <div className="app">
+    <>
+    {/* Widget view: the full app stays mounted at its last size, off screen,
+        so terminals never refit and their PTYs/agents keep running. */}
+    <div
+      className="app"
+      aria-hidden={widgetFrozen ? true : undefined}
+      style={widgetFrozen ? { position: 'fixed', left: -100000, top: 0, width: widgetFrozen.width, height: widgetFrozen.height, visibility: 'hidden' } : undefined}
+    >
       <TabBar height={tabHeight} />
       <div className="app-body">
       {showSessionRail && <SessionRail />}
@@ -297,6 +308,8 @@ export default function App(): React.JSX.Element {
       <Toasts />
       <WorktreeCleanupDialog />
     </div>
+    {widgetActive && <WidgetView />}
+    </>
   )
 }
 

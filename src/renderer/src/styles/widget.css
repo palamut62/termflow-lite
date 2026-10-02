@@ -1,0 +1,203 @@
+/* Kompakt widget görünümü (TermFlow widget spec 02.10.2026): düz terminal
+   satırları, hizalı sütunlar, karakter çubukları. Gradient, cam efekti ve
+   büyük rozet yok. */
+
+.tf-widget {
+  --bg: #0c0b09;
+  --fg: #e6e2dd;
+  --muted: #8f8b85;
+  --line: #3b3732;
+  --run: #f18a52;
+  --done: #39b884;
+  --alert: #ff6652;
+  --warn: #e6a23c;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+  font: 13px/20px 'Cascadia Code', 'Cascadia Mono', Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+
+.tf-widget *,
+.tf-widget *::before,
+.tf-widget *::after {
+  box-sizing: border-box;
+}
+
+.tf-header {
+  flex: 0 0 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  white-space: nowrap;
+  -webkit-app-region: drag;
+}
+
+.tf-widget.is-collapsed .tf-header {
+  flex-basis: 100%;
+  height: 100%;
+  border-bottom: 0;
+}
+
+.tf-title { flex: 0 0 auto; }
+.tf-grip { flex: 1; text-align: center; color: var(--line); letter-spacing: 1px; }
+.tf-inline-summary { flex: 1; min-width: 0; display: flex; gap: 8px; overflow: hidden; }
+
+.tf-widget button {
+  -webkit-app-region: no-drag;
+  margin: 0;
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  min-height: 28px;
+}
+
+.tf-widget button:focus-visible {
+  outline: 1px solid var(--run);
+  outline-offset: 2px;
+}
+
+.tf-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  color: var(--muted) !important;
+  border-radius: 3px;
+}
+
+.tf-icon:hover { color: var(--fg) !important; background: color-mix(in srgb, var(--fg) 8%, transparent) !important; }
+.tf-icon[aria-pressed='true'] { color: var(--run) !important; }
+
+.tf-body {
+  flex: 1;
+  min-height: 0;
+  padding: 12px 16px;
+  overflow: hidden;
+}
+
+.tf-widget.is-collapsed .tf-body { display: none; }
+
+.tf-row {
+  display: grid !important;
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+  grid-template-columns: 12ch minmax(0, 1fr) 14ch 8ch;
+  min-height: 24px !important;
+  border-radius: 2px;
+}
+
+.tf-row:hover { background: color-mix(in srgb, var(--fg) 5%, transparent) !important; }
+
+.tf-state { white-space: nowrap; color: var(--muted); }
+
+.tf-task {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tf-time {
+  text-align: right;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.tf-empty { color: var(--muted); }
+
+.tf-summary {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.tf-summary .tf-expand { margin-left: auto; color: var(--muted); min-height: 20px; }
+.tf-summary .tf-expand:hover { color: var(--fg); }
+
+.tf-c-muted { color: var(--muted); }
+.tf-c-run { color: var(--run); }
+.tf-c-done { color: var(--done); }
+.tf-c-warn { color: var(--warn); font-weight: 600; }
+.tf-c-alert { color: var(--alert); }
+
+/* ---- Karakter çubuğu: kayma CSS ile, durum ve süre gerçek oturum verisinden ---- */
+.tf-meter {
+  position: relative;
+  display: block;
+  width: 14ch;
+  height: 20px;
+  overflow: hidden;
+  white-space: pre;
+  color: var(--line);
+}
+
+.tf-meter::before { content: '..............'; }
+
+.tf-meter::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+[data-state='running'] .tf-state,
+[data-state='running'] .tf-meter::after { color: var(--run); }
+
+[data-state='running'] .tf-meter::after {
+  content: '░▒▓██▓▒░';
+  animation: tf-sweep 1.4s steps(18, end) infinite;
+}
+
+[data-state='done'] .tf-state,
+[data-state='done'] .tf-meter { color: var(--done); }
+[data-state='done'] .tf-meter::before { content: ''; }
+[data-state='done'] .tf-meter::after { content: '▓▓▓▓▓▓▓▓▓▓▓▓▓▓'; }
+
+[data-state='needs-you'] .tf-state,
+[data-state='failed'] .tf-state { color: var(--alert); font-weight: 600; }
+
+[data-state='needs-you'] .tf-meter::after,
+[data-state='failed'] .tf-meter::after { content: '▓▒░'; color: var(--alert); }
+
+[data-state='needs-you'] .tf-time { color: var(--alert); }
+
+@keyframes tf-sweep {
+  from { transform: translateX(-8ch); }
+  to { transform: translateX(14ch); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tf-widget *,
+  .tf-widget *::before,
+  .tf-widget *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Uygulamanın hareket ayarı "off" ise de kayma durur. */
+:root[data-motion='off'] .tf-widget *,
+:root[data-motion='off'] .tf-widget *::after {
+  animation: none !important;
+}

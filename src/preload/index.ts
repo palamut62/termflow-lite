@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
-import { IPC, type AgentSessionsQuery, type AppLaunchRequest, type GhOutcome, type GitHubPullRequest, type GitHubRepo, type GitHubStatus, type GitRepoInfo, type GitStatus, type ProjectInfo, type ProjectTask, type ResolvedPath,  type TitleBarOverlayPayload, type CommandNotification, type CaptureRect, type WorktreeCreateRequest, type WorktreeEntry, type WorktreeOutcome, type WorktreeRemoveOutcome, type WorktreeRemoveRequest } from '../shared/ipc'
+import { IPC, type AgentSessionsQuery, type AppLaunchRequest, type GhOutcome, type GitHubPullRequest, type GitHubRepo, type GitHubStatus, type GitRepoInfo, type GitStatus, type ProjectInfo, type ProjectTask, type ResolvedPath,  type TitleBarOverlayPayload, type WidgetAction, type WidgetState, type CommandNotification, type CaptureRect, type WorktreeCreateRequest, type WorktreeEntry, type WorktreeOutcome, type WorktreeRemoveOutcome, type WorktreeRemoveRequest } from '../shared/ipc'
 import type { AgentEvent, AgentPermissionMode, AgentSession, AgentSessionRef, AppSettings, PersistedSession, RenderMode, ShellInfo, UpdateStatus } from '../shared/types'
 
 // Windows OS build number (e.g. 26200 for current Win11). xterm's windowsPty
@@ -160,6 +160,8 @@ const api = {
     setTitleBarOverlay: (overlay: TitleBarOverlayPayload): void =>
       ipcRenderer.send(IPC.WINDOW_TITLEBAR_OVERLAY, overlay),
     notify: (notification: CommandNotification): void => ipcRenderer.send(IPC.WINDOW_NOTIFY, notification),
+    /** Compact widget view: enter/exit, collapse/expand, pin/unpin. The main process owns the geometry. */
+    widget: (action: WidgetAction): Promise<WidgetState> => ipcRenderer.invoke(IPC.WINDOW_WIDGET, action),
     saveSnapshot: (rect: CaptureRect, defaultName: string): Promise<string | null> =>
       ipcRenderer.invoke(IPC.WINDOW_SAVE_SNAPSHOT, rect, defaultName),
     onFocusTab: (callback: (tabId: string) => void): (() => void) => {

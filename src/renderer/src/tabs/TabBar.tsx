@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, DragEvent } from 'react'
-import { ChevronDown, Columns2, PanelTopClose, Plus, Rows2, PanelLeft } from 'lucide-react'
+import { ChevronDown, Columns2, PanelTopClose, PictureInPicture2, Plus, Rows2, PanelLeft } from 'lucide-react'
+import { useWidgetStore } from '../widget/widgetStore'
 import { resolveDefaultProfileId, useSettingsStore } from '../store/settingsStore'
 import { useTerminalStore } from '../store/terminalStore'
 import { NewTabMenu } from './NewTabMenu'
@@ -152,6 +153,7 @@ export function TabBar({ height }: TabBarProps): React.JSX.Element {
           aria-label="Toggle session rail"
           aria-pressed={showSessionRail}
         ><PanelLeft size={14} /></button>
+        <button className="split-tab-btn" onClick={() => void useWidgetStore.getState().enter()} title="Widget view (compact status, always on top)" aria-label="Switch to widget view"><PictureInPicture2 size={14} /></button>
         <button className={`split-tab-btn${splitDirection === 'vertical' ? ' split-tab-btn-active' : ''}`} onClick={() => useTerminalStore.getState().splitActive('vertical')} title="Split terminal right" aria-label="Split terminal right"><Columns2 size={14} /></button>
         <button className={`split-tab-btn${splitDirection === 'horizontal' ? ' split-tab-btn-active' : ''}`} onClick={() => useTerminalStore.getState().splitActive('horizontal')} title="Split terminal down" aria-label="Split terminal down"><Rows2 size={14} /></button>
         {splitDirection && <button className="split-tab-btn" onClick={() => useTerminalStore.getState().closeSplit()} title="Close split view" aria-label="Close split view"><PanelTopClose size={14} /></button>}

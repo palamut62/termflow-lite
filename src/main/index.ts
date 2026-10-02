@@ -10,6 +10,7 @@ import { registerSettingsIpc } from './ipc/settings'
 import { registerShellIpc } from './ipc/shell'
 import { registerClipboardIpc } from './ipc/clipboard'
 import { registerWindowIpc } from './ipc/window'
+import { WIDGET_ACTIONS, WidgetController } from './widget'
 import { registerDialogIpc } from './ipc/dialog'
 import { registerGitIpc } from './ipc/git'
 import { registerWorktreeIpc } from './ipc/worktree'
@@ -50,6 +51,8 @@ if (process.env.TERMFLOW_E2E === '1') {
 
 let mainWindow: BrowserWindow | null = null
 let settingsStore: SettingsStore | null = null
+/** Compact widget view of the main window; created once settings are loaded. */
+let widget: WidgetController | null = null
 let sessionStore: SessionStore | null = null
 let manager: TerminalManager | null = null
 
@@ -238,6 +241,8 @@ function createWindow(): void {
   })
 
   mainWindow.on('show', refreshTrayMenu)
+  // Widget dragged by its header: remember where the user put it.
+  mainWindow.on('moved', () => widget?.onMoved())
   mainWindow.on('hide', refreshTrayMenu)
 
   // Quake: odak kaybında gizle. Ayarlar penceresi/dialog açıkken sinir bozucu
@@ -258,8 +263,8 @@ function createWindow(): void {
   mainWindow.on('resize', () => {
     if (!settingsStore || !mainWindow || mainWindow.isDestroyed()) return
     if (mainWindow.isMaximized() || mainWindow.isFullScreen()) return
-    // Quake yerleşimi geçicidir; normal pencere ölçüsünü ezmemeli.
-    if (quakeActive) return
+    // Quake ve widget yerleşimleri geçicidir; normal pencere ölçüsünü ezmemeli.
+    if (quakeActive || widget?.isActive()) return
     const [width, height] = mainWindow.getSize()
     settingsStore.update({ windowWidth: width, windowHeight: height })
   })
@@ -345,6 +350,11 @@ app.whenReady().then(() => {
   registerShellIpc()
   registerClipboardIpc()
   registerWindowIpc(() => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null))
+  widget = new WidgetController(() => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null), settingsStore)
+  ipcMain.handle(IPC.WINDOW_WIDGET, (_event, action: unknown) => {
+    if (!widget) return { active: false, collapsed: false, pinned: true }
+    return WIDGET_ACTIONS.includes(action as never) ? widget.handle(action as (typeof WIDGET_ACTIONS)[number]) : widget.state()
+  })
   registerDialogIpc(() => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null))
   registerGitIpc()
   registerWorktreeIpc()

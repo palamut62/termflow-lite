@@ -32,6 +32,7 @@ export const IPC = {
   WINDOW_NOTIFY: 'window:notify', // (CommandNotification) — sistem bildirimi
   WINDOW_FOCUS_TAB: 'window:focus-tab', // main -> renderer (tabId) — bildirime tıklandı
   WINDOW_SAVE_SNAPSHOT: 'window:save-snapshot', // (CaptureRect, defaultName) -> kaydedilen yol | null
+  WINDOW_WIDGET: 'window:widget', // (WidgetAction) -> WidgetState — kompakt widget görünümü
   DIALOG_OPEN_DIR: 'dialog:open-dir',
   DIALOG_OPEN_FILE: 'dialog:open-file', // -> seçilen dosya yolu | null
   UPDATE_CHECK: 'update:check', // -> UpdateStatus
@@ -236,6 +237,15 @@ export interface CommandNotification {
 }
 
 /** Windows Controls Overlay renkleri/yüksekliği (#rrggbb — PRD §68). */
+/** Widget view transitions; the main process owns the window geometry. */
+export type WidgetAction = 'enter' | 'exit' | 'collapse' | 'expand' | 'pin' | 'unpin'
+
+export interface WidgetState {
+  active: boolean
+  collapsed: boolean
+  pinned: boolean
+}
+
 export interface TitleBarOverlayPayload {
   color: string
   symbolColor: string
