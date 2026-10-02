@@ -1,6 +1,6 @@
 import { _electron as electron, expect, test } from '@playwright/test'
 import type { ElectronApplication, Page } from '@playwright/test'
-import { mkdtempSync, rmSync, writeFileSync } from 'fs'
+import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join, resolve } from 'path'
 
@@ -202,7 +202,9 @@ test('relative path resolves against the tab cwd', async () => {
   // Link, tab'ın cwd'sine göre çözülür; tık o ÇÖZÜLMÜŞ mutlak yolu açar.
   const opened = await hoverClickUntilOpen(win!, pos)
   console.log('OPENED_REL', opened)
-  expect(opened).toBe(join(cwd, rel))
+  // Kabuk (shell integration, OSC 7) klasörü uzun adla bildirebilir; CI'da
+  // geçici klasör 8.3 kısa adla (RUNNER~1) gelir. Aynı dosya mı diye bakılır.
+  expect(opened && realpathSync.native(opened)).toBe(realpathSync.native(join(cwd, rel)))
 })
 
 test('executable path is revealed instead of launched', async () => {
