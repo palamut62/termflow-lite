@@ -18,6 +18,7 @@ import { burstConfetti, shouldCelebrate } from '../fun/confetti'
 import { useStatsStore } from '../store/statsStore'
 import { playCue } from '../fun/sounds'
 import { ShellIntegration, formatDuration, type FinishedCommand } from './shellIntegration'
+import { InlineSuggest } from './inlineSuggest'
 import { motionEnabled } from '../motion'
 import { formatDroppedPaths } from './dropPaths'
 import { getPathAtMouse, registerPathLinkProvider, type PathMenuInfo } from './pathLinks'
@@ -254,6 +255,16 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
     }
     const shellIntegration = new ShellIntegration(term, onCommandFinished)
     shellRef.current = shellIntegration
+    const inlineSuggest = new InlineSuggest(term, shellIntegration, {
+      enabled: () => activeRef.current && useSettingsStore.getState().settings.inlineSuggestions,
+      // Aynı profildeki komutlar önce; maskelenmiş (***) kayıtlar asla önerilmez.
+      history: () => {
+        const entries = useCommandHistoryStore.getState().entries.filter((e) => !e.command.includes('***'))
+        const own = entries.filter((e) => e.profileId === profileId).map((e) => e.command)
+        return [...own, ...entries.filter((e) => e.profileId !== profileId).map((e) => e.command)]
+      },
+      accept: (text) => window.termflow.pty.write(tabId, text)
+    })
     // Terminaldeki tıklanabilir yollar (PRD ek). Ayarlar canlı okunur:
     // clickablePaths kapatılınca provider link üretmeyi bırakır.
     const pathLinksDisposable = registerPathLinkProvider(
@@ -480,6 +491,7 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
     // şekilde PTY'ye gider. Ctrl+V / Ctrl+Shift+V preload üzerinden yapıştırır.
     term.attachCustomKeyEventHandler((e) => {
       if (e.type !== 'keydown') return true
+      if (inlineSuggest.handleKey(e)) return false
       // Ctrl+Up/Down: önceki/sonraki komuta git (yalnızca shell integration varken).
       if (e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
         if (shellIntegration.navigate(e.key === 'ArrowUp' ? -1 : 1)) return false
@@ -576,6 +588,7 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
       bellSub.dispose()
       pathLinksDisposable.dispose()
       cursorFx.dispose()
+      inlineSuggest.dispose()
       shellIntegration.dispose()
       shellRef.current = null
       host.removeEventListener('contextmenu', onCtxMenu)

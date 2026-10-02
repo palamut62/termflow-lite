@@ -84,6 +84,14 @@ export function TerminalSettings(): React.JSX.Element {
         >
           <Toggle checked={settings.shellIntegration} onChange={(v) => void update({ shellIntegration: v })} label="Shell integration" />
         </Field>
+        <Field label="Inline Suggestions" hint="Grey suggestion from your history while typing; press → or End to accept. Off when PSReadLine already predicts.">
+          <Toggle
+            checked={settings.inlineSuggestions}
+            onChange={(v) => void update({ inlineSuggestions: v })}
+            label="Inline suggestions"
+            disabled={!settings.shellIntegration}
+          />
+        </Field>
         <Field label="Command Notifications" hint="Notify when a command that ran longer than 10 seconds finishes in a background tab">
           <Toggle
             checked={settings.commandNotifications}
@@ -94,6 +102,9 @@ export function TerminalSettings(): React.JSX.Element {
         </Field>
         <Field label="Bell">
           <Toggle checked={settings.bell} onChange={(v) => void update({ bell: v })} label="Bell" />
+        </Field>
+        <Field label="Tips" hint="Show the tip card in the corner">
+          <Toggle checked={settings.showTips} onChange={(v) => void update({ showTips: v })} label="Show tips" />
         </Field>
         <Field label="Sounds" hint="Synthesized key clicks, bell and failure tones">
           <Select

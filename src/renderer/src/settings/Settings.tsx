@@ -18,7 +18,7 @@ type SectionId = 'appearance' | 'terminal' | 'profiles' | 'providers' | 'agent-s
 
 const SECTIONS: { id: SectionId; label: string; icon: ReactNode; keywords: string }[] = [
   { id: 'appearance', label: 'Appearance', icon: <Palette size={14} />, keywords: 'theme font size family weight ligatures line height letter spacing cursor blink effect trail blaze glow gpu webgl rendering inline images opacity blur backdrop mica acrylic transparency tint window border corner radius tab height padding custom theme motion animation transition reduce motion retro crt scanlines confetti celebrate' },
-  { id: 'terminal', label: 'Terminal', icon: <SquareTerminal size={14} />, keywords: 'default profile startup directory scrollback shell integration osc 133 command blocks exit code duration notifications bell sounds keyboard click copy on select right click clickable paths confirm before close restore session tray quake hotkey hide on blur' },
+  { id: 'terminal', label: 'Terminal', icon: <SquareTerminal size={14} />, keywords: 'default profile startup directory scrollback shell integration osc 133 command blocks inline suggestions autosuggest exit code duration notifications bell sounds keyboard click copy on select right click clickable paths confirm before close restore session tray quake hotkey hide on blur' },
   { id: 'profiles', label: 'Profiles', icon: <UserRound size={14} />, keywords: 'custom command profiles arguments icon color startup command starting directory default model permissions environment variables' },
   { id: 'health', label: 'Profile Health', icon: <ShieldCheck size={14} />, keywords: 'profile health check missing cli' },
   { id: 'workspaces', label: 'Workspaces', icon: <SquareTerminal size={14} />, keywords: 'project workspaces folders' },

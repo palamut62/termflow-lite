@@ -38,6 +38,15 @@ try {
     return $sb.ToString()
   }
 
+  # PSReadLine 2.1+ can draw its own inline prediction; tell TermFlow so it does
+  # not draw a second one. (2.0 has no PredictionSource property at all.)
+  try {
+    $psrlOptions = Get-PSReadLineOption -ErrorAction Stop
+    if ($psrlOptions.PSObject.Properties['PredictionSource'] -and "$($psrlOptions.PredictionSource)" -ne 'None') {
+      [Console]::Write("$($Global:__TermFlowESC)]633;P;TermFlowPrediction=1$($Global:__TermFlowBEL)")
+    }
+  } catch { }
+
   function Global:Prompt {
     # $? and $LASTEXITCODE must be read first: anything below clobbers them.
     $succeeded = $?

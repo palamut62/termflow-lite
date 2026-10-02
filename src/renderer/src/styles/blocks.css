@@ -110,3 +110,20 @@
 :root[data-term-effect='crt'] .terminal-host .xterm-screen {
   filter: drop-shadow(0 0 2.5px color-mix(in srgb, var(--terminal-foreground) 55%, transparent));
 }
+
+/* Satır içi komut önerisi (inlineSuggest.ts): hücre ızgarasına oturan gri metin. */
+.xterm .inline-suggest {
+  display: flex;
+  pointer-events: none;
+  color: var(--tab-inactive-foreground);
+  opacity: 0.6;
+  font-family: inherit;
+  white-space: pre;
+}
+
+.xterm .inline-suggest span {
+  display: inline-block;
+  flex: none;
+  text-align: center;
+  overflow: hidden;
+}

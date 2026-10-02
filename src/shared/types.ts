@@ -338,6 +338,8 @@ export interface AppSettings {
   celebrate: boolean
   /** Tuş/zil sesleri (WebAudio sentezi); varsayılan kapalı. */
   soundTheme: SoundTheme
+  /** İlk açılıştaki ipucu kartı; "Got it" ile kalıcı olarak kapanır. */
+  showTips: boolean
   /** Konami koduyla açılan gizli retro temalar. */
   retroUnlocked: boolean
   /**
@@ -345,6 +347,8 @@ export interface AppSettings {
    * ekler: komut blokları, exit code, süre, komutlar arası gezinme.
    */
   shellIntegration: boolean
+  /** Geçmişten gri satır içi komut önerisi (→ ile kabul); shell integration gerekir. */
+  inlineSuggestions: boolean
   /** Arka planda uzun süren bir komut bitince sistem bildirimi göster. */
   commandNotifications: boolean
 }
@@ -490,6 +494,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   retroUnlocked: false,
   celebrate: false,
   soundTheme: 'off',
+  showTips: true,
   shellIntegration: true,
+  inlineSuggestions: true,
   commandNotifications: true
 }

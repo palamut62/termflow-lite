@@ -84,8 +84,30 @@ export class ShellIntegration implements IDisposable {
     this.subs.push(term.parser.registerOscHandler(133, (data) => this.handle133(data)))
     this.subs.push(term.parser.registerOscHandler(633, (data) => {
       if (data.startsWith('E;') && this.current) this.current.command = decodeCommandLine(data.slice(2)).trim()
+      // Kabuğun kendi satır içi tahmini var (PSReadLine PredictionSource): ikinci bir öneri çizilmez.
+      if (data === 'P;TermFlowPrediction=1') this.nativePrediction = true
       return true
     }))
+  }
+
+  /** Kabuk zaten satır içi öneri gösteriyor mu (PSReadLine prediction). */
+  nativePrediction = false
+
+  /**
+   * Prompt'ta yazılmakta olan komut: imleç girdi satırında ve satırın sonundaysa
+   * B işaretinden imlece kadar olan metin; aksi halde null (öneri gösterilmez).
+   */
+  pendingInput(): { text: string; line: number } | null {
+    const block = this.current
+    if (!block?.input || block.startedAt !== undefined || block.input.isDisposed) return null
+    const buf = this.term.buffer.active
+    if (buf.type !== 'normal') return null
+    const line = buf.baseY + buf.cursorY
+    if (line !== block.input.line || buf.cursorX < block.inputX) return null
+    const row = buf.getLine(line)
+    if (!row) return null
+    if (row.translateToString(true, buf.cursorX).length > 0) return null
+    return { text: row.translateToString(false, block.inputX, buf.cursorX), line }
   }
 
   private cursorLine(): number {

@@ -169,7 +169,7 @@
 .toast-stack {
   position: fixed;
   right: 12px;
-  bottom: 36px;
+  bottom: 54px;
   z-index: 500;
   display: flex;
   flex-direction: column;
@@ -232,3 +232,43 @@
   z-index: 450;
   pointer-events: none;
 }
+
+/* ---- İpucu kartı (TipCard) ----
+   Bilgi şeridinin (agent work panel) üstünde durur, onun düğmelerini örtmez. */
+.tip-card {
+  position: fixed;
+  right: 12px;
+  bottom: 54px;
+  z-index: 40;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: min(340px, calc(100vw - 24px));
+  padding: 10px 8px 10px 12px;
+  background: var(--menu-background);
+  color: var(--menu-foreground);
+  border: 1px solid var(--widget-border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  font-size: 12px;
+  animation: toast-in var(--motion-base) var(--motion-pop);
+}
+
+.tip-card-icon { flex-shrink: 0; margin-top: 2px; color: var(--term-yellow); }
+.tip-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.tip-card-text { line-height: 1.45; animation: backdrop-in var(--motion-base) ease-out; }
+.tip-card-actions { display: flex; align-items: center; gap: 6px; }
+.tip-card-count { margin-right: auto; font-size: 10px; color: var(--tab-inactive-foreground); }
+
+.tip-card-btn {
+  padding: 3px 8px;
+  font: inherit;
+  font-size: 11px;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--widget-border);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.tip-card-btn:hover { background: var(--menu-selection-background); }

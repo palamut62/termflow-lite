@@ -27,6 +27,7 @@ import { useHandoverStore } from './store/handoverStore'
 import { HandoverDialog } from './components/HandoverDialog'
 import { Toasts } from './components/Toasts'
 import { Wrapped } from './components/Wrapped'
+import { TipCard } from './components/TipCard'
 import { useStatsStore } from './store/statsStore'
 import { useToastStore } from './store/toastStore'
 import { listenForKonami } from './fun/konami'
@@ -292,6 +293,7 @@ export default function App(): React.JSX.Element {
       {pendingCloseTabId && <CloseTabConfirm />}
       {handover && <HandoverDialog />}
       {wrappedOpen && <Wrapped />}
+      {loaded && <TipCard />}
       <Toasts />
       <WorktreeCleanupDialog />
     </div>
