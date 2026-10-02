@@ -7,8 +7,9 @@ import { useTerminalStore } from '../store/terminalStore'
 import { useAgentEventStore } from '../store/agentEventStore'
 import { useToastStore } from '../store/toastStore'
 import { motionEnabled } from '../motion'
-import { companionCaption, companionEnergy, companionMood, renderCompanion, type CompanionColor, type CompanionFrame, type CompanionMood } from './companionFrames'
+import { companionEnergy, companionMood, renderCompanion, type CompanionColor, type CompanionFrame, type CompanionMood } from './companionFrames'
 import { lastInputAt, latestRate } from '../fun/outputMeter'
+import { currentActivity } from '../fun/agentActivity'
 import { PIXEL_PALETTE, critterRamp, renderScene, sceneFor, type PixelColor, type PixelFrame } from './companionScenes'
 
 /** ~15 fps: smooth enough for the glide, still a retro character-art cadence. */
@@ -40,7 +41,7 @@ const WHITE: Rgb = [255, 255, 255]
 const FACE_FONT_PX = 9
 const FACE_FONT = `${FACE_FONT_PX}px 'Cascadia Mono', Consolas, 'Courier New', monospace`
 
-/** Theme-aware colors for every CompanionColor, resolved once per measure. */
+/** Colors for every CompanionColor (the scene palette in the agent's ramp), resolved once per measure. */
 function facePalette(canvas: HTMLCanvasElement): Record<CompanionColor, string> {
   const root = getComputedStyle(document.documentElement)
   const css = (name: string, fallback: string): string => root.getPropertyValue(name).trim() || fallback
@@ -50,22 +51,13 @@ function facePalette(canvas: HTMLCanvasElement): Record<CompanionColor, string> 
   // The same hue-shifted ramp as the pixel critter, so both styles match.
   const { ramp } = critterRamp(body)
   return {
-    bg: mixRgb(bg, muted, 0.38),
-    r0: ramp[0],
-    r1: ramp[1],
-    r2: ramp[2],
-    r3: ramp[3],
-    r4: ramp[4],
+    ...PIXEL_PALETTE,
+    r0: ramp[0], r1: ramp[1], r2: ramp[2], r3: ramp[3], r4: ramp[4],
+    body: ramp[2], bodyHi: ramp[3], bodyLo: ramp[1],
     // A near-black outline would vanish on a dark panel; a dim ramp tone still draws the edge.
     line: mixRgb(parseRgb(ramp[0]), bg, 0.45),
-    eye: '#ffffff',
-    white: css('--term-bright-white', '#ffffff'),
-    red: css('--term-bright-red', '#f14c4c'),
-    green: css('--term-bright-green', '#23d18b'),
-    yellow: css('--term-bright-yellow', '#f5f543'),
-    blue: css('--term-bright-blue', '#3b8eea'),
-    magenta: css('--term-bright-magenta', '#d670d6'),
-    cyan: css('--term-bright-cyan', '#29b8db')
+    bg: mixRgb(bg, muted, 0.38),
+    eye: '#ffffff'
   }
 }
 
@@ -177,8 +169,10 @@ function paintScene(canvas: HTMLCanvasElement, frame: PixelFrame, scale: number,
     } else {
       ctx.font = text.kind === 'label' ? `11px 'Cascadia Mono', Consolas, monospace` : `bold 13px 'Cascadia Mono', Consolas, monospace`
       ctx.fillStyle = colors[text.color ?? 'white']
+      // Centered under its prop, but kept fully inside the panel.
+      const half = ctx.measureText(text.text).width / 2
       ctx.textAlign = 'center'
-      ctx.fillText(text.text, x, y)
+      ctx.fillText(text.text, Math.max(half + 4, Math.min(width - half - 4, x)), y)
       ctx.textAlign = 'start'
     }
   }
@@ -201,7 +195,6 @@ export function AgentCompanion({ tabId, visible }: { tabId: string; visible: boo
     return undefined
   })
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const captionRef = useRef<HTMLSpanElement>(null)
   // Read on every frame, so a new event changes the scene without restarting it.
   const eventRef = useRef<AgentEvent | undefined>(latestEvent)
   eventRef.current = latestEvent
@@ -223,6 +216,11 @@ export function AgentCompanion({ tabId, visible }: { tabId: string; visible: boo
     let tick = 0
     let disposed = false
     let paint = (): void => undefined
+    // Read live every frame: what the agent is doing, whether you are typing.
+    const liveInput = (): { event?: AgentEvent; activity: ReturnType<typeof currentActivity>; listening: boolean; now: number } => {
+      const now = Date.now()
+      return { event: eventRef.current, activity: currentActivity(tabId, now), listening: now - lastInputAt(tabId) < LISTEN_MS, now }
+    }
     const measure = (): void => {
       const box = canvas.getBoundingClientRect()
       const dpr = window.devicePixelRatio || 1
@@ -235,9 +233,8 @@ export function AgentCompanion({ tabId, visible }: { tabId: string; visible: boo
         const columns = Math.floor(box.width / scale)
         const rows = Math.ceil(box.height / scale)
         paint = () => {
-          const event = eventRef.current
-          const listening = Date.now() - lastInputAt(tabId) < LISTEN_MS
-          paintScene(canvas, renderScene(sceneFor(mood, event), tick, columns, rows, event, listening), scale, body)
+          const input = liveInput()
+          paintScene(canvas, renderScene(sceneFor(mood, input.event, input.activity), tick, columns, rows, input), scale, body)
         }
         return
       }
@@ -250,9 +247,7 @@ export function AgentCompanion({ tabId, visible }: { tabId: string; visible: boo
       const rows = Math.max(6, Math.floor(box.height / cellH))
       const palette = facePalette(canvas)
       paint = () => {
-        const listening = Date.now() - lastInputAt(tabId) < LISTEN_MS
-        paintFace(canvas, renderCompanion(mood, tick, cols, rows, cellH / cellW, listening), cellW, cellH, palette, body)
-        if (captionRef.current) captionRef.current.textContent = companionCaption(mood, tick, listening)
+        paintFace(canvas, renderCompanion(mood, tick, cols, rows, cellH / cellW, liveInput()), cellW, cellH, palette, body)
       }
     }
     measure()
@@ -306,13 +301,6 @@ export function AgentCompanion({ tabId, visible }: { tabId: string; visible: boo
       </button>
       {/* Keyed by style so switching styles starts from a fresh canvas. */}
       <canvas key={style} ref={canvasRef} className="agent-companion-canvas" aria-hidden="true" />
-      {/* Not a live region: the spinner changes every few frames and must not be read out. */}
-      {style === 'face' && (
-        <div className="agent-companion-caption">
-          <span ref={captionRef} />
-          {mood === 'working' && latestEvent?.title && <small title={latestEvent.title}>{latestEvent.title}</small>}
-        </div>
-      )}
     </aside>
   )
 }

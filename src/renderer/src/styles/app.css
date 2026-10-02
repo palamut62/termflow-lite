@@ -601,30 +601,6 @@ body {
   image-rendering: pixelated;
 }
 
-.agent-companion-caption {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 10px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 0 10px;
-  font-size: 11px;
-  color: var(--app-foreground);
-  text-shadow: 0 0 6px var(--terminal-background), 0 0 2px var(--terminal-background);
-  pointer-events: none;
-}
-
-.agent-companion-caption small {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  opacity: 0.75;
-}
-
 /* Kızgın: karakter kırmızıya döner (inline ajan rengini ezer; canvas rengi buradan okunur). */
 .agent-companion-error { --companion-body: var(--term-red) !important; }
 

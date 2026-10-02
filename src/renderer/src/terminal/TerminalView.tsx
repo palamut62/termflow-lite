@@ -14,6 +14,7 @@ import { resolveTheme } from '../themes/themes'
 import { backdropActive, terminalTheme } from '../backdrop'
 import { CursorFx } from './cursorFx'
 import { recordInput, recordOutput } from '../fun/outputMeter'
+import { forgetActivity, noteAgentOutput } from '../fun/agentActivity'
 import { burstConfetti, shouldCelebrate } from '../fun/confetti'
 import { useStatsStore } from '../store/statsStore'
 import { playCue } from '../fun/sounds'
@@ -302,6 +303,8 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
       const provider = providerFromProfileId(settings, profileId)
       const agent = agentKindForCommand(profile?.startupCommand || profile?.command || provider?.command)
       if (agent) {
+        // What the agent is doing right now, for the agent animation.
+        noteAgentOutput(tabId, data)
         for (const event of parseAgentOutput(agent, data)) {
           useAgentEventStore.getState().append(tabId, agent, permissionMode, event)
         }
@@ -604,6 +607,7 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
       dataHandlers.delete(tabId)
       exitHandlers.delete(tabId)
       searchAddons.delete(tabId)
+      forgetActivity(tabId)
       // Unmount artık yalnızca tab kapanınca olur; tab kapanışı zaten pty.kill
       // çağırdığı için ayrıca bir mod değişikliğine gerek yok. createdPtys'ten
       // silmiyoruz: tab id'leri benzersiz, ve StrictMode'un unmount/remount

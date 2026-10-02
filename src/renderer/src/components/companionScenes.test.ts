@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest'
+import type { AgentActivity } from '../fun/agentActivity'
 import { critterRamp, renderScene, sceneFor, sceneLine, type SceneId } from './companionScenes'
 import { CRITTER, CRITTER_H, CRITTER_W } from './critterSprites'
 
-const SCENES: SceneId[] = ['garden', 'volcano', 'building', 'digging', 'waiting', 'approval', 'mail', 'party', 'storm', 'night']
+const SCENES: SceneId[] = ['typing', 'terminal', 'volcano', 'digging', 'thinking', 'waiting', 'approval', 'mail', 'party', 'storm', 'night']
 const W = 64
 const H = 96
+const act = (kind: AgentActivity['kind'], target = ''): AgentActivity => ({ kind, target, at: 0 })
+const bubble = (scene: SceneId, tick: number, activity?: AgentActivity | null, listening = false): string | undefined =>
+  renderScene(scene, tick, W, H, { activity, listening }).texts.find((t) => t.kind === 'bubble')?.text
 
 describe('sceneFor', () => {
   it('follows the agent state first', () => {
@@ -16,11 +20,40 @@ describe('sceneFor', () => {
     expect(sceneFor('waiting', { kind: 'approval', title: 'Waiting for approval' })).toBe('approval')
   })
 
-  it('acts out the latest event while working', () => {
-    expect(sceneFor('working', { kind: 'tool', title: 'Running tests', detail: 'npm test' })).toBe('volcano')
-    expect(sceneFor('working', { kind: 'tool', title: 'Editing files' })).toBe('building')
-    expect(sceneFor('working', { kind: 'activity', title: 'Inspecting project' })).toBe('digging')
-    expect(sceneFor('working')).toBe('garden')
+  it('acts out what the agent is really doing while it works', () => {
+    expect(sceneFor('working', undefined, act('edit', 'app.ts'))).toBe('typing')
+    expect(sceneFor('working', undefined, act('write', 'notes.md'))).toBe('typing')
+    expect(sceneFor('working', undefined, act('run', 'git status'))).toBe('terminal')
+    expect(sceneFor('working', undefined, act('test', 'npm test'))).toBe('volcano')
+    expect(sceneFor('working', undefined, act('read', 'a.ts'))).toBe('digging')
+    expect(sceneFor('working', undefined, act('search', 'foo'))).toBe('digging')
+    expect(sceneFor('working', undefined, act('web'))).toBe('thinking')
+    // No action shown yet: it is thinking, never a mini-game.
+    expect(sceneFor('working')).toBe('thinking')
+  })
+})
+
+describe('bubble lines', () => {
+  it('say what the agent is doing, naming the file or command', () => {
+    expect(bubble('typing', 0, act('edit', 'TerminalView.tsx'))).toBe('Editing TerminalView.tsx')
+    expect(bubble('terminal', 0, act('run', 'git status'))).toBe('Running git status')
+    expect(bubble('volcano', 0, act('test', 'npm test'))).toBe('Running npm test')
+    expect(bubble('digging', 0, act('read', 'App.tsx'))).toBe('Reading App.tsx')
+    expect(bubble('thinking', 0, null)).toBe('Thinking...')
+  })
+
+  it('slip in a short quip now and then', () => {
+    expect(bubble('typing', 90, act('edit', 'a.ts'))).not.toBe('Editing a.ts')
+  })
+
+  it('use their own lines when the scene is about you or the session', () => {
+    expect(sceneLine('waiting', 0)).toBe('Your turn!')
+    expect(sceneLine('night', 0)).toMatch(/Session ended/)
+  })
+
+  it('say "Listening..." while you type, except asleep or in a storm', () => {
+    expect(bubble('typing', 0, act('edit', 'a.ts'), true)).toBe('Listening...')
+    expect(bubble('night', 0, null, true)).not.toBe('Listening...')
   })
 })
 
@@ -37,15 +70,43 @@ describe('renderScene', () => {
     }
   })
 
-  it('draws the shaded critter (ramp tones + outline) in every scene', () => {
+  it('leaves sky and ground out when asked (ASCII style)', () => {
     for (const scene of SCENES) {
-      const pixels = renderScene(scene, 12, W, H).pixels
-      for (const tone of ['r1', 'r2', 'r3', 'line']) expect(pixels, `${scene}/${tone}`).toContain(tone)
+      const pixels = renderScene(scene, 12, W, H, { backdrop: false }).pixels
+      expect(pixels.some((p) => p === null), scene).toBe(true)
+      expect(pixels, scene).not.toContain('sky0')
+      expect(pixels, scene).not.toContain('grass')
+      expect(pixels, scene).toContain('r2')
     }
   })
 
-  it('gives the critter eyes in every scene', () => {
-    for (const scene of SCENES) expect(renderScene(scene, 12, W, H).pixels, scene).toContain('ink')
+  it('draws the shaded critter with eyes in every scene', () => {
+    for (const scene of SCENES) {
+      const pixels = renderScene(scene, 12, W, H).pixels
+      for (const tone of ['r1', 'r2', 'r3', 'line', 'ink']) expect(pixels, `${scene}/${tone}`).toContain(tone)
+    }
+  })
+
+  it('puts the right props on stage', () => {
+    const typing = renderScene('typing', 12, W, H).pixels
+    expect(typing).toContain('key')
+    expect(typing).toContain('screen')
+    expect(renderScene('terminal', 12, W, H).pixels).toContain('screen')
+    expect(renderScene('volcano', 12, W, H).pixels).toContain('lava')
+    expect(renderScene('digging', 12, W, H).pixels).toContain('pit')
+    expect(renderScene('thinking', 3, W, H).pixels).toContain('gold')
+    expect(renderScene('storm', 0, W, H).pixels).toContain('rain')
+    expect(renderScene('night', 12, W, H).pixels).toContain('moon')
+  })
+
+  it('types: keys flash and code appears on the screen over time', () => {
+    const frames = new Set(Array.from({ length: 12 }, (_, tick) => renderScene('typing', tick, W, H).pixels.join(',')))
+    expect(frames.size).toBeGreaterThan(6)
+  })
+
+  it('labels the prop with the file or command', () => {
+    const label = renderScene('typing', 0, W, H, { activity: act('edit', 'app.ts') }).texts.find((t) => t.kind === 'label')
+    expect(label?.text).toBe('app.ts')
   })
 
   it('animates every scene', () => {
@@ -59,35 +120,13 @@ describe('renderScene', () => {
     for (const scene of SCENES) expect(renderScene(scene, 33, W, H)).toEqual(renderScene(scene, 33, W, H))
   })
 
-  it('puts the scene props on stage', () => {
-    expect(renderScene('volcano', 12, W, H).pixels).toContain('lava')
-    expect(renderScene('building', 40, W, H).pixels).toContain('brick')
-    expect(renderScene('digging', 12, W, H).pixels).toContain('pit')
-    expect(renderScene('storm', 0, W, H).pixels).toContain('rain')
-    expect(renderScene('night', 12, W, H).pixels).toContain('moon')
-    expect(renderScene('party', 12, W, H).pixels.filter((p) => ['red', 'gold', 'green', 'blue', 'pink', 'cyan'].includes(p as string)).length).toBeGreaterThan(5)
-  })
-
-  it('always has a speech bubble, plus the command on the volcano', () => {
-    for (const scene of SCENES) expect(renderScene(scene, 0, W, H).texts.some((t) => t.kind === 'bubble' && t.text.length > 0), scene).toBe(true)
-    const volcano = renderScene('volcano', 0, W, H, { title: 'Running tests', detail: 'npm test' })
-    expect(volcano.texts.find((t) => t.kind === 'label')?.text).toBe('npm test')
-  })
-
-  it('shows z\'s while asleep', () => {
-    expect(renderScene('night', 9, W, H).texts.some((t) => t.kind === 'float' && /z/i.test(t.text))).toBe(true)
-  })
-
   it('tolerates tiny sizes and odd ticks', () => {
-    expect(() => renderScene('garden', -5, 1, 1)).not.toThrow()
-    expect(renderScene('garden', 2.6, W, H)).toEqual(renderScene('garden', 2, W, H))
+    expect(() => renderScene('typing', -5, 1, 1)).not.toThrow()
+    expect(renderScene('typing', 2.6, W, H)).toEqual(renderScene('typing', 2, W, H))
   })
-})
 
-describe('sceneLine', () => {
-  it('rotates through lines and fills in the command', () => {
-    expect(sceneLine('volcano', 0)).not.toBe(sceneLine('volcano', 70))
-    expect(sceneLine('volcano', 70, { detail: 'pnpm vitest' })).toContain('pnpm vitest')
+  it("shows z's while asleep", () => {
+    expect(renderScene('night', 9, W, H).texts.some((t) => t.kind === 'float' && /z/i.test(t.text))).toBe(true)
   })
 })
 
@@ -96,15 +135,10 @@ describe('critter sprites (generated by art/critter/build.py)', () => {
     for (const [name, sprite] of Object.entries(CRITTER)) {
       expect(sprite.rows, name).toHaveLength(CRITTER_H)
       for (const row of sprite.rows) expect(row, name).toMatch(new RegExp(`^[.o0-4]{${CRITTER_W}}$`))
-      // The eyes sit on the body, not in the air.
       const [ex, ey] = sprite.eyes
       expect(sprite.rows[ey][ex], name).not.toBe('.')
       expect(sprite.rows[ey][ex + sprite.eyeGap], name).not.toBe('.')
     }
-  })
-
-  it('has the poses the scenes use', () => {
-    for (const pose of ['idle0', 'idle1', 'walk0', 'walk1', 'walk2', 'walk3', 'crouch', 'air', 'land', 'cheer', 'sit']) expect(CRITTER).toHaveProperty(pose)
   })
 })
 
@@ -112,20 +146,5 @@ describe('critterRamp', () => {
   it('matches pixel-art-studio ramp() exactly, so the preview and the app agree', () => {
     expect(critterRamp([0xd9, 0x77, 0x57]).ramp).toEqual(['#822221', '#a04234', '#d97757', '#da9a75', '#f7cda6'])
     expect(critterRamp([0x3b, 0x82, 0xf6]).ramp).toEqual(['#071c94', '#1940ae', '#3b82f6', '#5da0e3', '#93d4fd'])
-  })
-
-  it('outlines in a near-black of the same family', () => {
-    const { line } = critterRamp([0xd9, 0x77, 0x57])
-    const value = Math.max(...[1, 3, 5].map((i) => parseInt(line.slice(i, i + 2), 16)))
-    expect(value).toBeLessThan(70)
-  })
-})
-
-describe('listening', () => {
-  it('says so in the bubble while you type, except asleep or in a storm', () => {
-    const bubble = (scene: SceneId, listening: boolean): string | undefined => renderScene(scene, 0, W, H, undefined, listening).texts.find((t) => t.kind === 'bubble')?.text
-    expect(bubble('garden', true)).toBe('Listening...')
-    expect(bubble('garden', false)).not.toBe('Listening...')
-    expect(bubble('night', true)).not.toBe('Listening...')
   })
 })

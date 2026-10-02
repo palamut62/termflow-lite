@@ -1,28 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import {
-  PROUD_TICKS,
-  TIRED_TICKS,
-  companionCaption,
-  companionEnergy,
-  companionExpression,
-  companionMood,
-  renderCompanion,
-  type CompanionMood
-} from './companionFrames'
+import type { AgentActivity } from '../fun/agentActivity'
+import { companionEnergy, companionMood, renderCompanion, type CompanionInput, type CompanionMood } from './companionFrames'
 
 const MOODS: CompanionMood[] = ['working', 'waiting', 'attention', 'done', 'error', 'sleeping']
-const COLS = 46
-const ROWS = 30
-const frame = (mood: CompanionMood, tick: number): ReturnType<typeof renderCompanion> => renderCompanion(mood, tick, COLS, ROWS)
-const text = (mood: CompanionMood, tick: number): string => frame(mood, tick).lines.join('\n')
-/** Cells of the eye glints (the white highlight in each open eye). */
-const glints = (mood: CompanionMood, tick: number, listening = false): number[] =>
-  renderCompanion(mood, tick, COLS, ROWS, 1.75, listening).colors.flatMap((row) => row.map((color, c) => (color === 'eye' ? c : -1))).filter((c) => c >= 0)
-/** Topmost row of the critter's body. */
-const critterTop = (mood: CompanionMood, tick: number): number =>
-  frame(mood, tick).colors.findIndex((row) => row.some((color) => color.startsWith('r') && color !== 'red'))
+const COLS = 52
+const ROWS = 66
+const frame = (mood: CompanionMood, tick: number, input: CompanionInput = {}): ReturnType<typeof renderCompanion> => renderCompanion(mood, tick, COLS, ROWS, 1.71, input)
+const text = (mood: CompanionMood, tick: number, input: CompanionInput = {}): string => frame(mood, tick, input).lines.join('\n')
+const act = (kind: AgentActivity['kind'], target = ''): AgentActivity => ({ kind, target, at: 0 })
 
-describe('renderCompanion', () => {
+describe('renderCompanion (ASCII scenes)', () => {
   it('fills exactly the requested grid, with a color per cell', () => {
     for (const [cols, rows] of [[COLS, ROWS], [30, 20], [70, 50]]) {
       for (const mood of MOODS) {
@@ -37,22 +24,35 @@ describe('renderCompanion', () => {
     }
   })
 
+  it('draws the same critter and props as the pixel scenes, in ASCII', () => {
+    const colors = new Set(frame('working', 12, { activity: act('edit', 'app.ts') }).colors.flat())
+    for (const token of ['r2', 'r3', 'bg', 'key', 'screen']) expect(colors, token).toContain(token)
+  })
+
+  it('types at the keyboard while the agent edits', () => {
+    const typing = new Set(Array.from({ length: 10 }, (_, tick) => text('working', tick, { activity: act('edit', 'app.ts') })))
+    expect(typing.size).toBeGreaterThan(5)
+  })
+
+  it('says what it is doing in an ASCII speech bubble', () => {
+    const shown = text('working', 0, { activity: act('edit', 'TerminalView.tsx') })
+    expect(shown).toContain('Editing')
+    expect(shown).toContain('TerminalView')
+    expect(shown).toMatch(/╭─+╮/)
+    expect(text('working', 0, { activity: act('test', 'npm test') })).toContain('npm test')
+    expect(text('working', 0)).toContain('Thinking')
+  })
+
+  it('reacts to the mood: asleep with z, done with confetti, listening while you type', () => {
+    expect(text('sleeping', 9)).toMatch(/[zZ]/)
+    const party = new Set(frame('done', 9).colors.flat())
+    expect(['red', 'gold', 'green', 'blue', 'pink', 'cyan'].filter((c) => party.has(c as never)).length).toBeGreaterThan(2)
+    expect(text('working', 0, { activity: act('edit', 'a.ts'), listening: true })).toContain('Listening')
+  })
+
   it('animates the whole panel: the background field moves too', () => {
     const backgroundRow = (tick: number): string => frame('waiting', tick).lines[ROWS - 2]
     expect(new Set(Array.from({ length: 30 }, (_, tick) => backgroundRow(tick))).size).toBeGreaterThan(1)
-  })
-
-  it('draws the pixel critter in its shading ramp over a dim background', () => {
-    const colors = frame('waiting', 5).colors.flat()
-    for (const tone of ['r1', 'r2', 'r3', 'r4', 'line', 'bg']) expect(colors, tone).toContain(tone)
-    // Brighter ramp tones get denser glyphs: the lit side reads as a rounded form.
-    const { lines, colors: grid } = frame('waiting', 5)
-    const RAMP = '.,-~:;=!*#$@'
-    const density = (tone: string): number => {
-      const glyphs = grid.flatMap((row, r) => row.map((color, c) => (color === tone ? RAMP.indexOf(lines[r][c]) : -1))).filter((i) => i >= 0)
-      return glyphs.reduce((a, b) => a + b, 0) / glyphs.length
-    }
-    expect(density('r4')).toBeGreaterThan(density('r1'))
   })
 
   it('is deterministic for the same tick', () => {
@@ -60,54 +60,17 @@ describe('renderCompanion', () => {
   })
 
   it('animates in every mood', () => {
-    for (const mood of MOODS) {
-      expect(new Set(Array.from({ length: 40 }, (_, tick) => text(mood, tick))).size, mood).toBeGreaterThan(1)
-    }
+    for (const mood of MOODS) expect(new Set(Array.from({ length: 40 }, (_, tick) => text(mood, tick))).size, mood).toBeGreaterThan(1)
   })
 
-  it('shows the emotion in the eyes and the pose', () => {
-    // Open eyes have glints; closed (asleep), happy (proud) and X (angry) eyes don't.
-    expect(glints('waiting', 5).length).toBeGreaterThan(0)
-    expect(glints('sleeping', 5)).toHaveLength(0)
-    expect(glints('done', 5)).toHaveLength(0)
-    expect(glints('error', 5)).toHaveLength(0)
-    // Tired eyes keep falling shut.
-    expect(glints('working', TIRED_TICKS + 2)).toHaveLength(0)
-    // Surprised and proud, it hops off the ground.
-    expect(critterTop('attention', 4)).toBeLessThan(critterTop('waiting', 4))
-  })
-
-  it('reacts with its own extras', () => {
-    expect(text('sleeping', 5)).toMatch(/[zZ]/)
-    expect(text('attention', 2)).toContain('!')
-    const proud = new Set(frame('done', 5).colors.flat())
-    expect([...proud].filter((color) => ['red', 'yellow', 'green', 'cyan', 'blue', 'magenta'].includes(color)).length).toBeGreaterThan(0)
+  it('glides between whole ticks: the background uses fractional time', () => {
+    expect(text('working', 10.5)).not.toBe(text('working', 10))
   })
 
   it('tolerates negative ticks and tiny grids', () => {
     expect(frame('working', -3)).toEqual(frame('working', 0))
     expect(frame('working', Number.NaN)).toEqual(frame('working', 0))
     expect(renderCompanion('waiting', 0, 1, 1).lines.length).toBeGreaterThan(0)
-  })
-
-  it('glides between whole ticks: continuous motion uses fractional time', () => {
-    // The background flow moves between ticks; discrete events (blinks) do not jump early.
-    const flow = (tick: number): string => frame('working', tick).lines.join('\n')
-    expect(flow(10.5)).not.toBe(flow(10))
-    expect(flow(10.5)).not.toBe(flow(11))
-  })
-})
-
-describe('companionExpression', () => {
-  it('maps moods to expressions, changing over time', () => {
-    expect(companionExpression('working', 0)).toBe('focused')
-    expect(companionExpression('working', TIRED_TICKS)).toBe('tired')
-    expect(companionExpression('waiting', 0)).toBe('waiting')
-    expect(companionExpression('attention', 0)).toBe('surprised')
-    expect(companionExpression('done', 0)).toBe('proud')
-    expect(companionExpression('done', PROUD_TICKS)).toBe('rested')
-    expect(companionExpression('error', 0)).toBe('angry')
-    expect(companionExpression('sleeping', 0)).toBe('asleep')
   })
 })
 
@@ -126,29 +89,7 @@ describe('companionMood', () => {
   })
 })
 
-describe('companionCaption', () => {
-  it('follows the expression', () => {
-    expect(companionCaption('working', 0)).not.toBe(companionCaption('working', 2))
-    expect(companionCaption('working', TIRED_TICKS)).toBe('Still working...')
-    expect(companionCaption('done', 0)).toBe('Done!')
-    expect(companionCaption('done', PROUD_TICKS)).toBe('All done')
-  })
-})
-
-describe('reacting to the user and the agent', () => {
-  it('turns to listen while you type: eyes move toward the terminal', () => {
-    // Rested, it looks straight ahead; listening, its glints move toward the terminal.
-    const mean = (cells: number[]): number => cells.reduce((a, b) => a + b, 0) / cells.length
-    const tick = PROUD_TICKS + 10
-    expect(mean(glints('done', tick, true))).toBeLessThan(mean(glints('done', tick)))
-    expect(companionCaption('working', 0, true)).toBe('Listening...')
-  })
-
-  it('does not pretend to listen when asleep or angry', () => {
-    expect(companionCaption('sleeping', 0, true)).toBe('Session ended')
-    expect(companionCaption('error', 0, true)).toBe('Something failed')
-  })
-
+describe('companionEnergy', () => {
   it('speeds up with output, gently', () => {
     expect(companionEnergy(0)).toBe(1)
     expect(companionEnergy(2_000)).toBeGreaterThan(1.4)
