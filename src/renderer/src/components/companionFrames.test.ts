@@ -3,6 +3,7 @@ import {
   PROUD_TICKS,
   TIRED_TICKS,
   companionCaption,
+  companionEnergy,
   companionExpression,
   companionMood,
   renderCompanion,
@@ -114,5 +115,29 @@ describe('companionCaption', () => {
     expect(companionCaption('working', TIRED_TICKS)).toBe('Still working...')
     expect(companionCaption('done', 0)).toBe('Done!')
     expect(companionCaption('done', PROUD_TICKS)).toBe('All done')
+  })
+})
+
+describe('reacting to the user and the agent', () => {
+  it('turns to listen while you type: eyes move toward the terminal', () => {
+    const eyeCenter = (listening: boolean): number => {
+      const { colors } = renderCompanion('waiting', 40, COLS, ROWS, 1.75, listening)
+      const cols = colors.flatMap((row) => row.map((color, c) => (color === 'eye' ? c : -1))).filter((c) => c >= 0)
+      return cols.reduce((a, b) => a + b, 0) / cols.length
+    }
+    expect(eyeCenter(true)).toBeLessThan(eyeCenter(false))
+    expect(companionCaption('working', 0, true)).toBe('Listening...')
+  })
+
+  it('does not pretend to listen when asleep or angry', () => {
+    expect(companionCaption('sleeping', 0, true)).toBe('Session ended')
+    expect(companionCaption('error', 0, true)).toBe('Something failed')
+  })
+
+  it('speeds up with output, gently', () => {
+    expect(companionEnergy(0)).toBe(1)
+    expect(companionEnergy(2_000)).toBeGreaterThan(1.4)
+    expect(companionEnergy(10_000_000)).toBe(2)
+    expect(companionEnergy(Number.NaN)).toBe(1)
   })
 })

@@ -47,3 +47,23 @@ export function formatRate(bytesPerSecond: number): string {
   if (bytesPerSecond < 1024 * 1024) return `${(bytesPerSecond / 1024).toFixed(1)} KB/s`
   return `${(bytesPerSecond / 1024 / 1024).toFixed(1)} MB/s`
 }
+
+// ---- Live signals for the agent animation (no store, no re-render) ----
+
+const lastInput = new Map<string, number>()
+
+/** The user typed into this tab's terminal. */
+export function recordInput(tabId: string): void {
+  lastInput.set(tabId, Date.now())
+}
+
+/** When the user last typed into the tab (0 = never). */
+export function lastInputAt(tabId: string): number {
+  return lastInput.get(tabId) ?? 0
+}
+
+/** Output rate over the last sampled second, in bytes per second. */
+export function latestRate(tabId: string): number {
+  const samples = history.get(tabId)
+  return samples?.length ? samples[samples.length - 1] : 0
+}

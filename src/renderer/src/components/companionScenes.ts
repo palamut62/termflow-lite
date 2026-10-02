@@ -9,6 +9,7 @@
 // AgentCompanion.tsx paints it onto a <canvas>.
 
 import type { CompanionMood } from './companionFrames'
+import { CRITTER, CRITTER_W, CRITTER_H } from './critterSprites'
 
 export type SceneId = 'garden' | 'volcano' | 'building' | 'digging' | 'waiting' | 'approval' | 'mail' | 'party' | 'storm' | 'night'
 
@@ -21,7 +22,7 @@ export interface SceneEvent {
 
 /** Palette tokens; `body*` are tones of the agent's color, resolved by the component. */
 export type PixelColor =
-  | 'body' | 'bodyHi' | 'bodyLo' | 'ink' | 'white'
+  | 'body' | 'bodyHi' | 'bodyLo' | 'r0' | 'r1' | 'r2' | 'r3' | 'r4' | 'line' | 'ink' | 'white'
   | 'sky0' | 'sky1' | 'sky2' | 'hill' | 'hill2' | 'puff' | 'skyStorm' | 'flash' | 'star' | 'moon'
   | 'grass' | 'grass2' | 'dirt' | 'dirt2' | 'pit'
   | 'rock' | 'rockHi' | 'lava' | 'lava2' | 'smoke'
@@ -30,7 +31,10 @@ export type PixelColor =
   | 'red' | 'gold' | 'green' | 'blue' | 'pink' | 'cyan'
 
 /** Fixed colors for everything except the agent's own body tones. */
-export const PIXEL_PALETTE: Record<Exclude<PixelColor, 'body' | 'bodyHi' | 'bodyLo'>, string> = {
+/** Tokens recolored per agent at runtime (see critterRamp). */
+export type AgentTone = 'body' | 'bodyHi' | 'bodyLo' | 'r0' | 'r1' | 'r2' | 'r3' | 'r4' | 'line'
+
+export const PIXEL_PALETTE: Record<Exclude<PixelColor, AgentTone>, string> = {
   ink: '#16161c', white: '#f4f4f4',
   sky0: '#0b1020', sky1: '#131c33', sky2: '#1d2a48', hill: '#16263a', hill2: '#1c3148', puff: '#2a3a5c', skyStorm: '#1b1d24', flash: '#3a3f52', star: '#c9d4ff', moon: '#f2e8b0',
   grass: '#46a854', grass2: '#2f7d3c', dirt: '#6b4428', dirt2: '#4d2f1b', pit: '#24150b',
@@ -38,6 +42,56 @@ export const PIXEL_PALETTE: Record<Exclude<PixelColor, 'body' | 'bodyHi' | 'body
   brick: '#b5523b', brick2: '#93402d', wood: '#8b5a2b', metal: '#a3adbb', spark: '#fff1a8',
   leaf: '#5bcf4f', carrot: '#f28c28', crow: '#24242c', paper: '#e9e3d1', cloud: '#5e6573', rain: '#6aa7e8', bolt: '#ffe14d',
   red: '#e5484d', gold: '#f2c94c', green: '#3dd68c', blue: '#4f8cff', pink: '#e879f9', cyan: '#3fc8e0'
+}
+
+function rgbToHsv(r: number, g: number, b: number): [number, number, number] {
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  const d = max - min
+  let h = 0
+  if (d) {
+    if (max === r) h = ((g - b) / d) % 6
+    else if (max === g) h = (b - r) / d + 2
+    else h = (r - g) / d + 4
+  }
+  return [((h * 60) + 360) % 360, max ? d / max : 0, max]
+}
+
+function hsvToHex(h: number, s: number, v: number): string {
+  const c = v * s
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1))
+  const m = v - c
+  const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x]
+  return '#' + [r, g, b].map((k) => Math.round((k + m) * 255).toString(16).padStart(2, '0')).join('')
+}
+
+/** Rotates hue `deg` by up to `amount` degrees toward `target` along the short way. */
+function toward(deg: number, target: number, amount: number): number {
+  const diff = ((target - deg + 540) % 360) - 180
+  return (deg + Math.sign(diff) * Math.min(Math.abs(diff), amount) + 360) % 360
+}
+
+/**
+ * The critter's 5-step shading ramp (dark -> light) for an agent color, plus
+ * its outline. A port of ramp() from pixel-art-studio (MIT, github.com/Gamezxz/pixel-art-studio): shadows rotate toward
+ * blue, highlights toward yellow, saturation peaks at the midtone, and the
+ * middle step is the agent color itself.
+ */
+export function critterRamp(rgb: [number, number, number], hueShift = 14, dark = 0.4, light = 0.8): { ramp: string[]; line: string } {
+  const [h, s, v] = rgbToHsv(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255)
+  const vDark = Math.max(0.06, v * (1 - dark))
+  const vLight = Math.min(1, v + (1 - v) * light)
+  const ramp = [0, 1, 2, 3, 4].map((i) => {
+    const t = i / 4
+    const vv = vDark + (vLight - vDark) * t
+    const hh = t < 0.5 ? toward(h, 240, (0.5 - t) * 2 * hueShift) : toward(h, 60, (t - 0.5) * 2 * hueShift)
+    const ss = t < 0.5 ? Math.min(1, s * (1 + 0.25 * (0.5 - t) * 2)) : s * (1 - 0.45 * (t - 0.5) * 2)
+    return hsvToHex(hh, Math.max(0, ss), Math.max(0, Math.min(1, vv)))
+  })
+  ramp[2] = '#' + rgb.map((k) => Math.round(k).toString(16).padStart(2, '0')).join('')
+  // Outline: the darkest step, pushed further toward blue and almost black.
+  const line = hsvToHex(toward(h, 240, hueShift * 1.5), Math.min(1, s * 0.7), Math.max(0.08, vDark * 0.32))
+  return { ramp, line }
 }
 
 /** Text drawn over the pixels by the component. Positions are in scene pixels. */
@@ -139,55 +193,75 @@ class Pixels {
 }
 
 // ---- The critter ----
+// Drawn with the pixel-art-studio skill: art/critter/build.py generates the
+// index-mapped poses in critterSprites.ts. Ramp tokens are recolored with the
+// agent's own color at runtime; eyes are drawn here so any pose shows any mood.
 
-const CRITTER_W = 16
-const CRITTER_H = 10
+type CritterPoseName = keyof typeof CRITTER
 
 interface CritterPose {
-  walk?: number
-  armsUp?: boolean
+  frame: CritterPoseName
   eyes?: 'open' | 'closed' | 'happy' | 'dead' | 'wide'
+  /** Where the eyes look: -1 left .. 1 right (the glint follows). */
   look?: number
-  sitting?: boolean
 }
 
-/** Draws the critter with its top-left corner at (x, y). */
+const SPRITE_COLORS: Record<string, PixelColor> = { o: 'line', '0': 'r0', '1': 'r1', '2': 'r2', '3': 'r3', '4': 'r4' }
+
+/** Draws the critter with its sprite's top-left corner at (x, y). */
 function critter(px: Pixels, x: number, y: number, pose: CritterPose): void {
-  const body: Record<string, PixelColor> = { B: 'body', H: 'bodyHi', S: 'bodyLo' }
-  const sitting = pose.sitting ? 2 : 0
-  px.sprite(x, y + sitting, [
-    '..BBBBBBBBBBBB..',
-    '..BHHBBBBBBBBS..',
-    '..BHBBBBBBBBBS..',
-    '..BBBBBBBBBBBS..',
-    '..BBBBBBBBBBBS..',
-    '..BBBBBBBBBBBS..',
-    '..SSSSSSSSSSSS..'
-  ], body)
-  // Arms: out at the sides, or raised.
-  if (pose.armsUp) {
-    px.rect(x, y - 2 + sitting, 2, 4, 'body')
-    px.rect(x + 14, y - 2 + sitting, 2, 4, 'body')
-  } else {
-    px.rect(x, y + 3 + sitting, 2, 2, 'body')
-    px.rect(x + 14, y + 3 + sitting, 2, 2, 'body')
+  const sprite = CRITTER[pose.frame]
+  px.sprite(x, y, sprite.rows, SPRITE_COLORS)
+  const [ex0, ey] = sprite.eyes
+  const look = Math.max(-1, Math.min(1, Math.round(pose.look ?? 0)))
+  for (const ex of [x + ex0, x + ex0 + sprite.eyeGap]) {
+    const top = y + ey
+    switch (pose.eyes ?? 'open') {
+      case 'open':
+        px.rect(ex, top, 2, 3, 'ink')
+        px.set(ex + (look > 0 ? 1 : 0), top + (look === 0 ? 0 : 1), 'white')
+        break
+      case 'wide':
+        px.rect(ex, top - 1, 2, 4, 'ink')
+        px.set(ex + (look > 0 ? 1 : 0), top - 1, 'white')
+        break
+      case 'closed':
+        px.rect(ex, top + 2, 2, 1, 'ink')
+        break
+      case 'happy':
+        // A little upside-down U: smiling, squeezed-shut eyes.
+        px.rect(ex, top + 1, 2, 1, 'ink')
+        px.set(ex - 1, top + 2, 'ink')
+        px.set(ex + 2, top + 2, 'ink')
+        break
+      case 'dead':
+        px.set(ex - 1, top, 'ink'); px.set(ex + 1, top, 'ink'); px.set(ex, top + 1, 'ink')
+        px.set(ex - 1, top + 2, 'ink'); px.set(ex + 1, top + 2, 'ink')
+        break
+    }
   }
-  // Legs, stepping when walking.
-  if (!pose.sitting) {
-    const step = (pose.walk ?? 0) % 2
-    for (const lx of [3, 5, 10, 12]) px.rect(x + lx + (step && (lx === 3 || lx === 10) ? -1 : 0), y + 7, 1, 3, 'body')
-  }
-  // Eyes.
-  const look = Math.round(pose.look ?? 0)
-  const eyes = pose.eyes ?? 'open'
-  for (const ex of [x + 5 + look, x + 10 + look]) {
-    const ey = y + 2 + sitting
-    if (eyes === 'open') px.rect(ex, ey, 1, 2, 'ink')
-    else if (eyes === 'wide') { px.rect(ex, ey - 1, 1, 3, 'ink'); px.set(ex - 1, ey, 'ink') }
-    else if (eyes === 'closed') px.rect(ex - 1, ey + 1, 3, 1, 'ink')
-    else if (eyes === 'happy') { px.set(ex, ey, 'ink'); px.set(ex - 1, ey + 1, 'ink'); px.set(ex + 1, ey + 1, 'ink') }
-    else { px.set(ex - 1, ey - 1, 'ink'); px.set(ex + 1, ey - 1, 'ink'); px.set(ex, ey, 'ink'); px.set(ex - 1, ey + 1, 'ink'); px.set(ex + 1, ey + 1, 'ink') }
-  }
+}
+
+/** Walk cycle at ~140 ms per frame (contact - passing - contact - passing). */
+function walkFrame(t: number): CritterPoseName {
+  return (['walk0', 'walk1', 'walk2', 'walk3'] as const)[Math.floor((t * 110) / 140) % 4]
+}
+
+/** Idle breathing, ping-pong at ~330 ms. */
+function idleFrame(t: number): CritterPoseName {
+  return Math.floor(t / 3) % 2 ? 'idle1' : 'idle0'
+}
+
+/**
+ * A hop with anticipation: crouch, launch into the air, land with a squash,
+ * then rest. Returns the pose and how high the body is off the ground.
+ */
+function hop(t: number, period: number, height: number, airPose: CritterPoseName = 'air'): { frame: CritterPoseName; lift: number } {
+  const p = t % period
+  if (p < 2) return { frame: 'crouch', lift: 0 }
+  if (p < 6) return { frame: airPose, lift: Math.round(Math.sin(((p - 2) / 4) * Math.PI) * height) }
+  if (p < 7) return { frame: 'land', lift: 0 }
+  return { frame: idleFrame(t), lift: 0 }
 }
 
 function blink(t: number): boolean {
@@ -295,9 +369,9 @@ function volcano(s: Stage): void {
     const rise = (Math.floor(t / 2) + k * 6) % 18
     px.circle(vx + Math.sin((t + k * 9) * 0.15) * 2, top - 4 - rise, 1.5 + rise / 8, 'smoke')
   }
-  // The critter hops nervously beside it.
-  const hop = t % 10 < 3 ? 1 : 0
-  critter(px, s.cx, s.cy - hop, { eyes: blink(t) ? 'closed' : 'wide', look: 1, walk: Math.floor(t / 3) })
+  // The critter hops nervously beside it, eyes wide, watching the crater.
+  const jump = hop(t, 14, 3)
+  critter(px, s.cx, s.cy - jump.lift, { frame: jump.frame, eyes: blink(t) ? 'closed' : 'wide', look: 1 })
   s.texts.push({ kind: 'label', x: vx, y: groundY + 3, text: s.event?.detail || 'tests', color: 'gold' })
 }
 
@@ -317,8 +391,9 @@ function building(s: Stage): void {
   }
   // Hammer swinging in the right hand, sparks on impact.
   const down = Math.floor(t / 2) % 2 === 0
-  critter(px, s.cx, s.cy, { eyes: blink(t) ? 'closed' : 'open', look: 1 })
-  const hx = s.cx + CRITTER_W
+  // Squashes into each hammer blow.
+  critter(px, s.cx, s.cy, { frame: down ? 'idle1' : 'idle0', eyes: blink(t) ? 'closed' : 'open', look: 1 })
+  const hx = s.cx + CRITTER_W - 3
   const hy = s.cy + (down ? 2 : -2)
   px.rect(hx, hy + 1, 3, 1, 'wood')
   px.rect(hx + 2, hy - (down ? 0 : 1), 2, 3, 'metal')
@@ -347,7 +422,8 @@ function digging(s: Stage): void {
     px.rect(hole + 4, y + 1, 2, 1, 'rock')
     px.rect(hole + 4, y + 3, 2, 1, 'rock')
   }
-  critter(px, s.cx, s.cy, { eyes: blink(t) ? 'closed' : 'open', look: 1, armsUp: Math.floor(t / 3) % 2 === 0 })
+  // Digging: crouch to scoop, rise to throw.
+  critter(px, s.cx, s.cy, { frame: Math.floor(t / 3) % 2 === 0 ? 'crouch' : 'cheer', eyes: blink(t) ? 'closed' : 'open', look: 1 })
 }
 
 function garden(s: Stage): void {
@@ -375,7 +451,7 @@ function garden(s: Stage): void {
   const span = Math.max(1, px.width - CRITTER_W - 4)
   const pos = (t * 0.4) % (span * 2)
   const x = 2 + (pos < span ? pos : span * 2 - pos)
-  critter(px, x, s.cy, { walk: Math.floor(t / 3), eyes: blink(t) ? 'closed' : 'open', look: pos < span ? 1 : -1 })
+  critter(px, x, s.cy, { frame: walkFrame(t), eyes: blink(t) ? 'closed' : 'open', look: pos < span ? 1 : -1 })
 }
 
 function signpost(px: Pixels, x: number, groundY: number, icon: 'question' | 'lock'): void {
@@ -401,7 +477,7 @@ function waiting(s: Stage, icon: 'question' | 'lock'): void {
   signpost(px, s.cx + CRITTER_W + 3, groundY, icon)
   // Sits and looks at you, glancing at the sign now and then.
   const glance = Math.floor(t / 25) % 3 === 2 ? 1 : 0
-  critter(px, s.cx, s.cy, { sitting: true, eyes: blink(t) ? 'closed' : 'open', look: glance })
+  critter(px, s.cx, s.cy, { frame: 'sit', eyes: blink(t) ? 'closed' : 'open', look: glance })
 }
 
 function mail(s: Stage): void {
@@ -413,8 +489,8 @@ function mail(s: Stage): void {
   const ey = s.cy - 9 - bounce
   px.rect(ex, ey, 8, 5, 'paper')
   for (let i = 0; i < 4; i++) { px.set(ex + i, ey + i, 'rock'); px.set(ex + 7 - i, ey + i, 'rock') }
-  const hop = t % 8 < 3 ? 2 : 0
-  critter(px, s.cx, s.cy - hop, { eyes: 'wide', armsUp: hop > 0 })
+  const jump = hop(t, 12, 3, 'cheer')
+  critter(px, s.cx, s.cy - jump.lift, { frame: jump.frame, eyes: 'wide', look: 0 })
 }
 
 const CONFETTI: PixelColor[] = ['red', 'gold', 'green', 'blue', 'pink', 'cyan']
@@ -434,8 +510,8 @@ function party(s: Stage): void {
     const y = (hash(k, 4) % groundY + t * speed) % groundY
     px.set((hash(k, 6) % px.width) + Math.sin(t * 0.2 + k) * 1.5, y, CONFETTI[k % CONFETTI.length])
   }
-  const jump = Math.round(Math.abs(Math.sin(t * 0.35)) * 4)
-  critter(px, s.cx, s.cy - jump, { armsUp: true, eyes: 'happy' })
+  const jump = hop(t, 9, 4, 'cheer')
+  critter(px, s.cx, s.cy - jump.lift, { frame: jump.frame === 'crouch' ? 'crouch' : 'cheer', eyes: 'happy' })
 }
 
 function storm(s: Stage): void {
@@ -456,7 +532,7 @@ function storm(s: Stage): void {
     for (let y = cloudY + 3; y < s.cy - 1; y++) { px.set(x, y, 'bolt'); x += (y % 3) - 1 }
   }
   const shake = (hash(t) % 3) - 1
-  critter(px, s.cx + shake, s.cy, { eyes: 'dead' })
+  critter(px, s.cx + shake, s.cy, { frame: 'idle1', eyes: 'dead' })
 }
 
 function night(s: Stage): void {
@@ -467,7 +543,8 @@ function night(s: Stage): void {
   const mx = px.width - 9
   px.circle(mx, 6, 4, 'moon')
   px.circle(mx - 2, 5, 3.5, 'sky0')
-  critter(px, s.cx, s.cy, { sitting: true, eyes: 'closed' })
+  // Asleep: slow breathing.
+  critter(px, s.cx, s.cy, { frame: Math.floor(t / 8) % 2 ? 'sit' : 'land', eyes: 'closed' })
   for (let k = 0; k < 3; k++) {
     const phase = (Math.floor(t / 6) + k * 4) % 12
     s.texts.push({ kind: 'float', x: s.cx + CRITTER_W - 2 + phase * 0.8, y: s.cy - 2 - phase * 1.2, text: phase < 4 ? 'z' : 'Z', color: phase < 6 ? 'blue' : 'cyan' })
@@ -478,7 +555,7 @@ function night(s: Stage): void {
  * Renders `scene` `tick` frames in, on a pixel grid `width` x `height`.
  * The bubble line is attached above the critter.
  */
-export function renderScene(scene: SceneId, tick: number, width: number, height: number, event?: SceneEvent): PixelFrame {
+export function renderScene(scene: SceneId, tick: number, width: number, height: number, event?: SceneEvent, listening = false): PixelFrame {
   const w = Math.max(CRITTER_W + 8, Math.floor(width))
   const h = Math.max(CRITTER_H + 14, Math.floor(height))
   const t = Math.max(0, Math.floor(tick))
@@ -489,7 +566,8 @@ export function renderScene(scene: SceneId, tick: number, width: number, height:
     t,
     groundY,
     cx: Math.max(1, Math.round(w * 0.12)),
-    cy: groundY - CRITTER_H,
+    // The sprite's feet (its last opaque row) stand on the grass line.
+    cy: groundY - CRITTER_H + 1,
     texts: [],
     event
   }
@@ -498,6 +576,8 @@ export function renderScene(scene: SceneId, tick: number, width: number, height:
     waiting: (s: Stage) => waiting(s, 'question'),
     approval: (s: Stage) => waiting(s, 'lock')
   } as Record<SceneId, (s: Stage) => void>)[scene](stage)
-  stage.texts.unshift({ kind: 'bubble', x: stage.cx + CRITTER_W / 2, y: Math.max(1, stage.cy - 16), text: sceneLine(scene, t, event) })
+  // While you type into the agent's terminal, the critter says it is listening.
+  const listens = listening && scene !== 'night' && scene !== 'storm'
+  stage.texts.unshift({ kind: 'bubble', x: stage.cx + CRITTER_W / 2, y: Math.max(1, stage.cy - 6), text: listens ? 'Listening...' : sceneLine(scene, t, event) })
   return { width: w, height: h, pixels: px.data, texts: stage.texts }
 }

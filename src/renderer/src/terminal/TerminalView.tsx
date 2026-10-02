@@ -13,7 +13,7 @@ import { useCommandHistoryStore } from '../store/commandHistoryStore'
 import { resolveTheme } from '../themes/themes'
 import { backdropActive, terminalTheme } from '../backdrop'
 import { CursorFx } from './cursorFx'
-import { recordOutput } from '../fun/outputMeter'
+import { recordInput, recordOutput } from '../fun/outputMeter'
 import { burstConfetti, shouldCelebrate } from '../fun/confetti'
 import { useStatsStore } from '../store/statsStore'
 import { playCue } from '../fun/sounds'
@@ -441,6 +441,8 @@ export function TerminalView({ tabId, active, visible = active, splitPane, split
       if (data.includes('\r')) shellIntegration.noteEnter()
       if (!data.startsWith('\x1b')) playCue(useSettingsStore.getState().settings.soundTheme, data.includes('\r') ? 'enter' : 'key')
       useTerminalStore.getState().setTabActivity(tabId, 'running')
+      // Human keystrokes (not protocol replies) make the agent animation listen.
+      if (!data.startsWith('\x1b')) recordInput(tabId)
       // Broadcast: yalnızca insan girdisi (ESC ile başlamayan) split'teki tüm
       // panellere gider; protokol yanıtları hep kendi PTY'sinde kalır. Komut
       // geçmişine kayıt yukarıda yalnızca bir kez (aktif tab) düşer.

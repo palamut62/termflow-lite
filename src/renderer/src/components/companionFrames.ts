@@ -143,7 +143,7 @@ const LIGHT = [-0.43, -0.58, 0.69]
  * The frame for `mood`, `tick` frames after the mood began, on a `cols` x
  * `rows` grid. `aspect` is a cell's height divided by its width.
  */
-export function renderCompanion(mood: CompanionMood, tick: number, cols: number, rows: number, aspect = 1.75): CompanionFrame {
+export function renderCompanion(mood: CompanionMood, tick: number, cols: number, rows: number, aspect = 1.75, listening = false): CompanionFrame {
   // Discrete steps (blinks, saccades, glitches) use whole frames; continuous
   // motion (bobbing, the background flow) uses fractional time so it glides
   // even when the renderer runs faster than one step per frame.
@@ -172,7 +172,11 @@ export function renderCompanion(mood: CompanionMood, tick: number, cols: number,
   }
 
   const expression = companionExpression(mood, t)
-  const face = faceFor(expression, t, time)
+  // While you type into the agent's terminal it turns to listen: eyes toward
+  // the terminal on the left, brows up. Asleep or angry faces don't.
+  const face = listening && reactsToInput(expression)
+    ? { ...faceFor(expression, t, time), eye: 'open' as const, lid: blinkLid(t, 37), lidTilt: 0, lookX: -0.8, lookY: 0, brows: { lift: 0.5, tilt: -0.05 }, mouth: 'line' as const }
+    : faceFor(expression, t, time)
 
   // Head geometry, sized to the panel.
   const hx = Math.min(halfW * 0.86, 0.82)
@@ -349,10 +353,24 @@ export const COMPANION_CAPTIONS: Record<CompanionExpression, string> = {
   asleep: 'Session ended'
 }
 
+function reactsToInput(expression: CompanionExpression): boolean {
+  return expression !== 'asleep' && expression !== 'angry'
+}
+
+/**
+ * Animation speed for an agent's output rate (bytes/s): 1x when quiet, up to
+ * 2x when output pours in. Logarithmic, so a burst doesn't make it frantic.
+ */
+export function companionEnergy(bytesPerSecond: number): number {
+  const rate = Math.max(0, Number.isFinite(bytesPerSecond) ? bytesPerSecond : 0)
+  return Math.min(2, 1 + Math.log10(1 + rate / 200) / 2)
+}
+
 /** Caption under the face; while focused it spins and rotates its verb. */
-export function companionCaption(mood: CompanionMood, tick: number): string {
+export function companionCaption(mood: CompanionMood, tick: number, listening = false): string {
   const t = Math.max(0, Math.floor(tick))
   const expression = companionExpression(mood, t)
+  if (listening && reactsToInput(expression)) return 'Listening...'
   if (expression !== 'focused') return COMPANION_CAPTIONS[expression]
   return `${SPINNER[Math.floor(t / 2) % SPINNER.length]} ${WORK_VERBS[Math.floor(t / 40) % WORK_VERBS.length]}...`
 }

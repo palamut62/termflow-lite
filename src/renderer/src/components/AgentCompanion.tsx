@@ -7,13 +7,16 @@ import { useTerminalStore } from '../store/terminalStore'
 import { useAgentEventStore } from '../store/agentEventStore'
 import { useToastStore } from '../store/toastStore'
 import { motionEnabled } from '../motion'
-import { companionCaption, companionMood, renderCompanion, type CompanionColor, type CompanionFrame, type CompanionMood } from './companionFrames'
-import { PIXEL_PALETTE, renderScene, sceneFor, type PixelColor, type PixelFrame } from './companionScenes'
+import { companionCaption, companionEnergy, companionMood, renderCompanion, type CompanionColor, type CompanionFrame, type CompanionMood } from './companionFrames'
+import { lastInputAt, latestRate } from '../fun/outputMeter'
+import { PIXEL_PALETTE, critterRamp, renderScene, sceneFor, type PixelColor, type PixelFrame } from './companionScenes'
 
 /** ~15 fps: smooth enough for the glide, still a retro character-art cadence. */
 const FRAME_MS = 66
 /** Animation time advances in ~110 ms ticks (see companionFrames). */
 const TICKS_PER_FRAME = FRAME_MS / 110
+/** The character keeps listening this long after your last keystroke. */
+const LISTEN_MS = 1500
 
 type Rgb = [number, number, number]
 
@@ -124,7 +127,13 @@ function paintScene(canvas: HTMLCanvasElement, frame: PixelFrame, scale: number,
   const ctx = canvas.getContext('2d')
   if (!ctx) return
   const rgb = parseRgb(body)
-  const colors: Record<PixelColor, string> = { ...PIXEL_PALETTE, body: `rgb(${rgb.join(', ')})`, bodyHi: mixRgb(rgb, WHITE, 0.35), bodyLo: mixRgb(rgb, [0, 0, 0], 0.3) }
+  // The critter's hue-shifted ramp in the agent's color (pixel-art-studio's ramp()).
+  const { ramp, line } = critterRamp(rgb)
+  const colors: Record<PixelColor, string> = {
+    ...PIXEL_PALETTE,
+    r0: ramp[0], r1: ramp[1], r2: ramp[2], r3: ramp[3], r4: ramp[4], line,
+    body: ramp[2], bodyHi: ramp[3], bodyLo: ramp[1]
+  }
   const dpr = window.devicePixelRatio || 1
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   // Pixels, merged into horizontal runs to keep the draw calls down.
@@ -225,7 +234,8 @@ export function AgentCompanion({ tabId, visible }: { tabId: string; visible: boo
         const rows = Math.ceil(box.height / scale)
         paint = () => {
           const event = eventRef.current
-          paintScene(canvas, renderScene(sceneFor(mood, event), tick, columns, rows, event), scale, body)
+          const listening = Date.now() - lastInputAt(tabId) < LISTEN_MS
+          paintScene(canvas, renderScene(sceneFor(mood, event), tick, columns, rows, event, listening), scale, body)
         }
         return
       }
@@ -238,8 +248,9 @@ export function AgentCompanion({ tabId, visible }: { tabId: string; visible: boo
       const rows = Math.max(6, Math.floor(box.height / cellH))
       const palette = facePalette(canvas)
       paint = () => {
-        paintFace(canvas, renderCompanion(mood, tick, cols, rows, cellH / cellW), cellW, cellH, palette, body)
-        if (captionRef.current) captionRef.current.textContent = companionCaption(mood, tick)
+        const listening = Date.now() - lastInputAt(tabId) < LISTEN_MS
+        paintFace(canvas, renderCompanion(mood, tick, cols, rows, cellH / cellW, listening), cellW, cellH, palette, body)
+        if (captionRef.current) captionRef.current.textContent = companionCaption(mood, tick, listening)
       }
     }
     measure()
@@ -264,7 +275,8 @@ export function AgentCompanion({ tabId, visible }: { tabId: string; visible: boo
     }
     const timer = window.setInterval(() => {
       if (document.hidden) return
-      tick += TICKS_PER_FRAME
+      // Busier output, livelier animation (only while the agent works).
+      tick += TICKS_PER_FRAME * (mood === 'working' ? companionEnergy(latestRate(tabId)) : 1)
       paint()
     }, FRAME_MS)
     return () => {
@@ -272,7 +284,7 @@ export function AgentCompanion({ tabId, visible }: { tabId: string; visible: boo
       window.clearInterval(timer)
       observer.disconnect()
     }
-  }, [enabled, animate, mood, style, bodyColor])
+  }, [enabled, animate, mood, style, bodyColor, tabId])
 
   if (!enabled) return null
 
