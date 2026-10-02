@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.0 - 2026-10-03
+
+- The agent animation now follows what the agent is really doing, read from the tool lines Claude Code (`⏺ Read(...)`, `⏺ Update(...)`, `⏺ Bash(...)`) and Codex (`• Ran ...`, `• Edited ...`) print:
+  - editing or writing a file: the critter types at a keyboard while code appears on its monitor,
+  - running a command: it watches the output scroll past on the monitor,
+  - running tests: it hops nervously next to an erupting volcano,
+  - reading or searching: it digs, and files pop out of the ground,
+  - otherwise: it sits and thinks under a flickering light bulb.
+- The speech bubble says what is going on, naming the file or command ("Editing widget.ts", "Running npm test"), with an occasional short quip once an action has been going for a while.
+- The ASCII style now shows the very same scenes and speech bubble, drawn in ASCII.
+- Removed the garden and brick-wall scenes, which did not reflect the agent's work.
+
 ## 1.11.0 - 2026-10-03
 
 - A new pixel-art critter for agent animations, drawn with proper shading: a hue-shifted five-tone ramp in the agent's own color (Claude Code orange, Codex blue), a selective outline, and walk, breathing, hop, cheer and sit poses.
