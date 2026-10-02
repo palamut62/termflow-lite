@@ -64,6 +64,8 @@ export function applyTitleBarOverlay(win: BrowserWindow, payload: TitleBarOverla
  * plan rengi saydam yapılır, yüzeyleri renderer yarı saydam çizer. Opaklık
  * %30'un altına inmez ki pencere görünmez kalmasın.
  */
+const transparentWindows = new WeakSet<BrowserWindow>()
+
 export function applyWindowAppearance(
   win: BrowserWindow,
   settings: Pick<AppSettings, 'opacity' | 'backdrop'>
@@ -74,7 +76,14 @@ export function applyWindowAppearance(
   if (process.platform === 'win32') {
     const material = settings.backdrop ?? 'none'
     try {
-      win.setBackgroundColor(material === 'none' ? '#1e1e1e' : '#00000000')
+      // Malzeme yoksa pencere rengine hiç dokunulmaz (önceki davranış); yalnızca
+      // bu oturumda saydam yapılmışsa Electron varsayılanına geri döndürülür.
+      if (material !== 'none') {
+        win.setBackgroundColor('#00000000')
+        transparentWindows.add(win)
+      } else if (transparentWindows.delete(win)) {
+        win.setBackgroundColor('#ffffff')
+      }
       win.setBackgroundMaterial(material)
     } catch {
       // Eski Windows: malzeme desteklenmiyor, opak pencere ile devam.
