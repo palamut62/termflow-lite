@@ -2,6 +2,8 @@
 
 A minimal, fast and deeply customizable cross-platform terminal for developers.
 
+**Website:** [termflow-lite.vercel.app](https://termflow-lite.vercel.app)
+
 TermFlow Lite opens straight into a terminal — no welcome screens, no setup wizards. It is built for people who live in the shell and want a terminal that gets out of the way.
 
 ## Features

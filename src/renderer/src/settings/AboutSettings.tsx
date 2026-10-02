@@ -91,6 +91,15 @@ export function AboutSettings(): React.JSX.Element {
         and keyboard shortcuts that fit your daily workflow.
       </p>
 
+      <div className="about-links">
+        <a href="https://termflow-lite.vercel.app" target="_blank" rel="noopener noreferrer">
+          Website
+        </a>
+        <a href="https://github.com/palamut62/termflow-lite" target="_blank" rel="noopener noreferrer">
+          Source code
+        </a>
+      </div>
+
       <div className="settings-section-title">Tech Stack</div>
       <div className="about-stack">Electron · React · TypeScript · xterm.js · node-pty</div>
 

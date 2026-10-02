@@ -6,6 +6,7 @@
   "main": "./out/main/index.js",
   "author": "Umut Çelik (palamut62)",
   "license": "MIT",
+  "homepage": "https://termflow-lite.vercel.app",
   "repository": {
     "type": "git",
     "url": "https://github.com/palamut62/termflow-lite.git"

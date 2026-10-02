@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TermFlow Lite: a terminal that shows how every command went</title>
+  <meta name="description" content="TermFlow Lite is a fast, free terminal for Windows and Linux. Tabs, splits, PowerShell, Git Bash, WSL and coding agents like Claude Code and Codex, with every command marked passed, failed or running." />
+  <meta property="og:title" content="TermFlow Lite" />
+  <meta property="og:description" content="A fast, free terminal for shells and coding agents. Every command shows how it went." />
+  <meta property="og:image" content="/assets/blocks.webp" />
+  <meta name="theme-color" content="#E9ECF0" />
+  <link rel="icon" type="image/png" href="/assets/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Next:wght@400;500;700&family=JetBrains+Mono:wght@400;600&family=Unbounded:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="nav">
+    <a class="brand" href="/" aria-label="TermFlow Lite home">
+      <img src="/assets/icon-256.png" alt="" width="32" height="32" />
+      <span>TermFlow Lite</span>
+    </a>
+    <nav aria-label="Main">
+      <a href="#features">Features</a>
+      <a href="#download">Download</a>
+      <a class="nav-gh" href="https://github.com/palamut62/termflow-lite" target="_blank" rel="noopener noreferrer">
+        GitHub<span class="stars" data-stars hidden></span>
+      </a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <div class="hero-text">
+        <h1>A terminal that shows how every command went.</h1>
+        <div class="hero-side">
+          <p class="lede">TermFlow Lite runs PowerShell, Git Bash, WSL and coding agents like Claude&nbsp;Code and Codex in tabs and splits. Every command gets a mark: passed, failed or still running.</p>
+          <div class="hero-cta">
+            <div class="cta-row">
+              <a class="btn btn-primary" data-dl="exe" href="https://github.com/palamut62/termflow-lite/releases/download/v1.9.0/TermFlow-Lite-1.9.0-x64.exe">Download for Windows</a>
+              <a class="btn btn-quiet" href="#download">Linux builds</a>
+            </div>
+            <p class="meta"><span data-version>Version 1.9.0</span>. Free and open source.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="mascot" aria-hidden="true">
+          <svg viewBox="0 0 120 92" width="120" height="92">
+            <path class="mascot-body" d="M8 92 V52 C8 23 31 4 60 4 C89 4 112 23 112 52 V92 Z" />
+            <g class="mascot-eyes">
+              <rect x="38" y="38" width="12" height="24" rx="6" />
+              <rect x="70" y="38" width="12" height="24" rx="6" />
+            </g>
+          </svg>
+        </div>
+
+        <div class="app" id="demo" role="img" aria-label="Animated preview of TermFlow Lite running npm test, a failing git push and an inline suggestion" data-theme="dark">
+          <div class="app-tabs">
+            <button class="app-tab is-active" data-tab="pwsh" type="button"><i class="tab-ico ico-ps"></i>PowerShell<span class="tab-dot" data-dot="pwsh"></span><span class="tab-flash" data-flash></span></button>
+            <button class="app-tab" data-tab="claude" type="button"><i class="tab-ico ico-ai"></i>Claude Code<span class="tab-dot dot-wait"></span></button>
+            <button class="app-tab" data-tab="bash" type="button"><i class="tab-ico ico-git"></i>Git Bash<span class="tab-dot dot-done"></span></button>
+            <span class="app-tabs-fill"></span>
+            <span class="win-btns"><i></i><i></i><i></i></span>
+          </div>
+          <div class="app-body">
+            <div class="term" data-pane="pwsh" aria-hidden="true"><div class="term-lines" data-lines></div><canvas class="term-fx" data-fx></canvas></div>
+            <div class="term" data-pane="claude" hidden aria-hidden="true">
+              <div class="term-lines">
+                <div class="ln"><span class="c-mag">✻</span> Welcome to <b>Claude Code</b></div>
+                <div class="ln dim">  cwd: C:\dev\acme-api</div>
+                <div class="ln"> </div>
+                <div class="ln"><span class="c-dim">&gt;</span> add a discount rule to src/price.js and cover it with a test</div>
+                <div class="ln"> </div>
+                <div class="ln"><span class="c-grn">●</span> Update(src/price.js)</div>
+                <div class="ln dim">  ⎿  Updated src/price.js with 6 additions</div>
+                <div class="ln"><span class="c-grn">●</span> Write(test/discount.test.js)</div>
+                <div class="ln"> </div>
+                <div class="ln"><span class="c-yel">?</span> Run <b>npm test</b>?  <span class="c-dim">1. Yes  2. No</span></div>
+              </div>
+            </div>
+            <div class="term" data-pane="bash" hidden aria-hidden="true">
+              <div class="term-lines">
+                <div class="ln"><span class="c-grn">dev@box</span> <span class="c-mag">MINGW64</span> <span class="c-yel">/c/dev/acme-api</span> <span class="c-cyan">(main)</span></div>
+                <div class="ln gut gut-pass">$ git log --oneline -3</div>
+                <div class="ln gut gut-pass"><span class="c-yel">9f2c1ab</span> Add discount rule</div>
+                <div class="ln gut gut-pass"><span class="c-yel">f651c5d</span> Initial commit</div>
+                <div class="ln"> </div>
+                <div class="ln"><span class="c-grn">dev@box</span> <span class="c-mag">MINGW64</span> <span class="c-yel">/c/dev/acme-api</span> <span class="c-cyan">(main)</span></div>
+                <div class="ln">$ <span class="cursor"></span></div>
+              </div>
+            </div>
+          </div>
+          <div class="app-status">
+            <span>History</span><span>Saved</span><span>Sessions</span><span>Agents</span><span>Wrapped</span>
+            <span class="st-fill"></span>
+            <span class="st-proj">Node.js, Git</span>
+            <span class="st-branch">main (1)</span>
+            <svg class="st-pulse" viewBox="0 0 46 12" width="46" height="12" aria-hidden="true"><polyline data-pulse points="" /></svg>
+            <span class="st-mode">Workspace</span>
+          </div>
+        </div>
+
+        <div class="stage-controls" aria-label="Preview controls">
+          <div class="seg" role="group" aria-label="Theme">
+            <span class="seg-label">Theme</span>
+            <button type="button" data-set-theme="dark" aria-pressed="true">Dark</button>
+            <button type="button" data-set-theme="light" aria-pressed="false">Light</button>
+            <button type="button" data-set-theme="matrix" aria-pressed="false">Matrix CRT</button>
+            <button type="button" data-set-theme="amber" aria-pressed="false">Amber CRT</button>
+          </div>
+          <div class="seg" role="group" aria-label="Cursor effect">
+            <span class="seg-label">Cursor</span>
+            <button type="button" data-set-cursor="none" aria-pressed="false">Plain</button>
+            <button type="button" data-set-cursor="trail" aria-pressed="false">Trail</button>
+            <button type="button" data-set-cursor="blaze" aria-pressed="true">Blaze</button>
+          </div>
+          <button class="replay" type="button" data-replay>Replay</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="proof" aria-label="Project facts">
+      <div><strong data-stars-big>Open source</strong><span>on GitHub, MIT licensed</span></div>
+      <div><strong data-version-short>1.9.0</strong><span data-release-date>latest release</span></div>
+      <div><strong>15 themes</strong><span>plus your own palette</span></div>
+      <div><strong>0 accounts</strong><span>no sign-in, settings stay local</span></div>
+    </section>
+
+    <section class="features" id="features">
+      <article class="feature">
+        <div class="feature-copy">
+          <h2>Read a long session at a glance</h2>
+          <p>Shell integration marks every command in PowerShell, Git Bash, bash and zsh. A green line means it passed, red means it failed, and slow commands show how long they took.</p>
+          <ul>
+            <li><kbd>Ctrl</kbd> <kbd>↑</kbd> and <kbd>Ctrl</kbd> <kbd>↓</kbd> jump between commands in a long scrollback</li>
+            <li>Right-click a command to copy its output, rerun it or copy it ready for an AI agent</li>
+            <li>A command that runs for more than 10 seconds in a background tab sends a notification when it ends</li>
+          </ul>
+        </div>
+        <figure class="shot"><img src="/assets/blocks.webp" alt="TermFlow Lite showing npm test marked passed in 4.1 seconds and git push marked failed with exit code 128" width="1375" height="875" loading="lazy" /></figure>
+      </article>
+
+      <article class="feature">
+        <div class="feature-copy">
+          <h2>Run agents and shells side by side</h2>
+          <p>Split the window, drag panes to re-tile them and keep Claude Code, Codex or OpenCode next to the shell that runs your tests.</p>
+          <ul>
+            <li>Give each agent its own git worktree so parallel sessions never overwrite each other</li>
+            <li>Hand work from one agent or provider to another without losing the context</li>
+            <li>Tabs show live state: running, waiting for input, new output, done or failed</li>
+          </ul>
+        </div>
+        <figure class="shot"><img src="/assets/split.webp" alt="Two panes side by side: PowerShell running npm test and Git Bash showing git diff and git log" width="1375" height="875" loading="lazy" /></figure>
+      </article>
+
+      <article class="feature">
+        <div class="feature-copy">
+          <h2>Type less, find more</h2>
+          <p>Commands you ran before appear as a grey suggestion while you type. Press <kbd>→</kbd> to take it.</p>
+          <ul>
+            <li>Compiler and test errors like <code>src/app.ts:42:7</code> open at that line in VS Code, Cursor or Windsurf</li>
+            <li>Search every command you ran with <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>H</kbd></li>
+            <li>Run package.json scripts, Git and Docker tasks from the palette with <kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>P</kbd></li>
+          </ul>
+        </div>
+        <figure class="shot shot-zoom"><img src="/assets/suggest.webp" alt="The prompt shows npm t typed and the rest of npm test suggested in grey" width="1176" height="128" loading="lazy" /></figure>
+      </article>
+
+      <article class="feature">
+        <div class="feature-copy">
+          <h2>Make it feel like yours</h2>
+          <p>Fifteen themes and a custom palette editor, Mica and Acrylic backdrops on Windows 11, cursor trails and an optional retro CRT screen. Motion can be subtle, full or off, and the system reduce-motion setting always wins.</p>
+          <ul>
+            <li>WebGL rendering, ligatures and inline images (Sixel and iTerm2)</li>
+            <li>Mechanical or soft key sounds, and confetti when your tests pass, if you want them</li>
+          </ul>
+        </div>
+        <figure class="shot"><img src="/assets/crt.webp" alt="TermFlow Lite in the green Matrix theme with scanlines and phosphor glow" width="1375" height="875" loading="lazy" /></figure>
+      </article>
+
+      <article class="feature">
+        <div class="feature-copy">
+          <h2>See your year in the terminal</h2>
+          <p>Wrapped counts your commands, top tools, busiest hour and streaks, and hands out badges like Night Owl and Commit Machine. Save it as an image to share.</p>
+          <p class="note">Wrapped stores counters and tool names only, never arguments or output, and nothing leaves your machine.</p>
+        </div>
+        <figure class="shot"><img src="/assets/wrapped.webp" alt="TermFlow Wrapped card with command counts, top tools, an hourly chart and badges" width="1375" height="875" loading="lazy" /></figure>
+      </article>
+    </section>
+
+    <section class="more" aria-labelledby="more-title">
+      <h2 id="more-title">Also in the box</h2>
+      <dl>
+        <div><dt>SSH that survives a dropped link</dt><dd>Saved hosts use your own OpenSSH. Attach to tmux or screen so builds keep running.</dd></div>
+        <div><dt>Session restore</dt><dd>Tabs, folders and the split layout come back on the next launch.</dd></div>
+        <div><dt>Quake mode</dt><dd>Drop the window from the top of the screen with a global hotkey.</dd></div>
+        <div><dt>Broadcast input</dt><dd>Type once into every pane of a split with <kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>B</kbd>.</dd></div>
+        <div><dt>Open in TermFlow Lite</dt><dd>Start any shell or agent in a folder from the Windows Explorer menu.</dd></div>
+        <div><dt>Close to tray</dt><dd>Closing the window keeps terminals and agents alive.</dd></div>
+        <div><dt>GitHub pull requests</dt><dd>Open a pull request in its own worktree with any agent, using your existing gh login.</dd></div>
+        <div><dt>Agent inbox</dt><dd>A redacted timeline of approvals, tool calls, completions and failures across tabs.</dd></div>
+        <div><dt>Automatic updates</dt><dd>The installed app checks for releases and updates when you confirm.</dd></div>
+      </dl>
+    </section>
+
+    <section class="download" id="download">
+      <div class="download-head">
+        <h2>Get TermFlow Lite</h2>
+        <p>Free and open source. <span data-version-sentence>Version 1.9.0</span>.</p>
+      </div>
+      <div class="dl-grid">
+        <a class="dl dl-main" data-dl="exe" href="https://github.com/palamut62/termflow-lite/releases/download/v1.9.0/TermFlow-Lite-1.9.0-x64.exe">
+          <span class="dl-os">Windows installer</span>
+          <span class="dl-file" data-file="exe">TermFlow-Lite-1.9.0-x64.exe</span>
+          <span class="dl-hint">Windows 10 and 11, 64-bit</span>
+        </a>
+        <a class="dl" data-dl="zip" href="https://github.com/palamut62/termflow-lite/releases/download/v1.9.0/TermFlow-Lite-1.9.0-x64.zip">
+          <span class="dl-os">Windows portable</span>
+          <span class="dl-file" data-file="zip">TermFlow-Lite-1.9.0-x64.zip</span>
+          <span class="dl-hint">No installer, unzip and run</span>
+        </a>
+        <a class="dl" data-dl="appimage" href="https://github.com/palamut62/termflow-lite/releases/download/v1.9.0/TermFlow-Lite-1.9.0-x86_64.AppImage">
+          <span class="dl-os">Linux AppImage</span>
+          <span class="dl-file" data-file="appimage">TermFlow-Lite-1.9.0-x86_64.AppImage</span>
+          <span class="dl-hint">Most x64 distributions</span>
+        </a>
+        <a class="dl" data-dl="deb" href="https://github.com/palamut62/termflow-lite/releases/download/v1.9.0/TermFlow-Lite-1.9.0-amd64.deb">
+          <span class="dl-os">Debian and Ubuntu</span>
+          <span class="dl-file" data-file="deb">TermFlow-Lite-1.9.0-amd64.deb</span>
+          <span class="dl-hint">.deb package, x64</span>
+        </a>
+      </div>
+      <div class="silent">
+        <p>Installing on many machines? The Windows installer runs silently:</p>
+        <pre><code><span data-file="exe">TermFlow-Lite-1.9.0-x64.exe</span> /S</code></pre>
+      </div>
+      <p class="release-link"><a data-release-notes href="https://github.com/palamut62/termflow-lite/releases/tag/v1.9.0" target="_blank" rel="noopener noreferrer">Read what changed in this release</a></p>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="foot-brand">
+      <img src="/assets/icon-256.png" alt="" width="28" height="28" />
+      <span>TermFlow Lite</span>
+    </div>
+    <p class="owner">Product Owner: Umut Çelik
+      <a href="https://x.com/palamut62" target="_blank" rel="noopener noreferrer">X</a>
+      <a href="https://github.com/palamut62" target="_blank" rel="noopener noreferrer">GitHub</a>
+    </p>
+    <p class="foot-links">
+      <a href="https://github.com/palamut62/termflow-lite" target="_blank" rel="noopener noreferrer">Source code</a>
+      <a href="https://github.com/palamut62/termflow-lite/releases" target="_blank" rel="noopener noreferrer">All releases</a>
+      <a href="https://github.com/palamut62/termflow-lite/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT license</a>
+    </p>
+  </footer>
+
+  <script src="/main.js" defer></script>
+</body>
+</html>
