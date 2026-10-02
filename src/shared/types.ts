@@ -353,6 +353,8 @@ export interface AppSettings {
   commandNotifications: boolean
   /** Ajan sekmelerinin sağında, ajan durumuna göre değişen karakter animasyonu. */
   agentCompanion: boolean
+  /** Animasyon stili: gözleriyle tepki veren ASCII yüz ya da piksel-art sahneler. */
+  agentAnimationStyle: AgentAnimationStyle
 }
 
 export type MotionLevel = 'off' | 'subtle' | 'full'
@@ -360,6 +362,7 @@ export type BackdropMaterial = 'none' | 'mica' | 'acrylic' | 'tabbed'
 export type CursorEffect = 'none' | 'trail' | 'blaze'
 export type TerminalEffect = 'none' | 'scanlines' | 'crt'
 export type SoundTheme = 'off' | 'mechanical' | 'soft'
+export type AgentAnimationStyle = 'face' | 'scenes'
 
 /**
  * Otomatik güncelleme durumu (electron-updater). Main tarafından üretilir,
@@ -500,5 +503,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   shellIntegration: true,
   inlineSuggestions: true,
   commandNotifications: true,
-  agentCompanion: true
+  agentCompanion: true,
+  agentAnimationStyle: 'face'
 }

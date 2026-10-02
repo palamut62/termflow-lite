@@ -603,6 +603,16 @@ body {
   white-space: pre;
 }
 
+/* Piksel sahneler: tuval tüm paneli kaplar; rengi ajan rengidir (sahne gövde tonu buradan okunur). */
+.agent-companion-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  color: var(--companion-body);
+  image-rendering: pixelated;
+}
+
 .agent-companion-caption {
   position: absolute;
   left: 0;

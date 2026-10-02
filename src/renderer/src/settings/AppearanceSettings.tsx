@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Minus, Plus } from 'lucide-react'
 import { DEFAULT_THEME_ID, getTheme, RETRO_THEMES, THEMES } from '../themes/themes'
 import { useSettingsStore } from '../store/settingsStore'
-import type { BackdropMaterial, CursorEffect, MotionLevel, TerminalEffect, ThemeColors } from '../../../shared/types'
+import type { AgentAnimationStyle, BackdropMaterial, CursorEffect, MotionLevel, TerminalEffect, ThemeColors } from '../../../shared/types'
 import { ColorPicker, Field, NumberInput, Select, TextInput, Toggle } from './Settings'
 
 const FONT_SUGGESTIONS = [
@@ -314,6 +314,16 @@ export function AppearanceSettings(): React.JSX.Element {
             checked={settings.agentCompanion}
             onChange={(v) => void update({ agentCompanion: v })}
             label="Agent animation"
+          />
+        </Field>
+        <Field label="Animation Style" hint="ASCII face reacts with its eyes; pixel scenes act out what the agent is doing">
+          <Select
+            value={settings.agentAnimationStyle}
+            options={[
+              { value: 'face', label: 'ASCII face' },
+              { value: 'scenes', label: 'Pixel scenes' }
+            ]}
+            onChange={(v) => void update({ agentAnimationStyle: v as AgentAnimationStyle })}
           />
         </Field>
         <Field label="Celebrate" hint="Confetti when a test or build command passes (needs shell integration)">
