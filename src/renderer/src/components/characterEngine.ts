@@ -126,6 +126,39 @@ export function faceTargets(state: CharacterState, t: number, tired = false): Fa
   }
 }
 
+/** Sim seconds the "noticed you" reaction lasts after the pointer arrives. */
+export const NOTICE_S = 0.7
+/** Middle of the eyes in scene pixels. */
+const EYES_X = 170
+const EYES_Y = 194
+
+/**
+ * The face while the pointer hovers the panel: the pupils turn toward it and
+ * the head leans its way. Arriving gets a wide-eyed "oh, hi" (`notice` is sim
+ * seconds since then); a pointer right on the face gets a happy squint.
+ * Grumpy and error faces look but do not smile. `point` is in scene pixels.
+ */
+export function lookToward(face: Face, state: CharacterState, point: { x: number; y: number }, notice: number): Face {
+  const dx = point.x - EYES_X
+  const dy = point.y - EYES_Y
+  const distance = Math.hypot(dx, dy) || 1
+  const reach = Math.min(1, distance / 120)
+  const look: Face = {
+    ...face,
+    gazeX: (dx / distance) * 15 * reach,
+    gazeY: (dy / distance) * 12 * reach,
+    tilt: face.tilt + Math.max(-1, Math.min(1, dx / 200)) * 0.06
+  }
+  const grumpy = state === 'angry' || state === 'error'
+  if (notice < NOTICE_S) look.open = Math.max(face.open, 1.2)
+  else if (distance < 70 && !grumpy) {
+    look.open = Math.min(Math.max(face.open, 0.5), 0.55)
+    look.smile = 1
+  }
+  if (!grumpy) look.smile = Math.max(look.smile, 0.45)
+  return look
+}
+
 type Point = [number, number]
 
 interface SceneInput {
@@ -136,6 +169,8 @@ interface SceneInput {
   age: number
   blinkAge: number
   face: Face
+  /** Height of the little hop when the pointer is first noticed. */
+  hop: number
 }
 
 /** The kit's scene(): background props, body, face, desk, hands, monitor, then state symbols. */
@@ -207,7 +242,7 @@ function drawScene(g: CanvasRenderingContext2D, input: SceneInput): void {
   const nod = typing ? Math.sin(t * 8) * 0.012 : 0
   const jump = happy ? Math.abs(Math.sin(age * 5)) * (age < 4 ? 29 : 8) : s === 'rested' ? Math.max(0, Math.sin(t * 2.5)) * 7 : 0
   let cx = 170
-  let cy = sleep ? 258 : 214 - jump
+  let cy = sleep ? 258 : 214 - jump - input.hop
   if (s === 'thinking') cx += Math.sin(t * 0.5) * 7
   if (s === 'waiting') cx += Math.sin(t * 1.2) * 5
   if (s === 'tired') cy += 6 + Math.max(0, Math.sin(t * 1.1)) * 5
@@ -461,6 +496,11 @@ export class CharacterEngine {
   age = 0
   private blinkAt = 2.8
   private blinkAge = 10
+  /** Pointer over the panel, in scene pixels (null when it is elsewhere). */
+  private pointer: { x: number; y: number } | null = null
+  private noticeAt = -10
+  /** Where the scene sat in the panel on the last paint, to map pointer positions. */
+  private layout = { scale: 1, ox: 0, oy: 0 }
   face: Face
   private readonly g: CanvasRenderingContext2D | null
   private readonly field: HTMLCanvasElement | null = typeof document === 'undefined' ? null : document.createElement('canvas')
@@ -475,6 +515,13 @@ export class CharacterEngine {
     src.height = SCENE_H
     this.g = src.getContext('2d', { willReadFrequently: true })
     this.face = faceTargets(this.state, 0)
+  }
+
+  /** Follows a pointer at panel point (x, y) in CSS px with the eyes; null when it leaves. */
+  setPointer(point: { x: number; y: number } | null): void {
+    if (point && !this.pointer) this.noticeAt = this.time
+    const { scale, ox, oy } = this.layout
+    this.pointer = point ? { x: (point.x - ox) / scale, y: (point.y - oy) / scale } : null
   }
 
   /** A new state restarts its reaction (the jump, the flinch, the confetti). */
@@ -500,7 +547,9 @@ export class CharacterEngine {
         this.blinkAt = this.time + (this.tired ? 2 : 3.2) + 1.1 * Math.sin(this.time * 0.73)
       }
     }
-    const target = faceTargets(this.state, this.time, this.tired)
+    let target = faceTargets(this.state, this.time, this.tired)
+    // A sleeper keeps sleeping; everyone else looks at the pointer.
+    if (this.pointer && this.state !== 'sleeping') target = lookToward(target, this.state, this.pointer, this.time - this.noticeAt)
     for (const key of Object.keys(target) as Array<keyof Face>) {
       this.face[key] = animate ? this.face[key] + (target[key] - this.face[key]) * EASE : target[key]
     }
@@ -528,7 +577,9 @@ export class CharacterEngine {
   paint(ctx: CanvasRenderingContext2D, width: number, height: number, style: CharacterStyle, caption: string[]): void {
     const g = this.g
     if (!g) return
-    drawScene(g, { kind: this.kind, state: this.state, tired: this.tired, t: this.time, age: this.age, blinkAge: this.blinkAge, face: this.face })
+    const notice = this.time - this.noticeAt
+    const hop = this.pointer && this.state !== 'sleeping' && notice < NOTICE_S ? Math.sin((notice / NOTICE_S) * Math.PI) * 10 : 0
+    drawScene(g, { kind: this.kind, state: this.state, tired: this.tired, t: this.time, age: this.age, blinkAge: this.blinkAge, face: this.face, hop })
     const pixels = style === 'pixel' ? g.getImageData(0, 0, SCENE_W, SCENE_H).data : null
     const cells = this.sampleCells()
     // Contain-fit the scene, centered across and standing just above the caption.
@@ -536,6 +587,7 @@ export class CharacterEngine {
     const scale = Math.max(0.1, Math.min(width / SCENE_W, (height - captionH) / SCENE_H))
     const ox = (width - SCENE_W * scale) / 2
     const oy = Math.max(4, height - captionH - SCENE_H * scale)
+    this.layout = { scale, ox, oy }
     ctx.clearRect(0, 0, width, height)
     // Both styles stand on the same faint ASCII field. It moves slowly, so it is
     // redrawn into its own layer at ~9 fps and copied in with one drawImage.

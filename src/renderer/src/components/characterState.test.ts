@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { faceTargets, keyPose, workPose, yawnAmount } from './characterEngine'
+import { NOTICE_S, faceTargets, keyPose, lookToward, workPose, yawnAmount } from './characterEngine'
 import {
   DONE_MS,
   RESTED_MS,
@@ -144,5 +144,31 @@ describe('resolveCharacterState: a spinner agent before its first turn', () => {
   it('is idle while the TUI redraws, not thinking', () => {
     const memory = createStateMemory(T0)
     expect(resolveCharacterState({ running: true, activity: 'running', activityKind: null, pulse: {}, now: T0 }, memory).state).toBe('idle')
+  })
+})
+
+describe('lookToward: eyes follow the pointer', () => {
+  const base = faceTargets('idle', 0)
+
+  it('turns the pupils toward the pointer', () => {
+    const right = lookToward(base, 'idle', { x: 340, y: 194 }, 5)
+    const upLeft = lookToward(base, 'idle', { x: 0, y: 0 }, 5)
+    expect(right.gazeX).toBeGreaterThan(12)
+    expect(Math.abs(right.gazeY)).toBeLessThan(1)
+    expect(upLeft.gazeX).toBeLessThan(0)
+    expect(upLeft.gazeY).toBeLessThan(0)
+  })
+
+  it('widens its eyes on arrival, then smiles; squints when petted', () => {
+    expect(lookToward(base, 'idle', { x: 340, y: 100 }, 0).open).toBeGreaterThanOrEqual(1.2)
+    expect(lookToward(base, 'idle', { x: 340, y: 100 }, NOTICE_S + 1).smile).toBeGreaterThan(0.4)
+    const petted = lookToward(base, 'idle', { x: 175, y: 200 }, NOTICE_S + 1)
+    expect(petted.smile).toBe(1)
+    expect(petted.open).toBeLessThan(0.6)
+  })
+
+  it('a grumpy face looks but does not smile', () => {
+    const angry = faceTargets('angry', 0)
+    expect(lookToward(angry, 'angry', { x: 175, y: 200 }, NOTICE_S + 1).smile).toBe(angry.smile)
   })
 })

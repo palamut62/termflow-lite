@@ -51,6 +51,8 @@ export function AgentCompanion({ tabId, visible }: { tabId: string; visible: boo
     return undefined
   })
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  // The running engine, so hovering the panel can point its eyes (only while it animates).
+  const engineRef = useRef<CharacterEngine | null>(null)
   // Read every frame, so new events and activity change the face without restarting the loop.
   const live = useRef<{ event?: AgentEvent; running: boolean; activity: TabActivity }>({ running: true, activity: 'running' })
   live.current = { event: latestEvent, running: tab?.running ?? false, activity: tab?.activity ?? 'completed' }
@@ -72,6 +74,7 @@ export function AgentCompanion({ tabId, visible }: { tabId: string; visible: boo
     const ctx = canvas?.getContext('2d')
     if (!enabled || !canvas || !ctx) return
     const engine = new CharacterEngine(kind)
+    engineRef.current = animate ? engine : null
     let width = 0
     let height = 0
     let frame = 0
@@ -165,6 +168,7 @@ export function AgentCompanion({ tabId, visible }: { tabId: string; visible: boo
 
     return () => {
       disposed = true
+      if (engineRef.current === engine) engineRef.current = null
       cancelAnimationFrame(frame)
       cancelAnimationFrame(pending)
       observer.disconnect()
@@ -181,7 +185,15 @@ export function AgentCompanion({ tabId, visible }: { tabId: string; visible: boo
   }
 
   return (
-    <aside className={`agent-companion agent-companion-${style}`} aria-label="Agent status animation">
+    <aside
+      className={`agent-companion agent-companion-${style}`}
+      aria-label="Agent status animation"
+      onPointerMove={(event) => {
+        const box = canvasRef.current?.getBoundingClientRect()
+        if (box) engineRef.current?.setPointer({ x: event.clientX - box.left, y: event.clientY - box.top })
+      }}
+      onPointerLeave={() => engineRef.current?.setPointer(null)}
+    >
       <button className="agent-companion-close" type="button" onClick={hide} title="Hide agent animation" aria-label="Hide agent animation">
         <X size={12} />
       </button>
