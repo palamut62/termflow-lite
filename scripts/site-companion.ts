@@ -5,6 +5,7 @@
 
 import { CHARACTERS, CharacterEngine, type CharacterKind, type CharacterState, type CharacterStyle } from '../src/renderer/src/components/characterEngine'
 import { STATE_LABELS } from '../src/renderer/src/components/characterState'
+import { cycleWeather, type WeatherKind } from '../src/renderer/src/fun/weather'
 
 type DemoState = 'working' | 'thinking' | 'waiting' | 'done' | 'error' | 'tired' | 'angry' | 'sleeping'
 
@@ -30,6 +31,9 @@ const SCRIPTS: Record<DemoState, Script> = {
 const TOUR: DemoState[] = ['working', 'thinking', 'waiting', 'done', 'tired', 'error', 'angry', 'sleeping']
 const TOUR_MS = 5200
 const FRAME_MS = 42
+/** The demo's Auto sky changes much faster than the app's. */
+const DEMO_SKY_MS = 9000
+const SKIES: WeatherKind[] = ['sunny', 'cloudy', 'hot', 'windy', 'rain', 'snow']
 
 function mount(root: HTMLElement): void {
   const canvas = root.querySelector('canvas')
@@ -41,6 +45,7 @@ function mount(root: HTMLElement): void {
 
   let kind: CharacterKind = 'ember'
   let style: CharacterStyle = 'ascii'
+  let sky: WeatherKind | 'auto' = 'auto'
   let demo: DemoState = 'working'
   let touring = true
   let tourAt = performance.now()
@@ -50,7 +55,7 @@ function mount(root: HTMLElement): void {
   let visible = false
   let last = 0
 
-  const press = (group: 'demoState' | 'demoKind' | 'demoStyle', value: string): void => {
+  const press = (group: 'demoState' | 'demoKind' | 'demoStyle' | 'demoWeather', value: string): void => {
     const attr = `data-${group.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`
     root.querySelectorAll<HTMLButtonElement>(`[${attr}]`).forEach((button) => button.setAttribute('aria-pressed', String(button.dataset[group] === value)))
   }
@@ -74,6 +79,8 @@ function mount(root: HTMLElement): void {
     press('demoState', demo)
     press('demoKind', kind)
     press('demoStyle', style)
+    press('demoWeather', sky)
+    engine.setWeather(sky === 'auto' ? cycleWeather(Date.now(), DEMO_SKY_MS) : sky)
   }
   const paint = (): void => {
     if (!width || !height) return
@@ -98,7 +105,8 @@ function mount(root: HTMLElement): void {
   root.addEventListener('click', (event) => {
     const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button')
     if (!button) return
-    const { demoState, demoKind, demoStyle } = button.dataset
+    const { demoState, demoKind, demoStyle, demoWeather } = button.dataset
+    if (demoWeather === 'auto' || SKIES.includes(demoWeather as WeatherKind)) sky = demoWeather as WeatherKind | 'auto'
     if (demoState && demoState in SCRIPTS) {
       demo = demoState as DemoState
       touring = false
@@ -123,6 +131,7 @@ function mount(root: HTMLElement): void {
       demo = TOUR[(TOUR.indexOf(demo) + 1) % TOUR.length]
       apply()
     }
+    if (sky === 'auto' && !reduce.matches) engine.setWeather(cycleWeather(Date.now(), DEMO_SKY_MS))
     if (reduce.matches) return
     engine.step(dt, true)
     paint()
