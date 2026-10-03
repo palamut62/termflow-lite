@@ -1,7 +1,7 @@
 {
   "name": "termflow-lite",
   "productName": "TermFlow Lite",
-  "version": "1.12.0",
+  "version": "1.13.0",
   "description": "A minimal, fast and customizable terminal for developers.",
   "main": "./out/main/index.js",
   "author": "Umut Çelik (palamut62)",
@@ -18,6 +18,7 @@
     "test:e2e": "npm run build && playwright test",
     "verify": "npm run test && npm run typecheck && electron-vite build",
     "build": "electron-vite build",
+    "build:site": "esbuild scripts/site-companion.ts --bundle --minify --format=iife --target=es2022 --outfile=website/companion.js",
     "start": "electron-vite preview",
     "package": "electron-vite build && electron-builder --win",
     "dist:win": "electron-builder --win --x64 --publish never",

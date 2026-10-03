@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.13.0 - 2026-10-03
 
 - New agent characters from the TermFlow ASCII motion kit: Ember (flame), Miso (ear-tuft spirit) and Piko (robot), each with its own desk, props and colors. Settings > Appearance > Character picks one, or Auto: Claude Code Ember, Codex Miso, OpenCode Piko.
 - Real facial expressions instead of frame swaps: eyes, pupils, brows, mouth and hands are separate layers that ease toward each state, with blinking and gaze.
