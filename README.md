@@ -54,6 +54,7 @@ TermFlow Lite opens straight into a terminal — no welcome screens, no setup wi
 - **Command blocks** - PowerShell, pwsh, Git Bash, bash and zsh get OSC 133 shell integration: a status line beside every command (running, passed, failed, cancelled), and a duration / exit badge on slow or failed commands. Nothing is written to your profile or dotfiles.
 - **Jump between commands** - `Ctrl+Up` / `Ctrl+Down` scrolls to the previous or next prompt; right-click a block to copy the command, copy its output, rerun it, or copy it formatted for an AI agent
 - **Inline suggestions** - grey fish-style suggestions from your history while you type; `→` or `End` accepts. Turned off automatically when PSReadLine already predicts.
+- **File panel** - `Ctrl+Shift+E` (or Files in the status bar) lists the active tab's folder and follows every `cd`; double-click a file to open it in your editor or default app, right-click to reveal, copy or insert its path
 - **Error locations** - `src/app.ts:42:7` and `app.ts(42,7)` in compiler and test output open the file at that line in VS Code, Cursor or Windsurf
 - **Finished-command notifications** - a command that ran longer than 10 seconds in a background tab sends a system notification; the tab flashes green or red when any command finishes
 - **Motion** - Off / Subtle / Full: tab, split, menu, dialog and theme crossfade animations; the system "reduce motion" preference always wins
@@ -78,8 +79,8 @@ Download the latest release from [GitHub Releases](https://github.com/palamut62/
 
 | Platform | Artifacts |
 | --- | --- |
-| Windows | `TermFlow-Lite-1.14.0-x64.exe` (installer) · `TermFlow-Lite-1.14.0-x64.zip` (portable) |
-| Linux | `TermFlow-Lite-1.14.0-x86_64.AppImage` · `TermFlow-Lite-1.14.0-amd64.deb` |
+| Windows | `TermFlow-Lite-1.15.0-x64.exe` (installer) · `TermFlow-Lite-1.15.0-x64.zip` (portable) |
+| Linux | `TermFlow-Lite-1.15.0-x86_64.AppImage` · `TermFlow-Lite-1.15.0-amd64.deb` |
 
 **Automatic updates:** the installed Windows build (`.exe`) and the Linux AppImage can update
 themselves — see *Settings → About → Updates* (checking on startup can be turned off there).

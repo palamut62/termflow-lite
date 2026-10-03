@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.15.0 - 2026-10-03
+
+- A file panel on the right (Files in the status bar, or Ctrl+Shift+E) lists the active tab's folder and follows every cd. Click a folder to open it, double-click a file to open it: code and text in VS Code, Cursor or Windsurf, everything else in its default app (programs are never run, only shown in Explorer). Right-click to reveal a file in Explorer, copy its path or type it into the terminal or agent prompt.
+- A filter box narrows the list, and dotfiles, .git and node_modules stay hidden until you show them. Folders are read one level at a time, so big projects stay fast.
+- While the file panel is open, the agent character steps aside and comes back when it closes.
+
 ## 1.14.0 - 2026-10-03
 
 - Weather for the agent character, and it reacts to it: it opens an umbrella in the rain (drops bounce off it and splash on the floor), wears a scarf and shivers in the snow, sweats with red cheeks in the heat, squints and leans into the wind, and smiles on a sunny day. The sky sits high up at the top of the panel, behind the character: clouds drift by, the sun turns into the moon at night, and rain, snow and wind fall and blow down the whole panel without ever covering the character.
