@@ -104,3 +104,45 @@ describe('character motion', () => {
     expect(new Set(faces).size).toBeGreaterThanOrEqual(9)
   })
 })
+
+describe('resolveCharacterState: agents with a busy spinner', () => {
+  const at = (now: number, pulse: StateInput['pulse'], extra: Partial<StateInput> = {}): StateInput =>
+    // The prompt heuristic says "running" the whole time; the spinner decides.
+    ({ running: true, activity: 'running', activityKind: null, pulse, now, ...extra })
+
+  it('works while the spinner turns, thinks when it says so', () => {
+    const memory = createStateMemory(T0)
+    expect(resolveCharacterState(at(T0, { busyAt: T0 }), memory).state).toBe('working')
+    expect(resolveCharacterState(at(T0 + 100, { busyAt: T0 + 100, thinkingAt: T0 + 100 }), memory).state).toBe('thinking')
+  })
+
+  it('a finished turn is done, then idle, even though redraws keep coming', () => {
+    const memory = createStateMemory(T0)
+    const pulse = { busyAt: T0, endAt: T0 + 500 }
+    expect(resolveCharacterState(at(T0 + 3000, pulse), memory).state).toBe('done')
+    expect(resolveCharacterState(at(T0 + 500 + DONE_MS + 1, pulse), memory).state).toBe('idle')
+  })
+
+  it('needs you when an approval comes after the spinner stops', () => {
+    const memory = createStateMemory(T0)
+    const pulse = { busyAt: T0 }
+    expect(resolveCharacterState(at(T0 + 3000, pulse, { eventKind: 'approval', eventAt: T0 + 2800 }), memory).state).toBe('waiting')
+    // An old approval from before the last bit of work does not count.
+    const later = createStateMemory(T0)
+    expect(resolveCharacterState(at(T0 + 20_000, { busyAt: T0 + 15_000 }, { eventKind: 'approval', eventAt: T0 }), later).state).toBe('idle')
+  })
+
+  it('prose that mentions an error is no error', () => {
+    const memory = createStateMemory(T0)
+    const pulse = { busyAt: T0 }
+    expect(resolveCharacterState(at(T0, pulse, { eventId: 'e', eventKind: 'error', eventAt: T0, eventDetail: 'I fixed the error handling in upload.ts' }), memory).state).toBe('working')
+    expect(resolveCharacterState(at(T0, pulse, { eventId: 'f', eventKind: 'error', eventAt: T0, eventDetail: '⎿ Error: Cannot find module' }), memory).state).toBe('error')
+  })
+})
+
+describe('resolveCharacterState: a spinner agent before its first turn', () => {
+  it('is idle while the TUI redraws, not thinking', () => {
+    const memory = createStateMemory(T0)
+    expect(resolveCharacterState({ running: true, activity: 'running', activityKind: null, pulse: {}, now: T0 }, memory).state).toBe('idle')
+  })
+})

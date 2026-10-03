@@ -21,6 +21,12 @@ export const ANGRY_WINDOW_MS = 10 * 60_000
 export const DONE_MS = 6000
 export const ERROR_MS = 10_000
 export const RESTED_MS = 3000
+/** The spinner redraws ~10x a second; this long without it means the agent stopped. */
+export const BUSY_MS = 2500
+/** The spinner said "thinking" this recently. */
+export const THINK_MS = 1500
+/** An error event counts only if its line reads like one ("Error: ...", "⎿ Failed ..."). */
+const ERROR_LINE = /^[\W\d]*(?:error|fatal|failed|failure)\b/i
 
 export interface StateInput {
   running: boolean
@@ -29,8 +35,16 @@ export interface StateInput {
   eventId?: string
   eventKind?: AgentEventKind
   eventAt?: number
+  /** The latest event's text, to tell a real error line from prose that mentions one. */
+  eventDetail?: string
   /** What the agent is doing, from its tool lines (null when unknown). */
   activityKind?: ActivityKind | null
+  /**
+   * The agent's own busy indicator (see agentPulse), for agents known to show
+   * one. With it, busy / thinking / turn end come from the spinner instead of
+   * the prompt; an empty pulse means it has not been busy yet.
+   */
+  pulse?: { busyAt?: number; thinkingAt?: number; endAt?: number }
   now: number
 }
 
@@ -82,25 +96,35 @@ function base(input: StateInput, memory: StateMemory): Resolved {
   }
   memory.stoppedAt = undefined
 
-  if (input.eventKind === 'error' && input.eventId && input.eventAt !== undefined && recent(ERROR_MS)) {
+  const pulse = input.pulse
+  const pulsed = pulse !== undefined
+  const since = (at: number | undefined, ms: number): boolean => at !== undefined && now - at < ms
+  const busy = pulsed ? since(pulse?.busyAt, BUSY_MS) : input.activity === 'running' || input.activity === 'unread'
+
+  const realError = input.eventDetail === undefined || ERROR_LINE.test(input.eventDetail)
+  if (input.eventKind === 'error' && input.eventId && input.eventAt !== undefined && recent(ERROR_MS) && realError) {
     noteError(memory, input.eventId, input.eventAt)
     return { state: errorState(memory, now), tired: false }
   }
 
-  if (input.activity === 'waiting' || input.activity === 'completed') {
+  if (!busy) {
     memory.workingSince = memory.lastWorkAt !== undefined && now - memory.lastWorkAt > WORK_GAP_MS ? undefined : memory.workingSince
-    if (input.eventKind === 'approval' || input.eventKind === 'question') {
+    // An approval or question asked after the agent last moved.
+    const asking = (input.eventKind === 'approval' || input.eventKind === 'question') &&
+      (!pulsed || (input.eventAt ?? 0) >= (pulse?.busyAt ?? 0) - 1000)
+    if (asking) {
       memory.idleSince = undefined
       memory.waitingSince ??= now
       return { state: now - memory.waitingSince >= WAIT_TIRED_MS ? 'tired' : 'waiting', tired: false }
     }
     memory.waitingSince = undefined
-    if (input.eventKind === 'completed' && recent(DONE_MS)) return { state: 'done', tired: false }
+    const finished = pulsed ? since(pulse?.endAt, DONE_MS) : input.eventKind === 'completed' && recent(DONE_MS)
+    if (finished) return { state: 'done', tired: false }
     memory.idleSince ??= now
     return { state: now - memory.idleSince >= SLEEP_AFTER_MS ? 'sleeping' : 'idle', tired: false }
   }
 
-  // Running (or unread output in a background tab): the agent is at work.
+  // Busy: the agent is at work.
   memory.idleSince = undefined
   memory.waitingSince = undefined
   if (memory.state === 'sleeping') memory.restedUntil = now + RESTED_MS
@@ -109,7 +133,9 @@ function base(input: StateInput, memory: StateMemory): Resolved {
   if (memory.workingSince === undefined || memory.lastWorkAt === undefined || now - memory.lastWorkAt > WORK_GAP_MS) memory.workingSince = now
   memory.lastWorkAt = now
   const kind = input.activityKind
-  const thinking = !kind || kind === 'think' || kind === 'plan'
+  // With a spinner, "thinking" is what it says; between thoughts the agent is
+  // acting or writing its answer. Without one, no known tool means thinking.
+  const thinking = kind === 'think' || kind === 'plan' || (pulsed ? since(pulse?.thinkingAt, THINK_MS) : !kind)
   return { state: thinking ? 'thinking' : 'working', tired: now - memory.workingSince >= TIRED_AFTER_MS }
 }
 

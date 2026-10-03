@@ -8,7 +8,7 @@ import { useTerminalStore } from '../store/terminalStore'
 import { useAgentEventStore } from '../store/agentEventStore'
 import { useToastStore } from '../store/toastStore'
 import { motionEnabled } from '../motion'
-import { activityLine, currentActivity } from '../fun/agentActivity'
+import { activityLine, agentPulse, currentActivity } from '../fun/agentActivity'
 import { CHARACTERS, CharacterEngine, type CharacterKind, type CharacterState } from './characterEngine'
 import { STATE_LABELS, STATE_LINES, createStateMemory, resolveCharacterState } from './characterState'
 
@@ -25,7 +25,10 @@ export function characterFor(setting: AgentCharacter | undefined, agent: AgentKi
 /** The line under the label: the real work while busy, otherwise a short state line. */
 function captionLine(state: CharacterState, tired: boolean, tabId: string, now: number): string {
   if (state === 'working' || state === 'thinking') {
-    const line = activityLine(currentActivity(tabId, now), now / 110, now)
+    const activity = currentActivity(tabId, now)
+    // Busy without a tool line: the agent is writing its answer.
+    if (state === 'working' && !activity) return tired ? 'Still going (long session)' : 'Working on it...'
+    const line = activityLine(activity, now / 110, now)
     return tired && state === 'working' ? `${line} (long session)` : line
   }
   return STATE_LINES[state]
@@ -84,7 +87,10 @@ export function AgentCompanion({ tabId, visible }: { tabId: string; visible: boo
           eventId: event?.id,
           eventKind: event?.kind,
           eventAt: event?.createdAt,
+          eventDetail: event?.detail,
           activityKind: currentActivity(tabId, now)?.kind ?? null,
+          // Claude Code and Codex always show a spinner while busy, so its absence means idle from the start.
+          pulse: agent === 'claude' || agent === 'codex' ? agentPulse(tabId) ?? {} : agentPulse(tabId),
           now
         },
         memory.current
@@ -165,7 +171,7 @@ export function AgentCompanion({ tabId, visible }: { tabId: string; visible: boo
       unsubscribe?.()
       unsubscribeEvents?.()
     }
-  }, [enabled, animate, visible, kind, style, tabId])
+  }, [enabled, animate, visible, kind, style, tabId, agent])
 
   if (!enabled) return null
 

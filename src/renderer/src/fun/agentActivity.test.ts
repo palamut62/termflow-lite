@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { activityLine, currentActivity, forgetActivity, noteAgentOutput, parseActivity } from './agentActivity'
+import { activityLine, agentPulse, currentActivity, forgetActivity, noteAgentOutput, parseActivity, readPulse, type AgentPulse } from './agentActivity'
 
 describe('parseActivity — Claude Code tool lines', () => {
   it('reads, edits, writes', () => {
@@ -73,5 +73,53 @@ describe('activityLine', () => {
   it('keeps lines short', () => {
     const long = parseActivity('⏺ Bash(npm run build && npm run package:verify -- --very-long-flag)')!
     expect(activityLine(long, 0).length).toBeLessThanOrEqual(36)
+  })
+})
+
+// Chunks recorded from a real Claude Code 2.x session in TermFlow: spaces are
+// cursor-forward moves (ESC[1C) and rows are cursor jumps (ESC[r;cH).
+const E = '\x1b'
+const READING_FILE = `${E}[38;2;225;139;107m${E}[32;3HActioning…${E}[10C4${E}[19;1H●${E}[m${E}[1CReading${E}[1CAppData\\Local\\Temp\\note.txt${E}[38;2;153;153;153m\r\n  ⎿  note.txt`
+const READING_SUMMARY = `${E}[17;1H●${E}[m${E}[1CReading${E}[1Cis${E}[1Cread-only,${E}[1Callowed${E}[19;1H ${E}[m${E}[1CReading${E}[1m${E}[1C1${E}[22m${E}[1Cfile…`
+
+describe('parseActivity — Claude Code 2.x redraws', () => {
+  it('reads tool lines drawn with cursor moves', () => {
+    expect(parseActivity(READING_FILE)).toMatchObject({ kind: 'read', target: 'note.txt' })
+    expect(parseActivity(READING_SUMMARY)).toMatchObject({ kind: 'read', target: '' })
+  })
+
+  it('ignores the echoed prompt and prose', () => {
+    expect(parseActivity('❯ Read the file C:\\work\\note.txt and tell me its first word.')).toBeNull()
+    expect(parseActivity(`●${E}[1CReading${E}[1Cis${E}[1Cread-only`)).toBeNull()
+  })
+})
+
+describe('readPulse', () => {
+  it('sees the busy spinner, thinking and the end of a turn', () => {
+    const pulse: AgentPulse = {}
+    readPulse(pulse, `${E}[32;3H✻ Sautéing…`, 1)
+    expect(pulse).toEqual({ busyAt: 1 })
+    readPulse(pulse, `${E}[32;1H✶`, 2)
+    expect(pulse.busyAt).toBe(2)
+    readPulse(pulse, `✽ thinking`, 3)
+    expect(pulse.thinkingAt).toBe(3)
+    readPulse(pulse, `✻ Cooked for 8s · done 10:09 ❯`, 4)
+    expect(pulse.endAt).toBe(4)
+    readPulse(pulse, `• Working (3s • esc to interrupt)`, 5)
+    expect(pulse.busyAt).toBe(5)
+  })
+
+  it('does not take idle redraws for work', () => {
+    const pulse: AgentPulse = {}
+    for (const chunk of ['ctx 8% | $0.00', '5s 5% (sifir: 13:50) | 7g 11% | $0.26', '❯ ', 'Opus 5.5 | $0.00']) readPulse(pulse, chunk, 1)
+    expect(pulse).toEqual({})
+  })
+
+  it('is kept per tab', () => {
+    noteAgentOutput('pulse-a', '✻ Sautéing…', 10)
+    expect(agentPulse('pulse-a')?.busyAt).toBe(10)
+    expect(agentPulse('pulse-b')).toBeUndefined()
+    forgetActivity('pulse-a')
+    expect(agentPulse('pulse-a')).toBeUndefined()
   })
 })
