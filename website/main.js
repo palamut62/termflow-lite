@@ -6,7 +6,7 @@
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
   /* ------------------------------------------------------------------ *
-   * Latest release and stars (falls back to the static 1.13.0 links)
+   * Latest release and stars (falls back to the static 1.13.1 links)
    * ------------------------------------------------------------------ */
   const ASSET_PATTERNS = {
     exe: /-x64\.exe$/,
