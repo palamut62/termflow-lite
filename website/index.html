@@ -40,10 +40,10 @@
           <p class="lede">TermFlow Lite runs PowerShell, Git Bash, WSL and coding agents like Claude&nbsp;Code and Codex in tabs and splits. Every command gets a mark: passed, failed or still running.</p>
           <div class="hero-cta">
             <div class="cta-row">
-              <a class="btn btn-primary" data-dl="exe" href="https://github.com/palamut62/termflow-lite/releases/download/v1.12.0/TermFlow-Lite-1.12.0-x64.exe">Download for Windows</a>
+              <a class="btn btn-primary" data-dl="exe" href="https://github.com/palamut62/termflow-lite/releases/download/v1.13.0/TermFlow-Lite-1.13.0-x64.exe">Download for Windows</a>
               <a class="btn btn-quiet" href="#download">Linux builds</a>
             </div>
-            <p class="meta"><span data-version>Version 1.12.0</span>. Free and open source.</p>
+            <p class="meta"><span data-version>Version 1.13.0</span>. Free and open source.</p>
           </div>
         </div>
       </div>
@@ -126,7 +126,7 @@
 
     <section class="proof" aria-label="Project facts">
       <div><strong data-stars-big>Open source</strong><span>on GitHub, MIT licensed</span></div>
-      <div><strong data-version-short>1.12.0</strong><span data-release-date>latest release</span></div>
+      <div><strong data-version-short>1.13.0</strong><span data-release-date>latest release</span></div>
       <div><strong>15 themes</strong><span>plus your own palette</span></div>
       <div><strong>0 accounts</strong><span>no sign-in, settings stay local</span></div>
     </section>
@@ -156,6 +156,48 @@
           </ul>
         </div>
         <figure class="shot"><img src="/assets/split.webp" alt="Two panes side by side: PowerShell running npm test and Git Bash showing git diff and git log" width="1375" height="875" loading="lazy" /></figure>
+      </article>
+
+      <article class="feature feature-companion" id="companion">
+        <div class="feature-copy">
+          <h2>See what your agent is up to</h2>
+          <p>Ember, Miso or Piko sits beside each agent terminal and acts out the real session: typing while it edits, thinking, waiting for your approval, cheering when it is done.</p>
+          <ul>
+            <li>Its expression follows the session itself, never a guess from the output, and the caption names the work, like "Editing upload.ts"</li>
+            <li>After a long streak it keeps going with a tired face and the odd yawn. Leave it idle and it falls asleep</li>
+            <li>Drawn as ASCII or as pixel art, with a character per agent or the one you pick</li>
+          </ul>
+        </div>
+        <figure class="shot companion-demo" data-companion-demo>
+          <div class="cd-window">
+            <div class="cd-terminal" data-demo-terminal aria-hidden="true"></div>
+            <canvas class="cd-canvas" role="img" aria-label="Agent character"></canvas>
+          </div>
+          <figcaption class="cd-controls">
+            <span class="sr-only" aria-live="polite" data-demo-status></span>
+            <div class="seg seg-dark" role="group" aria-label="Agent state">
+              <button type="button" data-demo-state="working" aria-pressed="true">Working</button>
+              <button type="button" data-demo-state="thinking" aria-pressed="false">Thinking</button>
+              <button type="button" data-demo-state="waiting" aria-pressed="false">Needs you</button>
+              <button type="button" data-demo-state="done" aria-pressed="false">Done</button>
+              <button type="button" data-demo-state="tired" aria-pressed="false">Tired</button>
+              <button type="button" data-demo-state="error" aria-pressed="false">Error</button>
+              <button type="button" data-demo-state="angry" aria-pressed="false">Grumpy</button>
+              <button type="button" data-demo-state="sleeping" aria-pressed="false">Asleep</button>
+            </div>
+            <div class="cd-row">
+              <div class="seg seg-dark" role="group" aria-label="Character">
+                <button type="button" data-demo-kind="ember" aria-pressed="true">Ember</button>
+                <button type="button" data-demo-kind="miso" aria-pressed="false">Miso</button>
+                <button type="button" data-demo-kind="piko" aria-pressed="false">Piko</button>
+              </div>
+              <div class="seg seg-dark" role="group" aria-label="Style">
+                <button type="button" data-demo-style="ascii" aria-pressed="true">ASCII</button>
+                <button type="button" data-demo-style="pixel" aria-pressed="false">Pixel</button>
+              </div>
+            </div>
+          </figcaption>
+        </figure>
       </article>
 
       <article class="feature">
@@ -204,7 +246,7 @@
         <div><dt>Close to tray</dt><dd>Closing the window keeps terminals and agents alive.</dd></div>
         <div><dt>GitHub pull requests</dt><dd>Open a pull request in its own worktree with any agent, using your existing gh login.</dd></div>
         <div><dt>Widget view</dt><dd>Shrink to a compact status widget in the corner. Sessions keep running; one click brings the full window back.</dd></div>
-        <div><dt>Agent animations</dt><dd>An ASCII face or pixel scenes beside each agent show at a glance whether it is working, waiting for you or done.</dd></div>
+        <div><dt>Agent characters</dt><dd>Three characters with ten expressions, in ASCII or pixel art. Hidden panels cost nothing, and reduce-motion keeps them still.</dd></div>
         <div><dt>Agent inbox</dt><dd>A redacted timeline of approvals, tool calls, completions and failures across tabs.</dd></div>
         <div><dt>Automatic updates</dt><dd>The installed app checks for releases and updates when you confirm.</dd></div>
       </dl>
@@ -213,35 +255,35 @@
     <section class="download" id="download">
       <div class="download-head">
         <h2>Get TermFlow Lite</h2>
-        <p>Free and open source. <span data-version-sentence>Version 1.12.0</span>.</p>
+        <p>Free and open source. <span data-version-sentence>Version 1.13.0</span>.</p>
       </div>
       <div class="dl-grid">
-        <a class="dl dl-main" data-dl="exe" href="https://github.com/palamut62/termflow-lite/releases/download/v1.12.0/TermFlow-Lite-1.12.0-x64.exe">
+        <a class="dl dl-main" data-dl="exe" href="https://github.com/palamut62/termflow-lite/releases/download/v1.13.0/TermFlow-Lite-1.13.0-x64.exe">
           <span class="dl-os">Windows installer</span>
-          <span class="dl-file" data-file="exe">TermFlow-Lite-1.12.0-x64.exe</span>
+          <span class="dl-file" data-file="exe">TermFlow-Lite-1.13.0-x64.exe</span>
           <span class="dl-hint">Windows 10 and 11, 64-bit</span>
         </a>
-        <a class="dl" data-dl="zip" href="https://github.com/palamut62/termflow-lite/releases/download/v1.12.0/TermFlow-Lite-1.12.0-x64.zip">
+        <a class="dl" data-dl="zip" href="https://github.com/palamut62/termflow-lite/releases/download/v1.13.0/TermFlow-Lite-1.13.0-x64.zip">
           <span class="dl-os">Windows portable</span>
-          <span class="dl-file" data-file="zip">TermFlow-Lite-1.12.0-x64.zip</span>
+          <span class="dl-file" data-file="zip">TermFlow-Lite-1.13.0-x64.zip</span>
           <span class="dl-hint">No installer, unzip and run</span>
         </a>
-        <a class="dl" data-dl="appimage" href="https://github.com/palamut62/termflow-lite/releases/download/v1.12.0/TermFlow-Lite-1.12.0-x86_64.AppImage">
+        <a class="dl" data-dl="appimage" href="https://github.com/palamut62/termflow-lite/releases/download/v1.13.0/TermFlow-Lite-1.13.0-x86_64.AppImage">
           <span class="dl-os">Linux AppImage</span>
-          <span class="dl-file" data-file="appimage">TermFlow-Lite-1.12.0-x86_64.AppImage</span>
+          <span class="dl-file" data-file="appimage">TermFlow-Lite-1.13.0-x86_64.AppImage</span>
           <span class="dl-hint">Most x64 distributions</span>
         </a>
-        <a class="dl" data-dl="deb" href="https://github.com/palamut62/termflow-lite/releases/download/v1.12.0/TermFlow-Lite-1.12.0-amd64.deb">
+        <a class="dl" data-dl="deb" href="https://github.com/palamut62/termflow-lite/releases/download/v1.13.0/TermFlow-Lite-1.13.0-amd64.deb">
           <span class="dl-os">Debian and Ubuntu</span>
-          <span class="dl-file" data-file="deb">TermFlow-Lite-1.12.0-amd64.deb</span>
+          <span class="dl-file" data-file="deb">TermFlow-Lite-1.13.0-amd64.deb</span>
           <span class="dl-hint">.deb package, x64</span>
         </a>
       </div>
       <div class="silent">
         <p>Installing on many machines? The Windows installer runs silently:</p>
-        <pre><code><span data-file="exe">TermFlow-Lite-1.12.0-x64.exe</span> /S</code></pre>
+        <pre><code><span data-file="exe">TermFlow-Lite-1.13.0-x64.exe</span> /S</code></pre>
       </div>
-      <p class="release-link"><a data-release-notes href="https://github.com/palamut62/termflow-lite/releases/tag/v1.12.0" target="_blank" rel="noopener noreferrer">Read what changed in this release</a></p>
+      <p class="release-link"><a data-release-notes href="https://github.com/palamut62/termflow-lite/releases/tag/v1.13.0" target="_blank" rel="noopener noreferrer">Read what changed in this release</a></p>
     </section>
   </main>
 
@@ -262,5 +304,6 @@
   </footer>
 
   <script src="/main.js" defer></script>
+  <script src="/companion.js" defer></script>
 </body>
 </html>

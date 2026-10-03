@@ -350,6 +350,32 @@ h2 {
 .shot { margin: 0; border-radius: 12px; overflow: hidden; box-shadow: 0 0 0 1px rgba(35, 36, 40, 0.9), 0 30px 60px -36px rgba(35, 36, 40, 0.6); background: #1f1f1f; }
 .shot-zoom { background: #1f1f1f; }
 
+/* ---------- Agent character demo ---------- */
+/* Uygulamadaki gibi: solda ajan terminali, sağda karakter paneli (#0c1015 kit sahnesi). */
+.companion-demo { background: #17181b; }
+.cd-window { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); height: clamp(380px, 42vw, 470px); }
+.cd-terminal {
+  padding: 18px 18px 0;
+  font: 13px/1.65 var(--mono);
+  color: #d6d6d0;
+  background: #1f1f1f;
+  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.cd-terminal .t-muted { color: #8b8f96; }
+.cd-terminal .t-warn { color: #e5b567; }
+.cd-terminal .t-ok { color: #6fcf97; }
+.cd-terminal .t-bad { color: #f07d72; }
+.cd-canvas { display: block; width: 100%; height: 100%; background: #0c1015; border-left: 1px solid #2d3036; }
+.cd-controls { display: grid; gap: 10px; padding: 14px; border-top: 1px solid #2d3036; }
+.cd-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.seg-dark { flex-wrap: wrap; background: #232428; border-color: #3a3c42; border-radius: 18px; }
+.seg-dark button { color: #b9bcc3; }
+.seg-dark button:hover { color: #fff; }
+.seg-dark button[aria-pressed='true'], .seg-dark button[aria-pressed='true']:hover { background: var(--paper); color: var(--graphite); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
 /* ---------- More ---------- */
 .more { max-width: var(--wrap); margin: 0 auto; padding: clamp(80px, 10vw, 140px) var(--gutter) 0; }
 .more dl { margin: 28px 0 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px 40px; }
@@ -431,6 +457,9 @@ h2 {
   .win-btns, .app-status span:not(.st-branch):not(.st-fill) { display: none; }
   .more dl, .dl-grid { grid-template-columns: 1fr; }
   .replay { margin-left: 0; }
+  .cd-window { grid-template-columns: 1fr; height: auto; }
+  .cd-terminal { height: 150px; padding-bottom: 12px; }
+  .cd-canvas { height: 380px; border-left: 0; border-top: 1px solid #2d3036; }
 }
 
 @media (prefers-reduced-motion: reduce) {
