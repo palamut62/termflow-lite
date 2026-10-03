@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.14.0 - 2026-10-03
+
+- Weather for the agent character, and it reacts to it: it opens an umbrella in the rain (drops bounce off it and splash on the floor), wears a scarf and shivers in the snow, sweats with red cheeks in the heat, squints and leans into the wind, and smiles on a sunny day. The sky sits high up at the top of the panel, behind the character: clouds drift by, the sun turns into the moon at night, and rain, snow and wind fall and blow down the whole panel without ever covering the character.
+- Settings > Appearance > Weather: Off, Changing (a new sky every few minutes, no network) or Live (your city). Live weather comes from Open-Meteo, free and without an API key: the city is looked up once, then only its coordinates rounded to two decimals are sent, every 30 minutes, from the main process. The caption shows the temperature.
+- The website demo has a weather picker.
+
 ## 1.13.2 - 2026-10-03
 
 - Hover the agent character and it reacts: it notices you with wide eyes and a little hop, follows the cursor with its eyes and a lean of the head, and squints with a big smile when you point right at its face. Grumpy and error faces look but do not smile, a sleeping one keeps sleeping, and with motion off it stays still.
