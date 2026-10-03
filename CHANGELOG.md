@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.13.1 - 2026-10-03
+
+- The agent character now follows what Claude Code and Codex are really doing. It reads their own busy spinner ("✻ Sautéing…", "esc to interrupt") instead of guessing from the prompt, so it types at the keyboard while the agent works, thinks when the spinner says "thinking", cheers when a turn ends ("Cooked for 8s") and goes idle when the agent waits. Before, their constantly redrawn input box kept it stuck on Thinking.
+- Claude Code 2.x tool lines ("● Reading note.txt", "Read 1 file"), which it draws with cursor moves, are recognised, so the caption names the file again.
+- Text that only mentions an error (like "fixed the error handling") no longer shows the error face.
+- Wrapped is redrawn as terminal output: a box-drawn frame with a prompt line, thin bars for top tools, an hourly block chart, a [x] badge checklist, all in your terminal font and theme colors.
+
 ## 1.13.0 - 2026-10-03
 
 - New agent characters from the TermFlow ASCII motion kit: Ember (flame), Miso (ear-tuft spirit) and Piko (robot), each with its own desk, props and colors. Settings > Appearance > Character picks one, or Auto: Claude Code Ember, Codex Miso, OpenCode Piko.
