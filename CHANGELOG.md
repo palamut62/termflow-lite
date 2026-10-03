@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.13.2 - 2026-10-03
+
+- Hover the agent character and it reacts: it notices you with wide eyes and a little hop, follows the cursor with its eyes and a lean of the head, and squints with a big smile when you point right at its face. Grumpy and error faces look but do not smile, a sleeping one keeps sleeping, and with motion off it stays still.
+
 ## 1.13.1 - 2026-10-03
 
 - The agent character now follows what Claude Code and Codex are really doing. It reads their own busy spinner ("✻ Sautéing…", "esc to interrupt") instead of guessing from the prompt, so it types at the keyboard while the agent works, thinks when the spinner says "thinking", cheers when a turn ends ("Cooked for 8s") and goes idle when the agent waits. Before, their constantly redrawn input box kept it stuck on Thinking.

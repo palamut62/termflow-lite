@@ -61,7 +61,7 @@ TermFlow Lite opens straight into a terminal — no welcome screens, no setup wi
 - **Cursor effects** - optional trail or blaze when the cursor moves; pauses automatically during heavy output
 - **Retro overlay** - scanlines or a CRT look with vignette and phosphor glow
 - **Output pulse** - a live sparkline of the active tab's output rate in the status bar
-- **Agent characters** - Ember, Miso or Piko beside each agent terminal, drawn as ASCII or pixel art over a faint ASCII field. Ten expressions follow the real session (working, thinking, needs you, done, error, idle) plus time-based tired, grumpy, sleeping and rested; the caption names the current work. Pick one per agent or let Auto choose
+- **Agent characters** - Ember, Miso or Piko beside each agent terminal, drawn as ASCII or pixel art over a faint ASCII field. Ten expressions follow the real session (working, thinking, needs you, done, error, idle) plus time-based tired, grumpy, sleeping and rested; the caption names the current work. Hover it and its eyes follow your cursor. Pick one per agent or let Auto choose
 - **Fun, all optional** - synthesized mechanical or soft key sounds, confetti when a test or build passes, a hidden easter egg, and **Wrapped**: your local command stats and badges, drawn as ASCII terminal output in your font and theme colors, exportable as a PNG. Wrapped stores only counters and tool names, never arguments or output, and nothing leaves your machine.
 
 ## Project workflows
@@ -78,8 +78,8 @@ Download the latest release from [GitHub Releases](https://github.com/palamut62/
 
 | Platform | Artifacts |
 | --- | --- |
-| Windows | `TermFlow-Lite-1.13.1-x64.exe` (installer) · `TermFlow-Lite-1.13.1-x64.zip` (portable) |
-| Linux | `TermFlow-Lite-1.13.1-x86_64.AppImage` · `TermFlow-Lite-1.13.1-amd64.deb` |
+| Windows | `TermFlow-Lite-1.13.2-x64.exe` (installer) · `TermFlow-Lite-1.13.2-x64.zip` (portable) |
+| Linux | `TermFlow-Lite-1.13.2-x86_64.AppImage` · `TermFlow-Lite-1.13.2-amd64.deb` |
 
 **Automatic updates:** the installed Windows build (`.exe`) and the Linux AppImage can update
 themselves — see *Settings → About → Updates* (checking on startup can be turned off there).
