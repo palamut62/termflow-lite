@@ -15,6 +15,7 @@ import { registerDialogIpc } from './ipc/dialog'
 import { registerGitIpc } from './ipc/git'
 import { registerWorktreeIpc } from './ipc/worktree'
 import { registerGithubIpc } from './ipc/github'
+import { registerWeatherIpc } from './ipc/weather'
 import { registerTasksIpc } from './ipc/tasks'
 import { registerProjectIpc } from './ipc/project'
 import { registerAgentSessionsIpc } from './ipc/agentSessions'
@@ -359,6 +360,7 @@ app.whenReady().then(() => {
   registerGitIpc()
   registerWorktreeIpc()
   registerGithubIpc()
+  registerWeatherIpc()
   registerTasksIpc()
   registerProjectIpc()
   registerAgentSessionsIpc(agentSessionOwnership)

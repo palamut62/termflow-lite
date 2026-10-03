@@ -360,6 +360,10 @@ export interface AppSettings {
   agentAnimationStyle: AgentAnimationStyle
   /** Karakter: 'auto' ajana göre seçer (Claude -> Ember, Codex -> Miso, OpenCode -> Piko). */
   agentCharacter: AgentCharacter
+  /** Weather around the character: off, a changing demo sky, or live weather for `weatherPlace`. */
+  agentWeather: AgentWeather
+  /** City for live weather, resolved once to rounded coordinates. */
+  weatherPlace: { name: string; latitude: number; longitude: number } | null
   /** Widget görünümünün son konumu (null = sağ üst köşe), daraltılmış ve üstte tutma durumu. */
   widgetX: number | null
   widgetY: number | null
@@ -374,6 +378,7 @@ export type TerminalEffect = 'none' | 'scanlines' | 'crt'
 export type SoundTheme = 'off' | 'mechanical' | 'soft'
 export type AgentAnimationStyle = 'face' | 'scenes'
 export type AgentCharacter = 'auto' | 'ember' | 'miso' | 'piko'
+export type AgentWeather = 'off' | 'cycle' | 'live'
 
 /**
  * Otomatik güncelleme durumu (electron-updater). Main tarafından üretilir,
@@ -517,6 +522,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   agentCompanion: true,
   agentAnimationStyle: 'face',
   agentCharacter: 'auto',
+  agentWeather: 'cycle',
+  weatherPlace: null,
   widgetX: null,
   widgetY: null,
   widgetCollapsed: false,

@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { Minus, Plus } from 'lucide-react'
 import { DEFAULT_THEME_ID, getTheme, RETRO_THEMES, THEMES } from '../themes/themes'
 import { useSettingsStore } from '../store/settingsStore'
-import type { AgentAnimationStyle, AgentCharacter, BackdropMaterial, CursorEffect, MotionLevel, TerminalEffect, ThemeColors } from '../../../shared/types'
+import { useToastStore } from '../store/toastStore'
+import type { AgentAnimationStyle, AgentCharacter, AgentWeather, BackdropMaterial, CursorEffect, MotionLevel, TerminalEffect, ThemeColors } from '../../../shared/types'
 import { ColorPicker, Field, NumberInput, Select, TextInput, Toggle } from './Settings'
 
 const FONT_SUGGESTIONS = [
@@ -338,6 +339,18 @@ export function AppearanceSettings(): React.JSX.Element {
             onChange={(v) => void update({ agentCharacter: v as AgentCharacter })}
           />
         </Field>
+        <Field label="Weather" hint="A sky around the character that it reacts to: an umbrella in the rain, a scarf in the snow">
+          <Select
+            value={settings.agentWeather}
+            options={[
+              { value: 'off', label: 'Off' },
+              { value: 'cycle', label: 'Changing' },
+              { value: 'live', label: 'Live (your city)' }
+            ]}
+            onChange={(v) => void update({ agentWeather: v as AgentWeather })}
+          />
+        </Field>
+        {settings.agentWeather === 'live' && <WeatherCity />}
         <Field label="Celebrate" hint="Confetti when a test or build command passes (needs shell integration)">
           <Toggle
             checked={settings.celebrate}
@@ -432,5 +445,44 @@ export function AppearanceSettings(): React.JSX.Element {
         </Field>
       </section>
     </>
+  )
+}
+
+/**
+ * City for live weather. Find resolves it once through Open-Meteo; only the
+ * city name and then rounded coordinates are sent, nothing else.
+ */
+function WeatherCity(): React.JSX.Element {
+  const place = useSettingsStore((s) => s.settings.weatherPlace)
+  const update = useSettingsStore((s) => s.update)
+  const [city, setCity] = useState(place?.name.split(',')[0] ?? '')
+  const [busy, setBusy] = useState(false)
+  const find = async (): Promise<void> => {
+    if (!city.trim()) return
+    setBusy(true)
+    try {
+      const found = await window.termflow.weather.geocode(city)
+      if (!found) {
+        useToastStore.getState().show('City not found, or the weather service is unreachable.', 'error')
+        return
+      }
+      await update({ weatherPlace: found })
+      useToastStore.getState().show(`Live weather for ${found.name}.`, 'success')
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <Field label="City" hint={place ? `Using ${place.name}. Only the city and rounded coordinates go to Open-Meteo.` : 'Type a city and press Find. Only the city and rounded coordinates go to Open-Meteo.'}>
+      <TextInput
+        value={city}
+        maxLength={80}
+        placeholder="e.g. Istanbul"
+        aria-label="City for live weather"
+        onChange={(e) => setCity(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') void find() }}
+      />
+      <button className="settings-btn" disabled={busy || !city.trim()} onClick={() => void find()}>{busy ? 'Finding...' : 'Find'}</button>
+    </Field>
   )
 }

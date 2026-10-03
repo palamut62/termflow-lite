@@ -50,6 +50,8 @@ export const IPC = {
   GITHUB_PULL_REQUESTS: 'github:pull-requests', // (repo, cwd?) -> GitHubPullRequest[]
   GITHUB_PR_CHECKOUT: 'github:pr-checkout', // (worktreePath, number, repo?) -> GhOutcome
   GITHUB_CLONE: 'github:clone', // (nameWithOwner, targetPath) -> GhOutcome
+  WEATHER_GEOCODE: 'weather:geocode', // (city) -> WeatherPlace | null
+  WEATHER_CURRENT: 'weather:current', // (latitude, longitude) -> WeatherReading | null
   TASKS_DISCOVER: 'tasks:discover',
   PROJECT_DETECT: 'project:detect',
   AGENT_SESSIONS_LIST: 'agent-sessions:list',
@@ -180,6 +182,21 @@ export type WorktreeRemoveOutcome = { ok: true } | { ok: false; error: string }
  * Availability of the user's GitHub CLI. TermFlow stores no token of its own:
  * `gh` owns the credentials, exactly as OpenSSH owns SSH keys.
  */
+/** A city resolved for live weather (coordinates rounded to two decimals). */
+export interface WeatherPlace {
+  name: string
+  latitude: number
+  longitude: number
+}
+
+/** Current conditions from Open-Meteo: WMO weather code, °C, km/h. */
+export interface WeatherReading {
+  code: number
+  temperature: number
+  windSpeed: number
+  isDay: boolean
+}
+
 export interface GitHubStatus {
   installed: boolean
   authenticated: boolean

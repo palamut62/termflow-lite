@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { mergeProfiles, providerFromProfileId } from '../../../shared/profiles'
 import { agentKindForCommand } from '../../../shared/agentEvents'
-import type { AgentCharacter, AgentEvent, AgentKind, TabActivity } from '../../../shared/types'
+import type { AgentCharacter, AgentEvent, AgentKind, AgentWeather, AppSettings, TabActivity } from '../../../shared/types'
 import { useSettingsStore } from '../store/settingsStore'
 import { useTerminalStore } from '../store/terminalStore'
 import { useAgentEventStore } from '../store/agentEventStore'
 import { useToastStore } from '../store/toastStore'
 import { motionEnabled } from '../motion'
 import { activityLine, agentPulse, currentActivity } from '../fun/agentActivity'
+import { cycleWeather, lastLiveReading, liveWeather, type WeatherNow } from '../fun/weather'
 import { CHARACTERS, CharacterEngine, type CharacterKind, type CharacterState } from './characterEngine'
 import { STATE_LABELS, STATE_LINES, createStateMemory, resolveCharacterState } from './characterState'
 
@@ -20,6 +21,21 @@ const AUTO_CHARACTER: Record<AgentKind, CharacterKind> = { claude: 'ember', code
 export function characterFor(setting: AgentCharacter | undefined, agent: AgentKind | null): CharacterKind {
   if (setting && setting !== 'auto' && setting in CHARACTERS) return setting
   return agent ? AUTO_CHARACTER[agent] : 'piko'
+}
+
+/** The sky for this frame: the changing demo sky (moon at night), live weather, or none. */
+function skyFor(mode: AgentWeather, place: AppSettings['weatherPlace'], now: number): WeatherNow | null {
+  if (mode === 'cycle') {
+    const hour = new Date(now).getHours()
+    return { kind: cycleWeather(now), night: hour < 6 || hour >= 20 }
+  }
+  return mode === 'live' && place ? liveWeather(place, now) : null
+}
+
+/** " · 12°C" after the label while live weather has a reading. */
+function liveTemperature(mode: AgentWeather): string {
+  const reading = mode === 'live' ? lastLiveReading() : null
+  return reading ? ` · ${Math.round(reading.temperature)}°C` : ''
 }
 
 /** The line under the label: the real work while busy, otherwise a short state line. */
@@ -54,8 +70,8 @@ export function AgentCompanion({ tabId, visible }: { tabId: string; visible: boo
   // The running engine, so hovering the panel can point its eyes (only while it animates).
   const engineRef = useRef<CharacterEngine | null>(null)
   // Read every frame, so new events and activity change the face without restarting the loop.
-  const live = useRef<{ event?: AgentEvent; running: boolean; activity: TabActivity }>({ running: true, activity: 'running' })
-  live.current = { event: latestEvent, running: tab?.running ?? false, activity: tab?.activity ?? 'completed' }
+  const live = useRef<{ event?: AgentEvent; running: boolean; activity: TabActivity; weather: AgentWeather; place: AppSettings['weatherPlace'] }>({ running: true, activity: 'running', weather: 'off', place: null })
+  live.current = { event: latestEvent, running: tab?.running ?? false, activity: tab?.activity ?? 'completed', weather: settings.agentWeather ?? 'off', place: settings.weatherPlace ?? null }
   // Session history for the time rules; survives style/character changes and panel re-opens.
   const memory = useRef(createStateMemory(Date.now()))
   const [label, setLabel] = useState<CharacterState>('idle')
@@ -99,6 +115,8 @@ export function AgentCompanion({ tabId, visible }: { tabId: string; visible: boo
         memory.current
       )
       engine.setState(resolved.state, resolved.tired)
+      const sky = skyFor(live.current.weather, live.current.place, now)
+      engine.setWeather(sky?.kind ?? null, sky?.night)
       if (resolved.state !== shown) {
         shown = resolved.state
         setLabel(resolved.state)
@@ -108,7 +126,7 @@ export function AgentCompanion({ tabId, visible }: { tabId: string; visible: boo
       if (!width || !height) return
       const tired = engine.tired && engine.state === 'working'
       engine.paint(ctx, width, height, style, [
-        `${CHARACTERS[kind].name} / ${tired ? 'Tired but working' : STATE_LABELS[engine.state]}`,
+        `${CHARACTERS[kind].name} / ${tired ? 'Tired but working' : STATE_LABELS[engine.state]}${liveTemperature(live.current.weather)}`,
         captionLine(engine.state, tired, tabId, now)
       ])
     }

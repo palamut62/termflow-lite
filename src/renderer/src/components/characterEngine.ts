@@ -8,6 +8,8 @@
 // One CharacterEngine per agent pane: state, time, blink and face never leak
 // between sessions.
 
+import type { WeatherKind } from '../fun/weather'
+
 export type CharacterKind = 'ember' | 'miso' | 'piko'
 export type CharacterState =
   | 'working'
@@ -171,10 +173,60 @@ interface SceneInput {
   face: Face
   /** Height of the little hop when the pointer is first noticed. */
   hop: number
+  /** The sky and how far it has faded in (0..1). */
+  weather: SceneWeather | null
 }
 
-/** The kit's scene(): background props, body, face, desk, hands, monitor, then state symbols. */
-function drawScene(g: CanvasRenderingContext2D, input: SceneInput): void {
+interface SceneWeather {
+  kind: WeatherKind
+  amount: number
+  night: boolean
+}
+
+/** Umbrella canopy colors per character: [main, stripe]. */
+const UMBRELLA: Record<CharacterKind, [string, string]> = {
+  ember: ['#5c8fd6', '#3d6db3'],
+  miso: ['#e0796a', '#b85a4d'],
+  piko: ['#5fae7d', '#3f8a5c']
+}
+
+/**
+ * The face in the weather: a sunny day brings a smile, heat makes it droopy,
+ * wind makes it squint and lean, rain sends a glance up at the umbrella now
+ * and then. `amount` is how far the weather has faded in.
+ */
+export function weatherFace(face: Face, state: CharacterState, kind: WeatherKind, amount: number, t: number): Face {
+  if (amount <= 0) return face
+  const out = { ...face }
+  const grumpy = state === 'angry' || state === 'error'
+  if (kind === 'sunny' && !grumpy) out.smile = Math.max(out.smile, 0.35 * amount)
+  if (kind === 'hot') {
+    out.open *= 1 - 0.15 * amount
+    out.gazeY += 3 * amount
+  }
+  if (kind === 'windy') {
+    out.open *= 1 - 0.25 * amount
+    out.tilt += 0.07 * amount * (0.6 + 0.4 * Math.sin(t * 2.3))
+  }
+  if (kind === 'snow') out.open *= 1 - 0.05 * amount
+  if (kind === 'rain' && state !== 'working' && Math.sin(t * 0.6) > 0.6) out.gazeY -= 8 * amount
+  return out
+}
+
+/** The open umbrella, in scene pixels; rain stops at it. */
+interface Canopy {
+  x: number
+  y: number
+  rx: number
+  ry: number
+}
+
+/**
+ * The kit's scene(): background props, body, face, desk, hands, monitor, then
+ * state symbols, plus what the character wears for the weather (umbrella,
+ * scarf, sweat). The sky itself is its own layer behind (drawSkyLayer).
+ */
+function drawScene(g: CanvasRenderingContext2D, input: SceneInput): Canopy | null {
   const { kind, state: s, face, t, age } = input
   const m = CHARACTERS[kind]
   g.clearRect(0, 0, SCENE_W, SCENE_H)
@@ -230,6 +282,10 @@ function drawScene(g: CanvasRenderingContext2D, input: SceneInput): void {
     stroke([[303, 55], [303, 67], [313, 73]], '#e2dcc6', 3)
   }
 
+  const weather = input.weather
+  const wk = weather?.kind
+  const wa = weather?.amount ?? 0
+
   const working = s === 'working'
   const sleep = s === 'sleeping'
   const happy = s === 'done'
@@ -248,6 +304,8 @@ function drawScene(g: CanvasRenderingContext2D, input: SceneInput): void {
   if (s === 'tired') cy += 6 + Math.max(0, Math.sin(t * 1.1)) * 5
   if (working && input.tired) cy += 5
   if (s === 'error' && age < 1) cy -= Math.sin(age * Math.PI) * 17
+  if (wk === 'windy') cx += 5 * wa
+  if (wk === 'snow' && !sleep) cx += Math.sin(t * 38) * 1.6 * wa
 
   // Ground shadow narrows as the body rises; feet have discrete poses.
   oval(cx, 326, 64 - jump * 0.55, 6 - jump * 0.08, '#233038')
@@ -260,6 +318,35 @@ function drawScene(g: CanvasRenderingContext2D, input: SceneInput): void {
     box(51, 300, 8, 35, '#a6b1c1')
     box(289, 300, 8, 35, '#a6b1c1')
     box(73, 278, 66, 22, '#c7d4d4', 9)
+  }
+
+  if (wk === 'rain') oval(cx + 78, 331, 44 * wa, 4, '#4f7398')
+  // The umbrella goes behind the body, so its handle disappears into the character's grip.
+  const canopy: Canopy | null = wk === 'rain' && !sleep ? { x: cx + 30, y: cy - 132, rx: 105 * Math.min(1, wa * 1.4), ry: 48 * Math.min(1, wa * 1.4) } : null
+  if (canopy && canopy.rx > 2) {
+    const [main, stripe] = UMBRELLA[kind]
+    stroke([[canopy.x, canopy.y - canopy.ry], [canopy.x, canopy.y], [cx + 92, cy + 26]], '#6b5642', 7)
+    g.strokeStyle = '#6b5642'
+    g.lineWidth = 7
+    g.beginPath()
+    g.arc(cx + 84, cy + 26, 8, 0, Math.PI)
+    g.stroke()
+    g.fillStyle = main
+    g.beginPath()
+    g.ellipse(canopy.x, canopy.y, canopy.rx, canopy.ry, 0, Math.PI, Math.PI * 2)
+    g.closePath()
+    g.fill()
+    // Two darker panels between the ribs, and a scalloped hem.
+    for (const [a, b] of [[1.15, 1.4], [1.62, 1.86]]) {
+      g.fillStyle = stripe
+      g.beginPath()
+      g.moveTo(canopy.x, canopy.y)
+      g.ellipse(canopy.x, canopy.y, canopy.rx, canopy.ry, 0, Math.PI * a, Math.PI * b)
+      g.closePath()
+      g.fill()
+    }
+    for (let k = 0; k < 4; k++) oval(canopy.x - canopy.rx + canopy.rx * (k * 2 + 1) / 4, canopy.y, canopy.rx / 4, 6, main)
+    stroke([[canopy.x, canopy.y - canopy.ry], [canopy.x, canopy.y - canopy.ry - 10]], '#5b4a3a', 4)
   }
 
   g.save()
@@ -309,6 +396,12 @@ function drawScene(g: CanvasRenderingContext2D, input: SceneInput): void {
     oval(31, -107, 9, 9, s === 'error' ? '#ff8870' : droopy ? '#d9c27a' : '#a4e4b6')
     box(-44, 48, 65, 6, m.shade, 2)
     oval(48, 51, 5, 5, '#93c59e')
+  }
+
+  if (wk === 'snow' && wa > 0.3) {
+    box(-80, 46, 160, 20, '#d9534f', 9)
+    for (let k = 0; k < 4; k++) box(-56 + k * 32, 46, 10, 20, '#f2e1c9')
+    box(36, 56, 20, 34, '#c2443f', 5)
   }
 
   // Hands have anticipation, contact and a rest phase. A yawning worker covers the mouth.
@@ -376,6 +469,16 @@ function drawScene(g: CanvasRenderingContext2D, input: SceneInput): void {
     g.quadraticCurveTo(0, 43 + face.smile * 17, 20, 31)
     g.stroke()
   }
+  if ((wk === 'hot' || wk === 'snow') && wa > 0.3 && !sleep) {
+    oval(-60, 16, 15, 9, '#ff8a8a')
+    oval(60, 16, 15, 9, '#ff8a8a')
+  }
+  if (wk === 'hot' && wa > 0.3) {
+    // Sweat drops roll down both temples.
+    const drip = (t * 26) % 46
+    oval(-82, -44 + drip, 6, 9, '#9fd3ff')
+    oval(80, -60 + ((drip + 23) % 46), 6, 9, '#9fd3ff')
+  }
   g.restore()
 
   if (!sleep) {
@@ -415,6 +518,7 @@ function drawScene(g: CanvasRenderingContext2D, input: SceneInput): void {
     }
     box(254, 239, 80, 64, '#8197a4', 5)
     box(260, 246, 68, 49, '#142934', 2)
+    if (wk === 'snow') box(251, 233, 86, 8 * wa, '#f2f6ff', 4)
     box(287, 302, 10, 18, '#718695')
     box(270, 320, 44, 6, '#95a9b2', 2)
     if (s === 'error' || angry) {
@@ -472,6 +576,114 @@ function drawScene(g: CanvasRenderingContext2D, input: SceneInput): void {
     oval(287, 167, 5, 5, '#ffd495')
     path([[249, 170], [242, 187], [248, 196], [255, 188]], '#86cce4')
   }
+  if (wk === 'snow') box(22, 333, 316, 4 * wa, '#e8eef8', 2)
+  return canopy
+}
+
+/**
+ * The weather sky, drawn behind the character across the whole panel: sun or
+ * moon and clouds at the very top (`top` is the panel's top edge in scene
+ * pixels, negative when the panel is taller than the scene), rain, snow or
+ * wind falling and blowing down to the floor. Rain stops at the umbrella.
+ */
+function drawSkyLayer(g: CanvasRenderingContext2D, w: SceneWeather, t: number, top: number, cover: Canopy | null): void {
+  // `top` is the panel's real top edge in scene pixels (the layer itself may start higher, on the grid).
+  const a = w.amount
+  const oval = (x: number, y: number, rx: number, ry: number, c: string): void => {
+    g.fillStyle = c
+    g.beginPath()
+    g.ellipse(x, y, Math.max(0, rx), Math.max(0, ry), 0, 0, Math.PI * 2)
+    g.fill()
+  }
+  const stroke = (points: Point[], c: string, width: number): void => {
+    g.strokeStyle = c
+    g.lineWidth = width
+    g.lineCap = 'round'
+    g.lineJoin = 'round'
+    g.beginPath()
+    points.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)))
+    g.stroke()
+  }
+  // Sky bodies sit high up, but never lower than the top of the scene.
+  const skyY = Math.min(top + 52, 34)
+  const height = 337 - top
+  if (w.kind === 'sunny' || w.kind === 'hot') {
+    const big = w.kind === 'hot'
+    if (w.night) {
+      oval(300, skyY, 19 * a, 19 * a, '#e9e4c4')
+      oval(311, skyY - 8, 14 * a, 14 * a, STAGE)
+    } else {
+      const r = (big ? 26 : 21) * a
+      for (let k = 0; k < 8; k++) {
+        const angle = t * 0.4 + (k * Math.PI) / 4
+        const reach = r + (big ? 14 + Math.sin(t * 4 + k) * 4 : 11)
+        stroke([[300 + Math.cos(angle) * (r + 4), skyY + Math.sin(angle) * (r + 4)], [300 + Math.cos(angle) * reach, skyY + Math.sin(angle) * reach]], big ? '#ffb347' : '#ffd36b', 5)
+      }
+      oval(300, skyY, r, r, big ? '#ffb347' : '#ffd36b')
+    }
+    if (big) {
+      // Heat shimmer rising along both edges.
+      for (let k = 0; k < 4; k++) {
+        const x = k < 2 ? 22 + k * 22 : 316 + (k - 2) * 22
+        const points: Point[] = []
+        for (let y = 330; y > Math.max(top + 90, 120); y -= 10) points.push([x + Math.sin(y * 0.08 - t * 4 + k) * 5, y - ((t * 30) % 10)])
+        stroke(points, '#e9a36a', 5)
+      }
+    }
+  }
+  // Clouds: one light puff on a sunny day, darker drifting clouds otherwise.
+  const clouds = w.kind === 'sunny' ? 1 : w.kind === 'hot' ? 0 : 3
+  const tone = w.kind === 'rain' || w.kind === 'snow' ? '#7b8796' : w.kind === 'sunny' ? '#c9d3dd' : '#9aa8b8'
+  for (let k = 0; k < clouds; k++) {
+    const x = ((t * 6 + k * 150) % 470) - 55
+    const y = skyY - 14 + k * 16
+    oval(x, y, 34 * a, 14 * a, tone)
+    oval(x + 23 * a, y - 10 * a, 20 * a, 15 * a, tone)
+    oval(x - 21 * a, y + 2, 18 * a, 11 * a, tone)
+  }
+  // Precipitation starts under the clouds and falls the full height of the panel.
+  const from = skyY
+  const fall = 337 - from + 30
+  if (w.kind === 'rain') {
+    const drops = Math.round(46 * a * Math.max(1, height / 390))
+    for (let k = 0; k < drops; k++) {
+      const y = from + ((t * 300 + k * 53) % fall)
+      const x = ((k * 47.9) % 380) - 10 + (y - from) * 0.12
+      if (cover && x > cover.x - cover.rx && x < cover.x + cover.rx && y > cover.y - cover.ry) continue
+      if (y > 322) {
+        stroke([[x - 7, 335], [x, 326], [x + 7, 335]], '#8fb9e8', 3)
+        continue
+      }
+      stroke([[x, y], [x - 3, y + 18]], '#8fb9e8', 4)
+    }
+    // Drips off the canopy edge.
+    if (cover && cover.rx > 40) {
+      for (const edge of [-1, 1]) oval(cover.x + edge * cover.rx, cover.y + ((t * 120 + (edge + 1) * 20) % 60), 3, 6, '#8fb9e8')
+    }
+  } else if (w.kind === 'snow') {
+    const flakes = Math.round(30 * a * Math.max(1, height / 390))
+    for (let k = 0; k < flakes; k++) {
+      const y = from + ((t * 35 + k * 41) % fall)
+      const x = ((k * 47.3) % 360) + Math.sin(t * 1.3 + k) * 14
+      const r = 4 + (k % 3)
+      oval(x, y, r, r, '#f4f8ff')
+    }
+  } else if (w.kind === 'windy') {
+    const rows = Math.max(7, Math.round(7 * height / 390))
+    for (let k = 0; k < rows; k++) {
+      const y = from + 30 + ((k * 37) % (fall - 60))
+      const x = ((t * 220 + k * 90) % 520) - 80
+      stroke([[x, y], [x + 50 * a, y], [x + 62 * a, y - 6]], '#a9c4cf', 4)
+    }
+    for (let k = 0; k < 6; k++) {
+      const x = ((t * 150 + k * 113) % 480) - 60
+      const y = from + 40 + ((k * 53) % (fall - 80)) + Math.sin(t * 3 + k) * 18
+      g.fillStyle = ['#c98f4a', '#9fbf6a', '#d8b24a'][k % 3]
+      g.beginPath()
+      g.ellipse(x, y, 11 * a, 6 * a, t * 4 + k, 0, Math.PI * 2)
+      g.fill()
+    }
+  }
 }
 
 const GLYPH_FONT = "'Cascadia Mono', Consolas, monospace"
@@ -501,10 +713,18 @@ export class CharacterEngine {
   private noticeAt = -10
   /** Where the scene sat in the panel on the last paint, to map pointer positions. */
   private layout = { scale: 1, ox: 0, oy: 0 }
+  /** The sky being shown, the one asked for, and how far the shown one has faded in. */
+  private weather: WeatherKind | null = null
+  private weatherWanted: WeatherKind | null = null
+  private weatherAmount = 0
+  private night = false
   face: Face
   private readonly g: CanvasRenderingContext2D | null
   private readonly field: HTMLCanvasElement | null = typeof document === 'undefined' ? null : document.createElement('canvas')
   private readonly small: HTMLCanvasElement | null = typeof document === 'undefined' ? null : document.createElement('canvas')
+  /** The weather sky (panel tall, behind the character) and its cell sample. */
+  private readonly sky: HTMLCanvasElement | null = typeof document === 'undefined' ? null : document.createElement('canvas')
+  private readonly skySmall: HTMLCanvasElement | null = typeof document === 'undefined' ? null : document.createElement('canvas')
   private fieldKey = ''
   private fieldTime = 0
 
@@ -515,6 +735,12 @@ export class CharacterEngine {
     src.height = SCENE_H
     this.g = src.getContext('2d', { willReadFrequently: true })
     this.face = faceTargets(this.state, 0)
+  }
+
+  /** Asks for a sky; the current one fades out first, then the new one fades in. */
+  setWeather(kind: WeatherKind | null, night = false): void {
+    this.weatherWanted = kind
+    this.night = night
   }
 
   /** Follows a pointer at panel point (x, y) in CSS px with the eyes; null when it leaves. */
@@ -547,7 +773,17 @@ export class CharacterEngine {
         this.blinkAt = this.time + (this.tired ? 2 : 3.2) + 1.1 * Math.sin(this.time * 0.73)
       }
     }
+    if (this.weatherWanted !== this.weather) {
+      this.weatherAmount = animate ? this.weatherAmount - dt * 1.2 : 0
+      if (this.weatherAmount <= 0) {
+        this.weather = this.weatherWanted
+        this.weatherAmount = animate ? 0 : 1
+      }
+    } else if (this.weather) {
+      this.weatherAmount = animate ? Math.min(1, this.weatherAmount + dt * 0.7) : 1
+    }
     let target = faceTargets(this.state, this.time, this.tired)
+    if (this.weather) target = weatherFace(target, this.state, this.weather, this.weatherAmount, this.time)
     // A sleeper keeps sleeping; everyone else looks at the pointer.
     if (this.pointer && this.state !== 'sleeping') target = lookToward(target, this.state, this.pointer, this.time - this.noticeAt)
     for (const key of Object.keys(target) as Array<keyof Face>) {
@@ -555,13 +791,12 @@ export class CharacterEngine {
     }
   }
 
-  /** Averages the scene into one sample per ASCII cell (area-filtered by the browser's downscale). */
-  private sampleCells(): Cells {
+  /** Averages a layer into one sample per ASCII cell (area-filtered by the browser's downscale). */
+  private sampleCells(source: HTMLCanvasElement | null, small: HTMLCanvasElement | null, height: number): Cells {
     const cols = Math.ceil(SCENE_W / CELL_W)
-    const rows = Math.ceil(SCENE_H / CELL_H)
-    const small = this.small
+    const rows = Math.ceil(height / CELL_H)
     const s = small?.getContext('2d', { willReadFrequently: true })
-    if (!small || !s || !this.g) return { data: new Uint8ClampedArray(cols * rows * 4), cols, rows }
+    if (!source || !small || !s) return { data: new Uint8ClampedArray(cols * rows * 4), cols, rows }
     if (small.width !== cols || small.height !== rows) {
       small.width = cols
       small.height = rows
@@ -569,9 +804,34 @@ export class CharacterEngine {
     s.clearRect(0, 0, cols, rows)
     s.imageSmoothingEnabled = true
     s.imageSmoothingQuality = 'high'
-    // The source rect may run past the scene's bottom edge; drawImage clips it proportionally.
-    s.drawImage(this.g.canvas, 0, 0, cols * CELL_W, rows * CELL_H, 0, 0, cols, rows)
+    // The source rect may run past the layer's bottom edge; drawImage clips it proportionally.
+    s.drawImage(source, 0, 0, cols * CELL_W, rows * CELL_H, 0, 0, cols, rows)
     return { data: s.getImageData(0, 0, cols, rows).data, cols, rows }
+  }
+
+  /**
+   * Draws the sky layer from the panel's top edge down to the floor, on the
+   * same glyph / pixel grid as the scene (its top is a multiple of both cell
+   * heights above the scene), behind the character.
+   */
+  private paintSky(ctx: CanvasRenderingContext2D, style: CharacterStyle, canopy: Canopy | null, scale: number, ox: number, oy: number, width: number, fieldH: number): void {
+    const sky = this.sky
+    const s = sky?.getContext('2d', { willReadFrequently: true })
+    if (!sky || !s || !this.weather) return
+    const grid = 60 // lcm of the ASCII (7.5) and pixel (4) cell heights
+    const top = -Math.ceil(oy / scale / grid) * grid
+    const height = SCENE_H - top
+    if (sky.width !== SCENE_W || sky.height !== height) {
+      sky.width = SCENE_W
+      sky.height = height
+    }
+    s.setTransform(1, 0, 0, 1, 0, 0)
+    s.clearRect(0, 0, SCENE_W, height)
+    s.setTransform(1, 0, 0, 1, 0, -top)
+    drawSkyLayer(s, { kind: this.weather, amount: this.weatherAmount, night: this.night }, this.time, -oy / scale, canopy)
+    const skyOy = oy + top * scale
+    if (style === 'pixel') paintPixels(ctx, s.getImageData(0, 0, SCENE_W, height).data, height, scale, ox, skyOy)
+    else paintAscii(ctx, this.sampleCells(sky, this.skySmall, height), scale, ox, skyOy, width, fieldH, this.time, 'scene')
   }
 
   paint(ctx: CanvasRenderingContext2D, width: number, height: number, style: CharacterStyle, caption: string[]): void {
@@ -579,9 +839,9 @@ export class CharacterEngine {
     if (!g) return
     const notice = this.time - this.noticeAt
     const hop = this.pointer && this.state !== 'sleeping' && notice < NOTICE_S ? Math.sin((notice / NOTICE_S) * Math.PI) * 10 : 0
-    drawScene(g, { kind: this.kind, state: this.state, tired: this.tired, t: this.time, age: this.age, blinkAge: this.blinkAge, face: this.face, hop })
+    const canopy = drawScene(g, { kind: this.kind, state: this.state, tired: this.tired, t: this.time, age: this.age, blinkAge: this.blinkAge, face: this.face, hop, weather: this.weather ? { kind: this.weather, amount: this.weatherAmount, night: this.night } : null })
     const pixels = style === 'pixel' ? g.getImageData(0, 0, SCENE_W, SCENE_H).data : null
-    const cells = this.sampleCells()
+    const cells = this.sampleCells(g.canvas, this.small, SCENE_H)
     // Contain-fit the scene, centered across and standing just above the caption.
     const captionH = caption.length ? 44 : 8
     const scale = Math.max(0.1, Math.min(width / SCENE_W, (height - captionH) / SCENE_H))
@@ -606,7 +866,8 @@ export class CharacterEngine {
       }
     }
     if (this.field) ctx.drawImage(this.field, 0, 0, width, fieldH)
-    if (pixels) paintPixels(ctx, pixels, scale, ox, oy)
+    if (this.weather && this.weatherAmount > 0) this.paintSky(ctx, style, canopy, scale, ox, oy, width, fieldH)
+    if (pixels) paintPixels(ctx, pixels, SCENE_H, scale, ox, oy)
     else paintAscii(ctx, cells, scale, ox, oy, width, fieldH, this.time, 'scene')
     paintCaption(ctx, caption, width, height, CHARACTERS[this.kind].main)
   }
@@ -754,14 +1015,14 @@ function paintAscii(ctx: CanvasRenderingContext2D, cells: Cells, scale: number, 
 }
 
 /** Square blocks on a 4x4 scene-pixel grid, colors snapped to a short ramp for a pixel-art look. */
-function paintPixels(ctx: CanvasRenderingContext2D, pixels: Uint8ClampedArray, scale: number, ox: number, oy: number): void {
+function paintPixels(ctx: CanvasRenderingContext2D, pixels: Uint8ClampedArray, height: number, scale: number, ox: number, oy: number): void {
   const cell = 4
   const size = cell * scale
   const snap = (v: number): number => Math.min(255, Math.round(v / 24) * 24)
-  for (let sy = 0; sy < SCENE_H; sy += cell) {
+  for (let sy = 0; sy < height; sy += cell) {
     for (let sx = 0; sx < SCENE_W; sx += cell) {
-      // Sample the block center, clamped inside the scene (the last row would read past it).
-      const k = (Math.min(sy + 2, SCENE_H - 1) * SCENE_W + Math.min(sx + 2, SCENE_W - 1)) * 4
+      // Sample the block center, clamped inside the layer (the last row would read past it).
+      const k = (Math.min(sy + 2, height - 1) * SCENE_W + Math.min(sx + 2, SCENE_W - 1)) * 4
       if (pixels[k + 3] <= 80) continue
       ctx.fillStyle = rgb(snap(pixels[k]), snap(pixels[k + 1]), snap(pixels[k + 2]))
       // +0.5 closes hairline gaps between blocks at fractional scales.
