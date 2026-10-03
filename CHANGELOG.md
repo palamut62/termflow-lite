@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- New agent characters from the TermFlow ASCII motion kit: Ember (flame), Miso (ear-tuft spirit) and Piko (robot), each with its own desk, props and colors. Settings > Appearance > Character picks one, or Auto: Claude Code Ember, Codex Miso, OpenCode Piko.
+- Real facial expressions instead of frame swaps: eyes, pupils, brows, mouth and hands are separate layers that ease toward each state, with blinking and gaze.
+  - Working: types at the keyboard (fingers and lit keys match), pauses, then reads the screen.
+  - Thinking, Needs you (approval or question), Done (jump and confetti), Error (flinch), Idle.
+  - Time rules, never guessed from output: after 20 minutes of steady work it keeps working with a tired face (heavy lids, slower typing, the odd yawn, coffee); waiting on you for 5 minutes makes it tired; 3 idle minutes put it to sleep, and it wakes up rested; a second error within 10 minutes makes it grumpy.
+- ASCII and Pixel styles now draw the same character, over a faint full-panel ASCII field (slow wave plus drifting code glyphs) that never covers the character.
+- Larger ASCII glyphs (one per 5x7.5 scene pixels, area-averaged so thin lines like the mouth and brows still show), so the character clearly reads as ASCII.
+- The caption names the real work ("Editing widget.ts"); screen readers hear only the state label.
+- Painting is batched per row and the background is cached, so a frame costs a few milliseconds.
+
 ## 1.12.0 - 2026-10-03
 
 - The agent animation now follows what the agent is really doing, read from the tool lines Claude Code (`⏺ Read(...)`, `⏺ Update(...)`, `⏺ Bash(...)`) and Codex (`• Ran ...`, `• Edited ...`) print:

@@ -358,6 +358,8 @@ export interface AppSettings {
   agentCompanion: boolean
   /** Animasyon stili: gözleriyle tepki veren ASCII yüz ya da piksel-art sahneler. */
   agentAnimationStyle: AgentAnimationStyle
+  /** Karakter: 'auto' ajana göre seçer (Claude -> Ember, Codex -> Miso, OpenCode -> Piko). */
+  agentCharacter: AgentCharacter
   /** Widget görünümünün son konumu (null = sağ üst köşe), daraltılmış ve üstte tutma durumu. */
   widgetX: number | null
   widgetY: number | null
@@ -371,6 +373,7 @@ export type CursorEffect = 'none' | 'trail' | 'blaze'
 export type TerminalEffect = 'none' | 'scanlines' | 'crt'
 export type SoundTheme = 'off' | 'mechanical' | 'soft'
 export type AgentAnimationStyle = 'face' | 'scenes'
+export type AgentCharacter = 'auto' | 'ember' | 'miso' | 'piko'
 
 /**
  * Otomatik güncelleme durumu (electron-updater). Main tarafından üretilir,
@@ -513,6 +516,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   commandNotifications: true,
   agentCompanion: true,
   agentAnimationStyle: 'face',
+  agentCharacter: 'auto',
   widgetX: null,
   widgetY: null,
   widgetCollapsed: false,

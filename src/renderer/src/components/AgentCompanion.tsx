@@ -1,189 +1,42 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { mergeProfiles, providerFromProfileId } from '../../../shared/profiles'
-import type { AgentEvent } from '../../../shared/types'
+import { agentKindForCommand } from '../../../shared/agentEvents'
+import type { AgentCharacter, AgentEvent, AgentKind, TabActivity } from '../../../shared/types'
 import { useSettingsStore } from '../store/settingsStore'
 import { useTerminalStore } from '../store/terminalStore'
 import { useAgentEventStore } from '../store/agentEventStore'
 import { useToastStore } from '../store/toastStore'
 import { motionEnabled } from '../motion'
-import { companionEnergy, companionMood, renderCompanion, type CompanionColor, type CompanionFrame, type CompanionMood } from './companionFrames'
-import { lastInputAt, latestRate } from '../fun/outputMeter'
-import { currentActivity } from '../fun/agentActivity'
-import { PIXEL_PALETTE, critterRamp, renderScene, sceneFor, type PixelColor, type PixelFrame } from './companionScenes'
+import { activityLine, currentActivity } from '../fun/agentActivity'
+import { CHARACTERS, CharacterEngine, type CharacterKind, type CharacterState } from './characterEngine'
+import { STATE_LABELS, STATE_LINES, createStateMemory, resolveCharacterState } from './characterState'
 
-/** ~15 fps: smooth enough for the glide, still a retro character-art cadence. */
-const FRAME_MS = 66
-/** Animation time advances in ~110 ms ticks (see companionFrames). */
-const TICKS_PER_FRAME = FRAME_MS / 110
-/** The character keeps listening this long after your last keystroke. */
-const LISTEN_MS = 1500
+/** ~24 fps, the kit's live cadence. */
+const FRAME_MS = 42
 
-type Rgb = [number, number, number]
+const AUTO_CHARACTER: Record<AgentKind, CharacterKind> = { claude: 'ember', codex: 'miso', opencode: 'piko' }
 
-function parseRgb(color: string, fallback: Rgb = [217, 119, 87]): Rgb {
-  const hex = color.trim().match(/^#([0-9a-f]{6})$/i)
-  if (hex) return [0, 2, 4].map((i) => parseInt(hex[1].slice(i, i + 2), 16)) as Rgb
-  const match = color.match(/\d+(\.\d+)?/g)
-  return match && match.length >= 3 ? [Number(match[0]), Number(match[1]), Number(match[2])] : fallback
+export function characterFor(setting: AgentCharacter | undefined, agent: AgentKind | null): CharacterKind {
+  if (setting && setting !== 'auto' && setting in CHARACTERS) return setting
+  return agent ? AUTO_CHARACTER[agent] : 'piko'
 }
 
-/** `amount` of the way from `from` toward `to`. */
-function mixRgb(from: Rgb, to: Rgb, amount: number): string {
-  const [r, g, b] = from.map((v, i) => Math.round(v + (to[i] - v) * amount))
-  return `rgb(${r}, ${g}, ${b})`
-}
-
-const WHITE: Rgb = [255, 255, 255]
-
-// ---- ASCII face on a canvas ----
-
-const FACE_FONT_PX = 9
-const FACE_FONT = `${FACE_FONT_PX}px 'Cascadia Mono', Consolas, 'Courier New', monospace`
-
-/** Colors for every CompanionColor (the scene palette in the agent's ramp), resolved once per measure. */
-function facePalette(canvas: HTMLCanvasElement): Record<CompanionColor, string> {
-  const root = getComputedStyle(document.documentElement)
-  const css = (name: string, fallback: string): string => root.getPropertyValue(name).trim() || fallback
-  const body = parseRgb(getComputedStyle(canvas).color)
-  const bg = parseRgb(css('--terminal-background', '#1e1e1e'), [30, 30, 30])
-  const muted = parseRgb(css('--tab-inactive-foreground', '#8b8b8b'), [139, 139, 139])
-  // The same hue-shifted ramp as the pixel critter, so both styles match.
-  const { ramp } = critterRamp(body)
-  return {
-    ...PIXEL_PALETTE,
-    r0: ramp[0], r1: ramp[1], r2: ramp[2], r3: ramp[3], r4: ramp[4],
-    body: ramp[2], bodyHi: ramp[3], bodyLo: ramp[1],
-    // A near-black outline would vanish on a dark panel; a dim ramp tone still draws the edge.
-    line: mixRgb(parseRgb(ramp[0]), bg, 0.45),
-    bg: mixRgb(bg, muted, 0.38),
-    eye: '#ffffff'
+/** The line under the label: the real work while busy, otherwise a short state line. */
+function captionLine(state: CharacterState, tired: boolean, tabId: string, now: number): string {
+  if (state === 'working' || state === 'thinking') {
+    const line = activityLine(currentActivity(tabId, now), now / 110, now)
+    return tired && state === 'working' ? `${line} (long session)` : line
   }
+  return STATE_LINES[state]
 }
 
 /**
- * Draws an ASCII frame with one fillText per glyph, batched by color so the
- * fill style changes only a few times. The eye glints get
- * a soft shadow in a second pass; nothing else pays for it.
- */
-function paintFace(canvas: HTMLCanvasElement, frame: CompanionFrame, cellW: number, cellH: number, palette: Record<CompanionColor, string>, glow: string): void {
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return
-  const dpr = window.devicePixelRatio || 1
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-  ctx.clearRect(0, 0, canvas.width, canvas.height)
-  ctx.font = FACE_FONT
-  ctx.textBaseline = 'top'
-  const byColor = new Map<CompanionColor, Array<[string, number, number]>>()
-  frame.lines.forEach((line, row) => {
-    for (let col = 0; col < line.length; col++) {
-      const ch = line[col]
-      if (ch === ' ') continue
-      const color = frame.colors[row][col]
-      let list = byColor.get(color)
-      if (!list) byColor.set(color, (list = []))
-      list.push([ch, col * cellW, row * cellH])
-    }
-  })
-  for (const [color, cells] of byColor) {
-    const glowing = color === 'eye'
-    ctx.shadowBlur = glowing ? 6 : 0
-    ctx.shadowColor = glowing ? glow : 'transparent'
-    ctx.fillStyle = palette[color]
-    for (const [ch, x, y] of cells) ctx.fillText(ch, x, y)
-  }
-  ctx.shadowBlur = 0
-}
-
-// ---- Pixel scenes on a canvas ----
-
-/** Scene pixels across the panel width; each one becomes a square block. */
-const SCENE_COLUMNS = 64
-
-/** Splits `text` into lines no wider than `maxWidth` pixels. */
-function wrap(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
-  const lines: string[] = []
-  let line = ''
-  for (const word of text.split(/\s+/)) {
-    const next = line ? `${line} ${word}` : word
-    if (line && ctx.measureText(next).width > maxWidth) {
-      lines.push(line)
-      line = word
-    } else {
-      line = next
-    }
-  }
-  if (line) lines.push(line)
-  return lines
-}
-
-function paintScene(canvas: HTMLCanvasElement, frame: PixelFrame, scale: number, body: string): void {
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return
-  const rgb = parseRgb(body)
-  // The critter's hue-shifted ramp in the agent's color (pixel-art-studio's ramp()).
-  const { ramp, line } = critterRamp(rgb)
-  const colors: Record<PixelColor, string> = {
-    ...PIXEL_PALETTE,
-    r0: ramp[0], r1: ramp[1], r2: ramp[2], r3: ramp[3], r4: ramp[4], line,
-    body: ramp[2], bodyHi: ramp[3], bodyLo: ramp[1]
-  }
-  const dpr = window.devicePixelRatio || 1
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-  // Pixels, merged into horizontal runs to keep the draw calls down.
-  for (let y = 0; y < frame.height; y++) {
-    let start = 0
-    for (let x = 1; x <= frame.width; x++) {
-      const current = frame.pixels[y * frame.width + start]
-      if (x < frame.width && frame.pixels[y * frame.width + x] === current) continue
-      if (current) {
-        ctx.fillStyle = colors[current]
-        ctx.fillRect(start * scale, y * scale, (x - start) * scale + 0.5, scale + 0.5)
-      }
-      start = x
-    }
-  }
-  const width = frame.width * scale
-  ctx.textBaseline = 'top'
-  for (const text of frame.texts) {
-    const x = text.x * scale
-    const y = text.y * scale
-    if (text.kind === 'bubble') {
-      ctx.font = `12px 'Cascadia Mono', Consolas, monospace`
-      const lines = wrap(ctx, text.text, Math.min(width - 24, 260))
-      const lineH = 15
-      const boxW = Math.max(...lines.map((l) => ctx.measureText(l).width)) + 16
-      const boxH = lines.length * lineH + 10
-      const left = Math.max(6, Math.min(width - boxW - 6, x - boxW / 2))
-      const top = Math.max(6, y - boxH)
-      ctx.fillStyle = 'rgba(14, 14, 20, 0.92)'
-      ctx.fillRect(left, top, boxW, boxH)
-      ctx.strokeStyle = colors.body
-      ctx.lineWidth = 1
-      ctx.strokeRect(left + 0.5, top + 0.5, boxW - 1, boxH - 1)
-      // Tail pointing down at the critter.
-      ctx.fillStyle = colors.body
-      ctx.fillRect(Math.max(left + 6, Math.min(left + boxW - 10, x)), top + boxH, 2, 6)
-      ctx.fillStyle = '#f4f4f4'
-      lines.forEach((line, i) => ctx.fillText(line, left + 8, top + 5 + i * lineH))
-    } else {
-      ctx.font = text.kind === 'label' ? `11px 'Cascadia Mono', Consolas, monospace` : `bold 13px 'Cascadia Mono', Consolas, monospace`
-      ctx.fillStyle = colors[text.color ?? 'white']
-      // Centered under its prop, but kept fully inside the panel.
-      const half = ctx.measureText(text.text).width / 2
-      ctx.textAlign = 'center'
-      ctx.fillText(text.text, Math.max(half + 4, Math.min(width - half - 4, x)), y)
-      ctx.textAlign = 'start'
-    }
-  }
-}
-
-/**
- * Agent animation docked to the right of an agent terminal, in one of two
- * styles: an ASCII face whose eyes mirror the agent's state, or pixel scenes
- * that act out what the agent is doing. Both are painted on one canvas on a
- * timer (no React render per frame), and the timer only runs while the pane
- * is visible, the window is shown and motion is enabled.
+ * Agent character docked to the right of an agent terminal. Its expression
+ * follows the session: working at the keyboard, thinking, waiting on you,
+ * done, error, idle, plus time-based tired / grumpy / sleeping / rested.
+ * Drawn on one canvas from a rAF loop (no React render per frame) that only
+ * runs while the pane is visible, the window is shown and motion is on.
  */
 export function AgentCompanion({ tabId, visible }: { tabId: string; visible: boolean }): React.JSX.Element | null {
   const tab = useTerminalStore((state) => state.tabs.find((item) => item.id === tabId))
@@ -195,93 +48,124 @@ export function AgentCompanion({ tabId, visible }: { tabId: string; visible: boo
     return undefined
   })
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  // Read on every frame, so a new event changes the scene without restarting it.
-  const eventRef = useRef<AgentEvent | undefined>(latestEvent)
-  eventRef.current = latestEvent
+  // Read every frame, so new events and activity change the face without restarting the loop.
+  const live = useRef<{ event?: AgentEvent; running: boolean; activity: TabActivity }>({ running: true, activity: 'running' })
+  live.current = { event: latestEvent, running: tab?.running ?? false, activity: tab?.activity ?? 'completed' }
+  // Session history for the time rules; survives style/character changes and panel re-opens.
+  const memory = useRef(createStateMemory(Date.now()))
+  const [label, setLabel] = useState<CharacterState>('idle')
 
   const profile = tab ? mergeProfiles(settings.profiles).find((item) => item.id === tab.profileId) : undefined
   const provider = tab ? providerFromProfileId(settings, tab.profileId) : undefined
   const isAgent = !!provider || !!profile?.startupCommand
-  // The character is drawn in the agent's own color (Claude orange, Codex blue, ...).
-  const bodyColor = profile?.color || provider?.color || 'var(--accent-color)'
+  const agent = agentKindForCommand(profile?.startupCommand || profile?.command || provider?.command)
+  const kind = characterFor(settings.agentCharacter, agent)
   const enabled = settings.agentCompanion && isAgent
-  const style = settings.agentAnimationStyle
-  const mood: CompanionMood = tab ? companionMood(tab.running, tab.activity) : 'sleeping'
+  const style = settings.agentAnimationStyle === 'scenes' ? 'pixel' : 'ascii'
   const animate = enabled && visible && motionEnabled(settings.motion)
 
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!enabled || !canvas) return
-    // Every mood starts from its first frame, so each reaction plays afresh.
-    let tick = 0
-    let disposed = false
-    let paint = (): void => undefined
-    // Read live every frame: what the agent is doing, whether you are typing.
-    const liveInput = (): { event?: AgentEvent; activity: ReturnType<typeof currentActivity>; listening: boolean; now: number } => {
-      const now = Date.now()
-      return { event: eventRef.current, activity: currentActivity(tabId, now), listening: now - lastInputAt(tabId) < LISTEN_MS, now }
+    const ctx = canvas?.getContext('2d')
+    if (!enabled || !canvas || !ctx) return
+    const engine = new CharacterEngine(kind)
+    let width = 0
+    let height = 0
+    let frame = 0
+    let last = 0
+    let shown: CharacterState | undefined
+
+    const update = (now: number): void => {
+      const { event, running, activity } = live.current
+      const resolved = resolveCharacterState(
+        {
+          running,
+          activity,
+          eventId: event?.id,
+          eventKind: event?.kind,
+          eventAt: event?.createdAt,
+          activityKind: currentActivity(tabId, now)?.kind ?? null,
+          now
+        },
+        memory.current
+      )
+      engine.setState(resolved.state, resolved.tired)
+      if (resolved.state !== shown) {
+        shown = resolved.state
+        setLabel(resolved.state)
+      }
+    }
+    const paint = (now: number): void => {
+      if (!width || !height) return
+      const tired = engine.tired && engine.state === 'working'
+      engine.paint(ctx, width, height, style, [
+        `${CHARACTERS[kind].name} / ${tired ? 'Tired but working' : STATE_LABELS[engine.state]}`,
+        captionLine(engine.state, tired, tabId, now)
+      ])
     }
     const measure = (): void => {
       const box = canvas.getBoundingClientRect()
-      const dpr = window.devicePixelRatio || 1
-      canvas.width = Math.max(1, Math.round(box.width * dpr))
-      canvas.height = Math.max(1, Math.round(box.height * dpr))
-      // The canvas CSS color is the agent color (red while angry), resolved here.
-      const body = getComputedStyle(canvas).color
-      if (style === 'scenes') {
-        const scale = Math.max(3, box.width / SCENE_COLUMNS)
-        const columns = Math.floor(box.width / scale)
-        const rows = Math.ceil(box.height / scale)
-        paint = () => {
-          const input = liveInput()
-          paintScene(canvas, renderScene(sceneFor(mood, input.event, input.activity), tick, columns, rows, input), scale, body)
-        }
-        return
-      }
-      // Cell metrics come from the real font, so the aspect correction is exact.
-      const ctx = canvas.getContext('2d')
-      if (ctx) ctx.font = FACE_FONT
-      const cellW = (ctx?.measureText('MMMMMMMMMM').width ?? FACE_FONT_PX * 6) / 10 || FACE_FONT_PX * 0.6
-      const cellH = FACE_FONT_PX
-      const cols = Math.max(8, Math.floor(box.width / cellW))
-      const rows = Math.max(6, Math.floor(box.height / cellH))
-      const palette = facePalette(canvas)
-      paint = () => {
-        paintFace(canvas, renderCompanion(mood, tick, cols, rows, cellH / cellW, liveInput()), cellW, cellH, palette, body)
-      }
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      width = box.width
+      height = box.height
+      canvas.width = Math.max(1, Math.round(width * dpr))
+      canvas.height = Math.max(1, Math.round(height * dpr))
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     }
+    const still = (): void => {
+      const now = Date.now()
+      update(now)
+      engine.step(0, false)
+      paint(now)
+    }
+
     measure()
-    paint()
-    // Re-measure once the monospace font has loaded (it settles the cell
-    // metrics) and whenever the panel resizes.
-    void document.fonts?.ready.then(() => {
-      if (disposed) return
-      measure()
-      paint()
-    })
+    still()
     const observer = new ResizeObserver(() => {
       measure()
-      paint()
+      if (animate) paint(Date.now())
+      else still()
     })
     observer.observe(canvas)
-    if (!animate) {
-      return () => {
-        disposed = true
-        observer.disconnect()
+    let disposed = false
+    // The monospace font settles the glyph metrics once it has loaded.
+    void document.fonts?.ready.then(() => {
+      if (!disposed) paint(Date.now())
+    })
+
+    if (animate) {
+      const tick = (time: number): void => {
+        frame = requestAnimationFrame(tick)
+        if (document.hidden || time - last < FRAME_MS) return
+        const dt = last ? Math.min((time - last) / 1000, 0.08) : 0
+        last = time
+        const now = Date.now()
+        update(now)
+        engine.step(dt, true)
+        paint(now)
       }
+      frame = requestAnimationFrame(tick)
     }
-    const timer = window.setInterval(() => {
-      if (document.hidden) return
-      // Busier output, livelier animation (only while the agent works).
-      tick += TICKS_PER_FRAME * (mood === 'working' ? companionEnergy(latestRate(tabId)) : 1)
-      paint()
-    }, FRAME_MS)
+    // Without motion a visible panel still follows state changes, one still frame per change.
+    let pending = 0
+    const request = (): void => {
+      if (!pending) pending = requestAnimationFrame(() => {
+        pending = 0
+        still()
+      })
+    }
+    const unsubscribe = !animate && visible ? useTerminalStore.subscribe(request) : undefined
+    const unsubscribeEvents = !animate && visible ? useAgentEventStore.subscribe(request) : undefined
+
     return () => {
       disposed = true
-      window.clearInterval(timer)
+      cancelAnimationFrame(frame)
+      cancelAnimationFrame(pending)
       observer.disconnect()
+      unsubscribe?.()
+      unsubscribeEvents?.()
     }
-  }, [enabled, animate, mood, style, bodyColor, tabId])
+  }, [enabled, animate, visible, kind, style, tabId])
 
   if (!enabled) return null
 
@@ -291,16 +175,13 @@ export function AgentCompanion({ tabId, visible }: { tabId: string; visible: boo
   }
 
   return (
-    <aside
-      className={`agent-companion agent-companion-${mood} agent-companion-${style}`}
-      style={{ '--companion-body': bodyColor } as React.CSSProperties}
-      aria-label="Agent status animation"
-    >
+    <aside className={`agent-companion agent-companion-${style}`} aria-label="Agent status animation">
       <button className="agent-companion-close" type="button" onClick={hide} title="Hide agent animation" aria-label="Hide agent animation">
         <X size={12} />
       </button>
-      {/* Keyed by style so switching styles starts from a fresh canvas. */}
-      <canvas key={style} ref={canvasRef} className="agent-companion-canvas" aria-hidden="true" />
+      <canvas ref={canvasRef} className="agent-companion-canvas" role="img" aria-label={`${CHARACTERS[kind].name}: ${STATE_LABELS[label]}`} />
+      {/* Screen readers hear only the label change. */}
+      <span className="sr-only" aria-live="polite">{STATE_LABELS[label]}</span>
     </aside>
   )
 }

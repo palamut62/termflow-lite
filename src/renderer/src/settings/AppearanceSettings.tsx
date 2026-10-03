@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Minus, Plus } from 'lucide-react'
 import { DEFAULT_THEME_ID, getTheme, RETRO_THEMES, THEMES } from '../themes/themes'
 import { useSettingsStore } from '../store/settingsStore'
-import type { AgentAnimationStyle, BackdropMaterial, CursorEffect, MotionLevel, TerminalEffect, ThemeColors } from '../../../shared/types'
+import type { AgentAnimationStyle, AgentCharacter, BackdropMaterial, CursorEffect, MotionLevel, TerminalEffect, ThemeColors } from '../../../shared/types'
 import { ColorPicker, Field, NumberInput, Select, TextInput, Toggle } from './Settings'
 
 const FONT_SUGGESTIONS = [
@@ -316,14 +316,26 @@ export function AppearanceSettings(): React.JSX.Element {
             label="Agent animation"
           />
         </Field>
-        <Field label="Animation Style" hint="ASCII face reacts with its eyes; pixel scenes act out what the agent is doing">
+        <Field label="Animation Style" hint="The same character drawn with ASCII glyphs or as pixel art">
           <Select
             value={settings.agentAnimationStyle}
             options={[
-              { value: 'face', label: 'ASCII face' },
-              { value: 'scenes', label: 'Pixel scenes' }
+              { value: 'face', label: 'ASCII' },
+              { value: 'scenes', label: 'Pixel' }
             ]}
             onChange={(v) => void update({ agentAnimationStyle: v as AgentAnimationStyle })}
+          />
+        </Field>
+        <Field label="Character" hint="Auto picks one per agent: Claude Code Ember, Codex Miso, OpenCode Piko">
+          <Select
+            value={settings.agentCharacter}
+            options={[
+              { value: 'auto', label: 'Auto (per agent)' },
+              { value: 'ember', label: 'Ember' },
+              { value: 'miso', label: 'Miso' },
+              { value: 'piko', label: 'Piko' }
+            ]}
+            onChange={(v) => void update({ agentCharacter: v as AgentCharacter })}
           />
         </Field>
         <Field label="Celebrate" hint="Confetti when a test or build command passes (needs shell integration)">

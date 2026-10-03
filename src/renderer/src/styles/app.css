@@ -586,23 +586,28 @@ body {
   min-width: 0;
   margin: calc(-1 * var(--terminal-padding, 8px)) calc(-1 * var(--terminal-padding, 8px)) 0 var(--terminal-padding, 8px);
   border-left: 1px solid color-mix(in srgb, var(--widget-border) 45%, transparent);
-  background: color-mix(in srgb, var(--terminal-background) 92%, black);
+  /* The kit's stage color; the character palettes are tuned against it. */
+  background: #0c1015;
   overflow: hidden;
   user-select: none;
 }
 
-/* Her iki stil de tek tuvale çizilir; tuval tüm paneli kaplar ve rengi ajan rengidir (gövde tonu buradan okunur). */
+/* Her iki stil de (ASCII / piksel) aynı karakter çizimini tek tuvale basar. */
 .agent-companion-canvas {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  color: var(--companion-body);
-  image-rendering: pixelated;
 }
 
-/* Kızgın: karakter kırmızıya döner (inline ajan rengini ezer; canvas rengi buradan okunur). */
-.agent-companion-error { --companion-body: var(--term-red) !important; }
+.agent-companion .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 
 .agent-companion-close {
   position: absolute;
