@@ -1,10 +1,11 @@
-/* TermFlow Wrapped (components/Wrapped.tsx). Kart PNG olarak yakalandığı için
-   arka planı tam opak ve kendi içinde bütündür. */
+/* TermFlow Wrapped (components/Wrapped.tsx): terminal çıktısı gibi çizilen ASCII
+   kart. Font kullanıcının terminal fontu, renkler temanın ANSI renkleri. Kart PNG
+   olarak yakalandığı için arka planı tam opak ve kendi içinde bütündür. */
 .wrapped {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  width: min(560px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
   max-height: calc(100vh - 32px);
   overflow: auto;
   scrollbar-width: thin;
@@ -17,99 +18,40 @@
 }
 
 .wrapped-card {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 16px 20px 12px;
-  background:
-    radial-gradient(120% 80% at 100% 0%, color-mix(in srgb, var(--accent-color) 22%, transparent), transparent 60%),
-    radial-gradient(90% 70% at 0% 100%, color-mix(in srgb, var(--term-magenta) 16%, transparent), transparent 60%),
-    var(--terminal-background);
+  padding: 14px 16px;
+  background: var(--terminal-background);
   color: var(--terminal-foreground);
   border: 1px solid var(--widget-border);
-  border-radius: 10px;
+  border-radius: 6px;
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
 }
 
-.wrapped-head { display: flex; align-items: center; gap: 10px; color: var(--accent-color); }
-.wrapped-title { font-size: 17px; font-weight: 600; color: var(--terminal-foreground); }
-.wrapped-sub { font-size: 11px; color: var(--tab-inactive-foreground); }
-.wrapped-empty { font-size: 13px; color: var(--tab-inactive-foreground); }
-
-.wrapped-numbers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.wrapped-numbers > div {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--terminal-foreground) 6%, transparent);
-}
-.wrapped-numbers strong { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.wrapped-numbers span { font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--tab-inactive-foreground); }
-
-.wrapped-section { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
-.wrapped-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--tab-inactive-foreground); }
-.wrapped-label em { font-style: normal; text-transform: none; letter-spacing: 0; }
-.wrapped-label-gap { margin-top: 6px; }
-.wrapped-row { display: flex; gap: 18px; }
-
-.wrapped-bar { display: grid; grid-template-columns: 90px 1fr 40px; align-items: center; gap: 8px; font-size: 12px; line-height: 18px; }
-.wrapped-bar-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--ui-font-family); }
-.wrapped-bar-track { height: 8px; border-radius: 4px; background: color-mix(in srgb, var(--terminal-foreground) 8%, transparent); overflow: hidden; }
-.wrapped-bar-fill {
-  display: block;
-  height: 100%;
-  border-radius: 4px;
-  background: linear-gradient(90deg, var(--accent-color), var(--term-cyan));
-  transform-origin: left;
-  animation: wrapped-grow 600ms var(--motion-ease) both;
-}
-.wrapped-bar-count { text-align: right; font-variant-numeric: tabular-nums; color: var(--tab-inactive-foreground); }
-
-@keyframes wrapped-grow {
-  from { transform: scaleX(0); }
+/* Box-drawing glyphs fill the whole cell, so a line height of 1.2 keeps the frame joined. */
+.wrapped-screen {
+  margin: 0;
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 1.2;
+  white-space: pre;
+  font-variant-ligatures: none;
 }
 
-.wrapped-hours { display: flex; align-items: flex-end; gap: 2px; height: 36px; }
-.wrapped-hours span {
-  flex: 1;
-  border-radius: 2px 2px 0 0;
-  background: color-mix(in srgb, var(--accent-color) 45%, transparent);
-  transform-origin: bottom;
-  animation: wrapped-rise 500ms var(--motion-ease) both;
-}
-.wrapped-hours .wrapped-hour-peak { background: var(--term-yellow); }
+.wrapped-line { animation: wrapped-type 220ms var(--motion-ease) both; animation-delay: calc(var(--i) * 14ms); }
 
-@keyframes wrapped-rise {
-  from { transform: scaleY(0); }
+@keyframes wrapped-type {
+  from { opacity: 0; transform: translateX(-4px); }
 }
 
-.wrapped-list { margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.45; }
-.wrapped-list small, .wrapped-longest small { color: var(--tab-inactive-foreground); }
-.wrapped-longest { font-size: 15px; font-weight: 600; }
-
-.wrapped-badges { display: flex; flex-wrap: wrap; gap: 6px; }
-.wrapped-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  font-size: 11px;
-  border: 1px dashed color-mix(in srgb, var(--terminal-foreground) 25%, transparent);
-  color: var(--tab-inactive-foreground);
-  opacity: 0.7;
-}
-.wrapped-badge-earned {
-  border-style: solid;
-  border-color: color-mix(in srgb, var(--term-yellow) 60%, transparent);
-  background: color-mix(in srgb, var(--term-yellow) 14%, transparent);
-  color: var(--terminal-foreground);
-  opacity: 1;
-}
-
-.wrapped-foot { font-size: 10px; color: var(--tab-inactive-foreground); text-align: right; }
+.wa-fg { color: var(--terminal-foreground); }
+.wa-strong { color: var(--terminal-foreground); font-weight: 700; }
+.wa-dim { color: var(--term-bright-black, var(--tab-inactive-foreground)); }
+.wa-accent { color: var(--accent-color); }
+.wa-green { color: var(--term-green); }
+.wa-yellow { color: var(--term-yellow); }
+.wa-cyan { color: var(--term-cyan); }
+.wa-magenta { color: var(--term-magenta); }
+.wa-red { color: var(--term-red); }
+.wa-dim[title], .wa-accent[title], .wa-yellow[title], .wa-green[title], .wa-strong[title] { cursor: help; }
 
 .wrapped-actions { display: flex; align-items: center; gap: 8px; color: var(--app-foreground); }
 .wrapped-confirm { font-size: 12px; }
