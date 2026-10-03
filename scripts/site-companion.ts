@@ -128,6 +128,14 @@ function mount(root: HTMLElement): void {
     paint()
   }
 
+  // Hovering the character: its eyes follow the pointer (not with reduced motion).
+  canvas.addEventListener('pointermove', (event) => {
+    if (reduce.matches) return
+    const box = canvas.getBoundingClientRect()
+    engine.setPointer({ x: event.clientX - box.left, y: event.clientY - box.top })
+  })
+  canvas.addEventListener('pointerleave', () => engine.setPointer(null))
+
   new ResizeObserver(measure).observe(canvas)
   new IntersectionObserver(([entry]) => {
     visible = entry.isIntersecting
