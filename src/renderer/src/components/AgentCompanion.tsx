@@ -7,6 +7,7 @@ import { useSettingsStore } from '../store/settingsStore'
 import { useTerminalStore } from '../store/terminalStore'
 import { useAgentEventStore } from '../store/agentEventStore'
 import { useToastStore } from '../store/toastStore'
+import { useFilePanelStore } from '../store/filePanelStore'
 import { motionEnabled } from '../motion'
 import { activityLine, agentPulse, currentActivity } from '../fun/agentActivity'
 import { cycleWeather, lastLiveReading, liveWeather, type WeatherNow } from '../fun/weather'
@@ -81,7 +82,9 @@ export function AgentCompanion({ tabId, visible }: { tabId: string; visible: boo
   const isAgent = !!provider || !!profile?.startupCommand
   const agent = agentKindForCommand(profile?.startupCommand || profile?.command || provider?.command)
   const kind = characterFor(settings.agentCharacter, agent)
-  const enabled = settings.agentCompanion && isAgent
+  // The file panel takes the right side while it is open.
+  const filesOpen = useFilePanelStore((s) => s.open)
+  const enabled = settings.agentCompanion && isAgent && !filesOpen
   const style = settings.agentAnimationStyle === 'scenes' ? 'pixel' : 'ascii'
   const animate = enabled && visible && motionEnabled(settings.motion)
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertCircle, Bookmark, Bot, Braces, Clock3, Command, Download, GitBranch, Loader2, Radio, RefreshCw, Server, ShieldCheck, Sparkles, X } from 'lucide-react'
+import { AlertCircle, Bookmark, Bot, Braces, Clock3, Command, Download, GitBranch, Loader2, Radio, RefreshCw, Server, ShieldCheck, Sparkles, X, FolderTree } from 'lucide-react'
 import type { AgentPermissionMode } from '../../../shared/types'
 import type { GitStatus, ProjectInfo } from '../../../shared/ipc'
 import { agentForProfile, sshFromProfileId } from '../../../shared/profiles'
@@ -14,6 +14,7 @@ import { useAgentEventStore } from '../store/agentEventStore'
 import { initUpdateStatusBridge, shouldShowUpdateBadge, updateBadgeLabel, updateBadgeTitle, useUpdateStore } from '../store/updateStore'
 import { agentProfileOptions, switchActiveAgentProfile } from '../agentHandover'
 import { OutputPulse } from './OutputPulse'
+import { useFilePanelStore } from '../store/filePanelStore'
 import { useStatsStore } from '../store/statsStore'
 
 const PERMISSION_MODES: AgentPermissionMode[] = ['safe', 'workspace', 'full']
@@ -155,6 +156,7 @@ export function StatusBar(): React.JSX.Element {
       <button className="status-action" onClick={() => useAgentEventStore.getState().show()} title="Live agent activity and timeline"><Radio size={12} />Agents</button>
       <button className="status-action" onClick={() => useTaskPaletteStore.getState().show()} title="Command palette (Ctrl+Shift+P)"><Command size={12} />Commands</button>
       <button className="status-action" onClick={() => useStatsStore.getState().show()} title="Your TermFlow stats and badges"><Sparkles size={12} />Wrapped</button>
+      <button className="status-action" onClick={() => useFilePanelStore.getState().toggle()} title="Files in this folder (Ctrl+Shift+E)"><FolderTree size={12} />Files</button>
       <span className="status-spacer" />
       {/* Yanlışlıkla açık kalmasın diye belirgin rozet; tıklama kapatır. */}
       {broadcastInput && (

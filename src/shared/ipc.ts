@@ -52,6 +52,7 @@ export const IPC = {
   GITHUB_CLONE: 'github:clone', // (nameWithOwner, targetPath) -> GhOutcome
   WEATHER_GEOCODE: 'weather:geocode', // (city) -> WeatherPlace | null
   WEATHER_CURRENT: 'weather:current', // (latitude, longitude) -> WeatherReading | null
+  FILES_LIST: 'files:list', // (dir, showHidden) -> DirListing | null — one level, read-only
   TASKS_DISCOVER: 'tasks:discover',
   PROJECT_DETECT: 'project:detect',
   AGENT_SESSIONS_LIST: 'agent-sessions:list',
@@ -182,6 +183,21 @@ export type WorktreeRemoveOutcome = { ok: true } | { ok: false; error: string }
  * Availability of the user's GitHub CLI. TermFlow stores no token of its own:
  * `gh` owns the credentials, exactly as OpenSSH owns SSH keys.
  */
+/** One entry of a folder listing (file panel). */
+export interface DirEntry {
+  name: string
+  path: string
+  isDirectory: boolean
+}
+
+/** One folder level: entries (folders first), whether it was cut at the cap, and how many were hidden. */
+export interface DirListing {
+  path: string
+  entries: DirEntry[]
+  truncated: boolean
+  hidden: number
+}
+
 /** A city resolved for live weather (coordinates rounded to two decimals). */
 export interface WeatherPlace {
   name: string

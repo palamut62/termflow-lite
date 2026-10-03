@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
-import { IPC, type AgentSessionsQuery, type AppLaunchRequest, type GhOutcome, type GitHubPullRequest, type GitHubRepo, type GitHubStatus, type GitRepoInfo, type GitStatus, type ProjectInfo, type ProjectTask, type ResolvedPath,  type TitleBarOverlayPayload, type WidgetAction, type WidgetState, type CommandNotification, type CaptureRect, type WorktreeCreateRequest, type WorktreeEntry, type WorktreeOutcome, type WorktreeRemoveOutcome, type WorktreeRemoveRequest, type WeatherPlace, type WeatherReading } from '../shared/ipc'
+import { IPC, type AgentSessionsQuery, type AppLaunchRequest, type GhOutcome, type GitHubPullRequest, type GitHubRepo, type GitHubStatus, type GitRepoInfo, type GitStatus, type ProjectInfo, type ProjectTask, type ResolvedPath,  type TitleBarOverlayPayload, type WidgetAction, type WidgetState, type CommandNotification, type CaptureRect, type WorktreeCreateRequest, type WorktreeEntry, type WorktreeOutcome, type WorktreeRemoveOutcome, type WorktreeRemoveRequest, type WeatherPlace, type WeatherReading, type DirListing } from '../shared/ipc'
 import type { AgentEvent, AgentPermissionMode, AgentSession, AgentSessionRef, AppSettings, PersistedSession, RenderMode, ShellInfo, UpdateStatus } from '../shared/types'
 
 // Windows OS build number (e.g. 26200 for current Win11). xterm's windowsPty
@@ -128,6 +128,10 @@ const api = {
     pullRequests: (repo: string, cwd?: string): Promise<GitHubPullRequest[]> => ipcRenderer.invoke(IPC.GITHUB_PULL_REQUESTS, repo, cwd),
     checkoutPr: (worktreePath: string, number: number, repo?: string): Promise<GhOutcome> => ipcRenderer.invoke(IPC.GITHUB_PR_CHECKOUT, worktreePath, number, repo),
     clone: (nameWithOwner: string, targetPath: string): Promise<GhOutcome> => ipcRenderer.invoke(IPC.GITHUB_CLONE, nameWithOwner, targetPath)
+  },
+  /** Read-only folder listing for the file panel. */
+  files: {
+    list: (dir: string, showHidden: boolean): Promise<DirListing | null> => ipcRenderer.invoke(IPC.FILES_LIST, dir, showHidden)
   },
   /** Live weather for the agent character (Open-Meteo, from the main process). */
   weather: {

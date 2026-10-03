@@ -8,6 +8,8 @@ import { SessionRail } from './components/SessionRail'
 import { TerminalView } from './terminal/TerminalView'
 import { PaneLeaf } from './terminal/PaneLeaf'
 import { Settings } from './settings/Settings'
+import { FilePanel } from './components/FilePanel'
+import { useFilePanelStore } from './store/filePanelStore'
 import { StatusBar } from './components/StatusBar'
 import { CommandHistory } from './components/CommandHistory'
 import { useCommandHistoryStore } from './store/commandHistoryStore'
@@ -142,6 +144,13 @@ export default function App(): React.JSX.Element {
       }
       if (e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey && e.key.toLowerCase() === 'p') {
         useTaskPaletteStore.getState().toggle()
+        e.preventDefault()
+        e.stopPropagation()
+        return
+      }
+      // Ctrl+Shift+E: the file panel for the active tab's folder.
+      if (e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey && e.key.toLowerCase() === 'e') {
+        useFilePanelStore.getState().toggle()
         e.preventDefault()
         e.stopPropagation()
         return
@@ -293,6 +302,7 @@ export default function App(): React.JSX.Element {
           </>
         ) : tabs.map((tab) => <TerminalView key={tab.id} tabId={tab.id} active={tab.id === activeTabId} />)}
       </div>
+      <FilePanel />
       </div>
       <StatusBar />
       {historyOpen && <CommandHistory />}

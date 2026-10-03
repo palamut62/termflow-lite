@@ -633,3 +633,88 @@ body {
 @container (max-width: 640px) {
   .agent-companion { display: none; }
 }
+
+/* Dosya paneli (components/FilePanel.tsx): aktif sekmenin klasörü, sağda.
+   Açıkken ajan karakteri yer açmak için gizlenir. */
+.file-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 clamp(220px, 22%, 320px);
+  min-width: 0;
+  background: var(--panel-background);
+  border-left: 1px solid var(--widget-border);
+  color: var(--app-foreground);
+  font-size: 12.5px;
+  user-select: none;
+  animation: file-panel-in var(--motion-base) var(--motion-ease);
+}
+
+@keyframes file-panel-in {
+  from { opacity: 0; transform: translateX(12px); }
+}
+
+.file-panel-head { display: flex; align-items: center; gap: 2px; padding: 6px 6px 4px 10px; }
+.file-panel-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+.file-panel-icon {
+  display: inline-flex;
+  padding: 4px;
+  color: var(--tab-inactive-foreground);
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.file-panel-icon:hover, .file-panel-icon[aria-pressed='true'] { color: var(--app-foreground); background: color-mix(in srgb, currentColor 12%, transparent); }
+
+.file-panel-filter {
+  margin: 0 8px 6px;
+  padding: 4px 8px;
+  font: inherit;
+  color: var(--input-foreground);
+  background: var(--input-background);
+  border: 1px solid var(--input-border, transparent);
+  border-radius: 3px;
+  outline: none;
+}
+.file-panel-filter:focus { border-color: var(--focus-border); }
+
+.file-panel-tree { flex: 1 1 auto; min-height: 0; overflow: auto; padding-bottom: 8px; scrollbar-width: thin; }
+.file-panel-note { padding: 4px 10px; opacity: 0.6; font-style: italic; }
+
+.file-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 22px;
+  padding-right: 8px;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.file-row:hover { background: var(--list-hover-background, rgba(127, 127, 127, 0.14)); }
+.file-row-selected { background: var(--list-active-background, rgba(127, 127, 127, 0.24)); }
+.file-row:focus-visible { outline: 1px solid var(--focus-border); outline-offset: -1px; }
+.file-row-chevron { display: inline-flex; flex: 0 0 12px; opacity: 0.7; }
+.file-row-icon { flex: 0 0 auto; opacity: 0.75; }
+.file-row-dir .file-row-icon { color: var(--term-yellow); opacity: 0.9; }
+.file-row-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Dar pencerede terminale yer bırak. */
+@media (max-width: 720px) {
+  .file-panel { flex-basis: 200px; }
+}
