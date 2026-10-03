@@ -353,7 +353,8 @@ h2 {
 /* ---------- Agent character demo ---------- */
 /* Uygulamadaki gibi: solda ajan terminali, sağda karakter paneli (#0c1015 kit sahnesi). */
 .companion-demo { background: #17181b; }
-.cd-window { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); height: clamp(380px, 42vw, 470px); }
+/* Satır sabit: tuvalin backing boyutu (CSS x DPR) satırı büyütüp ResizeObserver döngüsüne girmesin. */
+.cd-window { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); grid-template-rows: minmax(0, 1fr); height: clamp(380px, 42vw, 470px); }
 .cd-terminal {
   padding: 18px 18px 0;
   font: 13px/1.65 var(--mono);
@@ -367,7 +368,7 @@ h2 {
 .cd-terminal .t-warn { color: #e5b567; }
 .cd-terminal .t-ok { color: #6fcf97; }
 .cd-terminal .t-bad { color: #f07d72; }
-.cd-canvas { display: block; width: 100%; height: 100%; background: #0c1015; border-left: 1px solid #2d3036; }
+.cd-canvas { display: block; width: 100%; height: 100%; min-width: 0; min-height: 0; background: #0c1015; border-left: 1px solid #2d3036; }
 .cd-controls { display: grid; gap: 10px; padding: 14px; border-top: 1px solid #2d3036; }
 .cd-row { display: flex; flex-wrap: wrap; gap: 10px; }
 .seg-dark { flex-wrap: wrap; background: #232428; border-color: #3a3c42; border-radius: 18px; }
@@ -457,7 +458,7 @@ h2 {
   .win-btns, .app-status span:not(.st-branch):not(.st-fill) { display: none; }
   .more dl, .dl-grid { grid-template-columns: 1fr; }
   .replay { margin-left: 0; }
-  .cd-window { grid-template-columns: 1fr; height: auto; }
+  .cd-window { grid-template-columns: 1fr; grid-template-rows: 150px 380px; height: auto; }
   .cd-terminal { height: 150px; padding-bottom: 12px; }
   .cd-canvas { height: 380px; border-left: 0; border-top: 1px solid #2d3036; }
 }
