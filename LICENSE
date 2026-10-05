@@ -1,0 +1,30 @@
+TermFlow Lite - Freeware License
+
+Copyright (c) 2026 Umut Çelik (https://github.com/palamut62). All rights reserved.
+
+TermFlow Lite ("the Software") is proprietary software distributed free of
+charge. The source code is closed and is not licensed to you.
+
+1. Permission. You may download, install and use the official binaries of the
+   Software, published at https://github.com/palamut62/termflow-lite/releases,
+   on any number of devices, for personal or commercial purposes, at no cost.
+
+2. Redistribution. You may share unmodified copies of the official installers
+   and archives, as long as they are free of charge and keep this license.
+
+3. Restrictions. You may not sell the Software, modify it, decompile,
+   disassemble or reverse engineer it (except where applicable law expressly
+   allows this despite this restriction), or publish modified versions of it.
+
+4. Third-party components. The Software includes open-source components
+   (such as Electron, React, xterm.js and node-pty). They remain under their
+   own licenses, which take precedence for those components.
+
+5. No warranty. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO
+   EVENT SHALL THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY
+   ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.
+
+Versions released before 1.17.2 were published under the MIT License; those
+copies stay under the MIT License. This license applies to 1.17.2 and later.
